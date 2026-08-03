@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
-import { transactionsQuery, INTERNAL_CASH_CODES, type Transaction } from "@/lib/queries";
+import { transactionsQuery, INTERNAL_CASH_CODES, isReklas, type Transaction } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,15 +45,6 @@ const BULAN = [
 /** Kas Masuk (kas gereja bertambah) = penarikan dari bank → pengeluaran bank.
  *  Kas Keluar (kas gereja berkurang) = setoran ke bank → pemasukan bank. */
 const isBankIn = (t: Transaction) => t.budget_lines?.code === "2.2.22.22";
-
-/** Transaksi reklas / pengembalian — bukan mutasi bank, dikeluarkan dari perhitungan */
-const REKLAS_VOUCHERS = [
-  "KM-2026-0184",
-  "KM-2026-2575",
-  "KM-2026-2576",
-  "KM-2026-2577",
-];
-const isReklas = (t: Transaction) => REKLAS_VOUCHERS.includes(t.voucher_no);
 
 function LaporanBankPage() {
   const trx = useQuery(transactionsQuery);
