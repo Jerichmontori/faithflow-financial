@@ -184,24 +184,26 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Jenis {kind === "penerimaan" ? "Penerimaan" : "Pengeluaran"}</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih jenis" />
-                </SelectTrigger>
-                <SelectContent>
-                  {JENIS[kind].map((j) => (
-                    <SelectItem key={j} value={j}>
-                      {j}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {kind === "pengeluaran" && (
+              <div className="space-y-2">
+                <Label>Jenis Pengeluaran</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => setForm({ ...form, category: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih jenis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JENIS[kind].map((j) => (
+                      <SelectItem key={j} value={j}>
+                        {j}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -257,18 +259,70 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </Popover>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="nominal">Nominal (Rp)</Label>
-            <Input
-              id="nominal"
-              type="number"
-              min={1}
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              placeholder="0"
-              required
-            />
-          </div>
+          {kind === "penerimaan" ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Rincian Keterangan (maks. 5)</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={items.length >= 5}
+                  onClick={() => setItems([...items, { description: "", amount: "" }])}
+                >
+                  Tambah baris
+                </Button>
+              </div>
+              {items.map((it, idx) => (
+                <div key={idx} className="grid gap-2 sm:grid-cols-[1fr_10rem_auto]">
+                  <Input
+                    value={it.description}
+                    onChange={(e) =>
+                      setItems(
+                        items.map((x, i) =>
+                          i === idx ? { ...x, description: e.target.value } : x,
+                        ),
+                      )
+                    }
+                    placeholder={`Keterangan ${idx + 1}`}
+                    maxLength={500}
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={it.amount}
+                    onChange={(e) =>
+                      setItems(items.map((x, i) => (i === idx ? { ...x, amount: e.target.value } : x)))
+                    }
+                    placeholder="Nominal"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={items.length === 1}
+                    onClick={() => setItems(items.filter((_, i) => i !== idx))}
+                    aria-label="Hapus baris"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="nominal">Nominal (Rp)</Label>
+              <Input
+                id="nominal"
+                type="number"
+                min={1}
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                placeholder="0"
+                required
+              />
+            </div>
+          )}
 
           {kind === "pengeluaran" && (
             <>
@@ -315,16 +369,18 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="ket">Keterangan</Label>
-            <Textarea
-              id="ket"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Uraian transaksi"
-              maxLength={500}
-            />
-          </div>
+          {kind === "pengeluaran" && (
+            <div className="space-y-2">
+              <Label htmlFor="ket">Keterangan</Label>
+              <Textarea
+                id="ket"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Uraian transaksi"
+                maxLength={500}
+              />
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
