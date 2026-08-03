@@ -502,6 +502,18 @@ function LaporanPage() {
 
         <TabsContent value="rincian">
           <div className="panel overflow-x-auto">
+            {budgetId !== "semua" && (
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Mata anggaran terpilih:</span>
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {selectedBudget?.code ?? "-"}
+                </Badge>
+                <span className="text-sm font-medium">{selectedBudget?.name}</span>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setBudgetId("semua")}>
+                  <RotateCcw className="mr-1 size-3" /> Reset
+                </Button>
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -526,7 +538,16 @@ function LaporanPage() {
                     </TableCell>
                     <TableCell className="text-sm">{labelBulan(t.bulan)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
+                      {t.budget_line_id ? (
+                        <button
+                          className="text-left hover:text-foreground hover:underline"
+                          onClick={() => setBudgetId(t.budget_line_id)}
+                        >
+                          {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
+                        </button>
+                      ) : (
+                        t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"
+                      )}
                     </TableCell>
                     <TableCell className="max-w-72 truncate text-sm">{t.description}</TableCell>
                     <TableCell className="text-right font-medium text-success whitespace-nowrap">
