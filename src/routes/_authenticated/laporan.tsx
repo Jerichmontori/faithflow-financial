@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown, Download } from "lucide-react";
+import { Check, ChevronsUpDown, Download, RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
@@ -72,7 +72,6 @@ function LaporanPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
 
-  const [grup, setGrup] = useState("semua");
   const [budgetId, setBudgetId] = useState("semua");
   const [kolomFilter, setKolomFilter] = useState("semua");
   const [bulanFilter, setBulanFilter] = useState("semua");
@@ -85,23 +84,17 @@ function LaporanPage() {
     () =>
       (budgets.data ?? [])
         .filter((b) => b.kind === "penerimaan")
-        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
-        .filter((b) => grup === "semua" || (b.grup || "Tanpa Grup") === grup),
-    [budgets.data, grup],
-  );
-
-  const grupOptions = useMemo(
-    () =>
-      [
-        ...new Set(
-          (budgets.data ?? [])
-            .filter((b) => b.kind === "penerimaan")
-            .map((b) => b.grup || "")
-            .filter((g) => GRUP_LAPORAN.includes(g)),
-        ),
-      ].sort((a, b) => a.localeCompare(b)),
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || "")),
     [budgets.data],
   );
+
+  function resetFilter() {
+    setBudgetId("semua");
+    setKolomFilter("semua");
+    setBulanFilter("semua");
+    setDari("");
+    setSampai("");
+  }
 
   /** Semua penerimaan (kecuali mutasi kas internal) dengan kolom & bulan hasil parsing keterangan */
   const parsed = useMemo(
@@ -121,7 +114,6 @@ function LaporanPage() {
       parsed.filter((t) => {
         const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
         if (!GRUP_LAPORAN.includes(b?.grup || "")) return false;
-        if (grup !== "semua" && (b?.grup || "Tanpa Grup") !== grup) return false;
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
         if (kolomFilter !== "semua") {
           if (kolomFilter === "tanpa" ? t.kolom !== null : String(t.kolom) !== kolomFilter)
@@ -135,7 +127,7 @@ function LaporanPage() {
         if (sampai && t.trx_date > sampai) return false;
         return true;
       }),
-    [parsed, budgets.data, grup, budgetId, kolomFilter, bulanFilter, dari, sampai],
+    [parsed, budgets.data, budgetId, kolomFilter, bulanFilter, dari, sampai],
   );
 
   const kolomList = useMemo(() => {
@@ -182,15 +174,6 @@ function LaporanPage() {
       string,
       { label: string; cells: Map<string, number>; total: number }
     >();
-    // tampilkan seluruh mata anggaran pada grup laporan (termasuk yang belum ada transaksi)
-    for (const b of budgets.data ?? []) {
-      if (b.kind !== "penerimaan") continue;
-      if (!GRUP_LAPORAN.includes(b.grup || "")) continue;
-      if (grup !== "semua" && (b.grup || "Tanpa Grup") !== grup) continue;
-      if (budgetId !== "semua" && b.id !== budgetId) continue;
-      const label = `${b.code} — ${b.name}`;
-      if (!map.has(label)) map.set(label, { label, cells: new Map(), total: 0 });
-    }
     for (const t of rows) {
       const label = t.budget_lines
         ? `${t.budget_lines.code} — ${t.budget_lines.name}`
@@ -201,8 +184,10 @@ function LaporanPage() {
       entry.cells.set(mk, (entry.cells.get(mk) ?? 0) + Number(t.amount));
       entry.total += Number(t.amount);
     }
-    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows, budgets.data, grup, budgetId]);
+    return [...map.values()]
+      .filter((r) => r.total !== 0)
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [rows]);
 
   const activeMonths = useMemo(
     () => MONTH_KEYS.filter((m) => columnTotals.has(m === null ? "tanpa" : String(m))),
@@ -234,35 +219,17 @@ function LaporanPage() {
       title="Laporan Penerimaan per Kolom"
       subtitle={`${rows.length} transaksi · total ${rupiah(grandTotal)}`}
       actions={
-        <Button variant="outline" size="sm" onClick={exportCsv}>
-          <Download className="size-4" /> Ekspor CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={resetFilter}>
+            <RotateCcw className="size-4" /> Reset filter
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            <Download className="size-4" /> Ekspor CSV
+          </Button>
+        </div>
       }
     >
       <div className="panel mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
-        <div className="space-y-1.5">
-          <Label>Grup Anggaran</Label>
-          <Select
-            value={grup}
-            onValueChange={(v) => {
-              setGrup(v);
-              setBudgetId("semua");
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="semua">Semua grup</SelectItem>
-              {grupOptions.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {g}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="space-y-1.5 xl:col-span-2">
           <Label>Mata Anggaran</Label>
           <Popover open={openBudget} onOpenChange={setOpenBudget}>
