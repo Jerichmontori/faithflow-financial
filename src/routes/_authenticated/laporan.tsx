@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown, Download, FileDown, RotateCcw } from "lucide-react";
+import html2pdf from "html2pdf.js";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
@@ -79,6 +80,8 @@ function LaporanPage() {
   const [sampai, setSampai] = useState("");
   const [openBudget, setOpenBudget] = useState(false);
   const [tab, setTab] = useState("matriks");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   /** Semua penerimaan (kecuali mutasi kas internal) dengan kolom & bulan hasil parsing keterangan */
   const parsed = useMemo(
@@ -108,6 +111,23 @@ function LaporanPage() {
     setBulanFilter("semua");
     setDari("");
     setSampai("");
+  }
+
+  async function downloadPdf() {
+    setIsGeneratingPdf(true);
+    await new Promise((r) => setTimeout(r, 100));
+    const element = pdfRef.current;
+    if (!element) {
+      setIsGeneratingPdf(false);
+      return;
+    }
+    await html2pdf(element, {
+      filename: `laporan-penerimaan-kolom-${new Date().toISOString().slice(0, 10)}.pdf`,
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+      html2canvas: { scale: 2, useCORS: true },
+      margin: [10, 10],
+    });
+    setIsGeneratingPdf(false);
   }
 
 
@@ -234,20 +254,18 @@ function LaporanPage() {
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="size-4" /> Ekspor CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileDown className="size-4" /> Download PDF
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadPdf}
+            disabled={isGeneratingPdf}
+          >
+            <FileDown className="size-4" />
+            {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
           </Button>
         </div>
       }
     >
-      <div className="print-only mb-4 hidden border-b border-black pb-3">
-        <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom</h2>
-        <p className="text-sm">BUMOTIK FINANCIAL</p>
-        <p className="text-sm">
-          {rows.length} transaksi · total {rupiah(grandTotal)}
-          {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
-        </p>
-      </div>
       <div className="panel no-print mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="space-y-1.5 xl:col-span-2">
           <Label>Mata Anggaran</Label>
@@ -356,7 +374,16 @@ function LaporanPage() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <div ref={pdfRef}>
+        <div className={cn("mb-4 border-b border-black pb-3", isGeneratingPdf ? "block" : "hidden")}>
+          <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom</h2>
+          <p className="text-sm">BUMOTIK FINANCIAL</p>
+          <p className="text-sm">
+            {rows.length} transaksi · total {rupiah(grandTotal)}
+            {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
+          </p>
+        </div>
+        <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="no-print">
           <TabsTrigger value="matriks">Kolom × Bulan</TabsTrigger>
           <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
@@ -593,6 +620,7 @@ function LaporanPage() {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </AppShell>
   );
 }
