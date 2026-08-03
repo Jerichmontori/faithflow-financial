@@ -464,6 +464,22 @@ function LaporanPage() {
                     </TableCell>
                   </TableRow>
                 )}
+                {perAnggaran.length > 0 && (
+                  <TableRow className="bg-muted/40">
+                    <TableCell className="sticky left-0 bg-muted/40 font-semibold">Total</TableCell>
+                    {activeMonths.map((m) => (
+                      <TableCell
+                        key={String(m)}
+                        className="text-right font-semibold whitespace-nowrap"
+                      >
+                        {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right font-bold whitespace-nowrap">
+                      {rupiah(grandTotal)}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
