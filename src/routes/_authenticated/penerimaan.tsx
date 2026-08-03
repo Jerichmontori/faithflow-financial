@@ -44,12 +44,10 @@ function PenerimaanPage() {
   const budgets = useQuery(budgetLinesQuery);
   const [q, setQ] = useState("");
   const [budget, setBudget] = useState("all");
-  const [grup, setGrup] = useState("all");
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
 
   const budgetOptions = (budgets.data ?? []).filter((b) => b.kind === "penerimaan");
-  const grupOptions = [...new Set(budgetOptions.map((b) => b.grup || "Tanpa Grup"))].sort();
   const grupById = new Map(budgetOptions.map((b) => [b.id, b.grup || "Tanpa Grup"]));
 
   const rows = useMemo(() => {
@@ -57,25 +55,23 @@ function PenerimaanPage() {
     return (trx.data ?? []).filter((t) => {
       if (t.kind !== "penerimaan") return false;
       if (budget !== "all" && t.budget_line_id !== budget) return false;
-      if (grup !== "all" && grupById.get(t.budget_line_id) !== grup) return false;
       if (dari && t.trx_date < dari) return false;
       if (sampai && t.trx_date > sampai) return false;
       if (
         term &&
-        !`${t.voucher_no} ${t.description} ${t.category} ${t.budget_lines?.code ?? ""} ${t.budget_lines?.name ?? ""}`
+        !`${t.description} ${t.category}`
           .toLowerCase()
           .includes(term)
       )
         return false;
       return true;
     });
-  }, [trx.data, q, budget, grup, dari, sampai, grupById]);
+  }, [trx.data, q, budget, dari, sampai]);
 
-  const aktif = q !== "" || budget !== "all" || grup !== "all" || dari !== "" || sampai !== "";
+  const aktif = q !== "" || budget !== "all" || dari !== "" || sampai !== "";
   const reset = () => {
     setQ("");
     setBudget("all");
-    setGrup("all");
     setDari("");
     setSampai("");
   };
