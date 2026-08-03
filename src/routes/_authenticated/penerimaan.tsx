@@ -44,38 +44,33 @@ function PenerimaanPage() {
   const budgets = useQuery(budgetLinesQuery);
   const [q, setQ] = useState("");
   const [budget, setBudget] = useState("all");
-  const [grup, setGrup] = useState("all");
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
 
   const budgetOptions = (budgets.data ?? []).filter((b) => b.kind === "penerimaan");
-  const grupOptions = [...new Set(budgetOptions.map((b) => b.grup || "Tanpa Grup"))].sort();
-  const grupById = new Map(budgetOptions.map((b) => [b.id, b.grup || "Tanpa Grup"]));
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
     return (trx.data ?? []).filter((t) => {
       if (t.kind !== "penerimaan") return false;
       if (budget !== "all" && t.budget_line_id !== budget) return false;
-      if (grup !== "all" && grupById.get(t.budget_line_id) !== grup) return false;
       if (dari && t.trx_date < dari) return false;
       if (sampai && t.trx_date > sampai) return false;
       if (
         term &&
-        !`${t.voucher_no} ${t.description} ${t.category} ${t.budget_lines?.code ?? ""} ${t.budget_lines?.name ?? ""}`
+        !`${t.description} ${t.category}`
           .toLowerCase()
           .includes(term)
       )
         return false;
       return true;
     });
-  }, [trx.data, q, budget, grup, dari, sampai, grupById]);
+  }, [trx.data, q, budget, dari, sampai]);
 
-  const aktif = q !== "" || budget !== "all" || grup !== "all" || dari !== "" || sampai !== "";
+  const aktif = q !== "" || budget !== "all" || dari !== "" || sampai !== "";
   const reset = () => {
     setQ("");
     setBudget("all");
-    setGrup("all");
     setDari("");
     setSampai("");
   };
@@ -88,31 +83,15 @@ function PenerimaanPage() {
       actions={<TransactionDialog kind="penerimaan" />}
     >
       <div className="panel mb-4 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1.5 xl:col-span-2">
-            <Label htmlFor="cari">Cari</Label>
+            <Label htmlFor="cari">Filter Keterangan</Label>
             <Input
               id="cari"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="No. bukti, keterangan, mata anggaran…"
+              placeholder="Cari keterangan transaksi…"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Grup Anggaran</Label>
-            <Select value={grup} onValueChange={setGrup}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua grup</SelectItem>
-                {grupOptions.map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {g}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Mata Anggaran</Label>
@@ -122,13 +101,11 @@ function PenerimaanPage() {
               </SelectTrigger>
               <SelectContent className="max-h-72">
                 <SelectItem value="all">Semua mata anggaran</SelectItem>
-                {budgetOptions
-                  .filter((b) => grup === "all" || (b.grup || "Tanpa Grup") === grup)
-                  .map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.code} — {b.name}
-                    </SelectItem>
-                  ))}
+                {budgetOptions.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.code} — {b.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
