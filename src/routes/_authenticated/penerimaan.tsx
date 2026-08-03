@@ -83,7 +83,7 @@ function PenerimaanPage() {
       actions={<TransactionDialog kind="penerimaan" />}
     >
       <div className="panel mb-4 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1.5 xl:col-span-2">
             <Label htmlFor="cari">Filter Keterangan</Label>
             <Input
