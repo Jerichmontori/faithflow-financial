@@ -8,6 +8,7 @@ import {
   BookOpen,
   PieChart,
   FileSpreadsheet,
+  Landmark,
   LogOut,
   Church,
   Menu,
@@ -26,6 +27,7 @@ const NAV = [
   { to: "/buku-pembantu", label: "Buku Pembantu", icon: BookOpen },
   { to: "/rekapitulasi", label: "Rekapitulasi", icon: PieChart },
   { to: "/laporan", label: "Laporan Kolom", icon: FileSpreadsheet },
+  { to: "/laporan-bank", label: "Laporan Bank", icon: Landmark },
   { to: "/anggaran", label: "Mata Anggaran", icon: Wallet },
 ] as const;
 
