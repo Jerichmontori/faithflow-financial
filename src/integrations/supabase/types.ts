@@ -14,16 +14,169 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budget_lines: {
+        Row: {
+          code: string
+          created_at: string
+          fiscal_year: number
+          id: string
+          kind: Database["public"]["Enums"]["trx_kind"]
+          name: string
+          planned_amount: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          fiscal_year?: number
+          id?: string
+          kind: Database["public"]["Enums"]["trx_kind"]
+          name: string
+          planned_amount?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          fiscal_year?: number
+          id?: string
+          kind?: Database["public"]["Enums"]["trx_kind"]
+          name?: string
+          planned_amount?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          attachment_url: string | null
+          budget_line_id: string
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          kind: Database["public"]["Enums"]["trx_kind"]
+          payee: string | null
+          payment_method: string | null
+          status: Database["public"]["Enums"]["approval_status"]
+          trx_date: string
+          voucher_no: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          attachment_url?: string | null
+          budget_line_id: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          kind: Database["public"]["Enums"]["trx_kind"]
+          payee?: string | null
+          payment_method?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          trx_date?: string
+          voucher_no: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          attachment_url?: string | null
+          budget_line_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["trx_kind"]
+          payee?: string | null
+          payment_method?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          trx_date?: string
+          voucher_no?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_budget_line_id_fkey"
+            columns: ["budget_line_id"]
+            isOneToOne: false
+            referencedRelation: "budget_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_approve: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_finance: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "super_admin"
+        | "ketua_bpmj"
+        | "admin_keuangan"
+        | "sekretaris"
+        | "pendeta"
+        | "auditor"
+        | "viewer"
+      approval_status: "draft" | "pending" | "approved" | "rejected"
+      trx_kind: "penerimaan" | "pengeluaran"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +303,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "super_admin",
+        "ketua_bpmj",
+        "admin_keuangan",
+        "sekretaris",
+        "pendeta",
+        "auditor",
+        "viewer",
+      ],
+      approval_status: ["draft", "pending", "approved", "rejected"],
+      trx_kind: ["penerimaan", "pengeluaran"],
+    },
   },
 } as const
