@@ -8,6 +8,7 @@ import {
   BookOpen,
   PieChart,
   FileSpreadsheet,
+  Landmark,
   LogOut,
   Church,
   Menu,
