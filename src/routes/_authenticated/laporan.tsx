@@ -80,22 +80,6 @@ function LaporanPage() {
   const [openBudget, setOpenBudget] = useState(false);
   const [tab, setTab] = useState("matriks");
 
-  const budgetOptions = useMemo(
-    () =>
-      (budgets.data ?? [])
-        .filter((b) => b.kind === "penerimaan")
-        .filter((b) => GRUP_LAPORAN.includes(b.grup || "")),
-    [budgets.data],
-  );
-
-  function resetFilter() {
-    setBudgetId("semua");
-    setKolomFilter("semua");
-    setBulanFilter("semua");
-    setDari("");
-    setSampai("");
-  }
-
   /** Semua penerimaan (kecuali mutasi kas internal) dengan kolom & bulan hasil parsing keterangan */
   const parsed = useMemo(
     () =>
@@ -108,6 +92,24 @@ function LaporanPage() {
         })),
     [trx.data],
   );
+
+  const budgetOptions = useMemo(
+    () =>
+      (budgets.data ?? [])
+        .filter((b) => b.kind === "penerimaan")
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .filter((b) => parsed.some((t) => t.budget_line_id === b.id)),
+    [budgets.data, parsed],
+  );
+
+  function resetFilter() {
+    setBudgetId("semua");
+    setKolomFilter("semua");
+    setBulanFilter("semua");
+    setDari("");
+    setSampai("");
+  }
+
 
   const rows = useMemo(
     () =>
