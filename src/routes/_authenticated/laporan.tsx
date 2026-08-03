@@ -172,13 +172,19 @@ function LaporanPage() {
   const perAnggaran = useMemo(() => {
     const map = new Map<
       string,
-      { label: string; cells: Map<string, number>; total: number }
+      { id: string | null; label: string; cells: Map<string, number>; total: number }
     >();
     for (const t of rows) {
       const label = t.budget_lines
         ? `${t.budget_lines.code} — ${t.budget_lines.name}`
         : "Tanpa Mata Anggaran";
-      if (!map.has(label)) map.set(label, { label, cells: new Map(), total: 0 });
+      if (!map.has(label))
+        map.set(label, {
+          id: t.budget_line_id ?? null,
+          label,
+          cells: new Map(),
+          total: 0,
+        });
       const entry = map.get(label)!;
       const mk = t.bulan === null ? "tanpa" : String(t.bulan);
       entry.cells.set(mk, (entry.cells.get(mk) ?? 0) + Number(t.amount));
@@ -434,7 +440,14 @@ function LaporanPage() {
               </TableHeader>
               <TableBody>
                 {perAnggaran.map((r) => (
-                  <TableRow key={r.label}>
+                  <TableRow
+                    key={r.label}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (r.id) setBudgetId(r.id);
+                      setTab("rincian");
+                    }}
+                  >
                     <TableCell className="sticky left-0 bg-card min-w-72 text-sm">
                       {r.label}
                     </TableCell>
