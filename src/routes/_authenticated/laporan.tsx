@@ -58,6 +58,16 @@ export const Route = createFileRoute("/_authenticated/laporan")({
 
 const MONTH_KEYS = [...BULAN_PANJANG.map((_, i) => i), null] as Array<number | null>;
 
+/** Grup penerimaan yang ditampilkan pada laporan kolom */
+const GRUP_LAPORAN = [
+  "Persembahan Ibd Kompelka BIPRA",
+  "Persembahan Ibadah Kolom",
+  "PERSEMBAHAN IBADAH HUT",
+  "PERSEMBAHAN IBADAH MENYAMBUT NATAL",
+  "SAMPUL - SAMPUL",
+  "PERSEMBAHAN IBADAH KHUSUS",
+];
+
 function LaporanPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
@@ -69,11 +79,13 @@ function LaporanPage() {
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [openBudget, setOpenBudget] = useState(false);
+  const [tab, setTab] = useState("matriks");
 
   const budgetOptions = useMemo(
     () =>
       (budgets.data ?? [])
         .filter((b) => b.kind === "penerimaan")
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
         .filter((b) => grup === "semua" || (b.grup || "Tanpa Grup") === grup),
     [budgets.data, grup],
   );
@@ -84,7 +96,8 @@ function LaporanPage() {
         ...new Set(
           (budgets.data ?? [])
             .filter((b) => b.kind === "penerimaan")
-            .map((b) => b.grup || "Tanpa Grup"),
+            .map((b) => b.grup || "")
+            .filter((g) => GRUP_LAPORAN.includes(g)),
         ),
       ].sort((a, b) => a.localeCompare(b)),
     [budgets.data],
@@ -107,6 +120,7 @@ function LaporanPage() {
     () =>
       parsed.filter((t) => {
         const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
+        if (!GRUP_LAPORAN.includes(b?.grup || "")) return false;
         if (grup !== "semua" && (b?.grup || "Tanpa Grup") !== grup) return false;
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
         if (kolomFilter !== "semua") {
@@ -126,9 +140,16 @@ function LaporanPage() {
 
   const kolomList = useMemo(() => {
     const set = new Set<number>();
-    parsed.forEach((t) => t.kolom !== null && set.add(t.kolom));
+    const allowed = new Set(
+      (budgets.data ?? [])
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .map((b) => b.id),
+    );
+    parsed.forEach((t) => {
+      if (allowed.has(t.budget_line_id) && t.kolom !== null) set.add(t.kolom);
+    });
     return [...set].sort((a, b) => a - b);
-  }, [parsed]);
+  }, [parsed, budgets.data]);
 
   /** Matriks kolom × bulan */
   const matrix = useMemo(() => {
@@ -288,7 +309,13 @@ function LaporanPage() {
 
         <div className="space-y-1.5">
           <Label>Kolom</Label>
-          <Select value={kolomFilter} onValueChange={setKolomFilter}>
+          <Select
+            value={kolomFilter}
+            onValueChange={(v) => {
+              setKolomFilter(v);
+              if (v !== "semua") setTab("rincian");
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -334,7 +361,7 @@ function LaporanPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="matriks">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="matriks">Kolom × Bulan</TabsTrigger>
           <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
@@ -357,7 +384,14 @@ function LaporanPage() {
               </TableHeader>
               <TableBody>
                 {matrix.map((r) => (
-                  <TableRow key={String(r.kolom)}>
+                  <TableRow
+                    key={String(r.kolom)}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setKolomFilter(r.kolom === null ? "tanpa" : String(r.kolom));
+                      setTab("rincian");
+                    }}
+                  >
                     <TableCell className="sticky left-0 bg-card font-medium">
                       {labelKolom(r.kolom)}
                     </TableCell>
