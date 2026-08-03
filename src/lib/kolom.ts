@@ -58,10 +58,11 @@ export const labelBulan = (bulan: number | null) =>
 const NORMALISASI_NAMA: Array<[RegExp, string]> = [
   [/^Lansia\s+Aras\b.*/i, "Lansia Aras"],
   [/^PKB\s+Aras\b.*/i, "PKB ARAS"],
+  [/^Remaja\s+Aras\b.*/i, "Remaja Aras"],
   [/^WKI\s+(Lidya|Lydia)\b.*/i, "WKI Lidya"],
   [/^WKI\s+(Ester|Easter)\b.*/i, "WKI Ester Eunike"],
   [/^WKI\s+(Marta|Martha)\b.*/i, "WKI Martha Maria"],
-  [/^WKI\s+Monika\b.*/i, "WKI Monika"],
+  [/^WKI\s+.*Monika\b.*/i, "WKI Monika"],
 ];
 
 function normalisasiNama(nama: string): string {
