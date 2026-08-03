@@ -12,6 +12,7 @@ import {
   CalendarClock,
   Undo2,
   Coins,
+  UserCog,
   LogOut,
   Church,
   Menu,
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/laporan-bank", label: "Laporan Bank", icon: Landmark },
   { to: "/reklas", label: "Pengembalian / Reklas", icon: Undo2 },
   { to: "/anggaran", label: "Mata Anggaran", icon: Wallet },
+  { to: "/pengguna", label: "Manajemen Pengguna", icon: UserCog },
 ] as const;
 
 export function AppShell({
