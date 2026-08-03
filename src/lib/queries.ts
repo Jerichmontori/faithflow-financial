@@ -28,6 +28,9 @@ export type Transaction = {
 };
 
 export const budgetLinesQuery = queryOptions({
+  // Kode mutasi kas internal (setoran/tarikan) — bukan pendapatan/belanja riil
+  ...{},
+  queryKey: ["budget_lines"],
   queryKey: ["budget_lines"],
   queryFn: async (): Promise<BudgetLine[]> => {
     const { data, error } = await supabase
