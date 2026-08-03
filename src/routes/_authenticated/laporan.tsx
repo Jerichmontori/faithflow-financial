@@ -357,7 +357,7 @@ function LaporanPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="no-print">
           <TabsTrigger value="matriks">Kolom × Bulan</TabsTrigger>
           <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
           <TabsTrigger value="rincian">Rincian Transaksi</TabsTrigger>
