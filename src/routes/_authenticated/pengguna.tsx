@@ -226,7 +226,7 @@ function PenggunaPage() {
                     <TableCell>
                       {isSuperAdmin ? (
                         <Select
-                          value={r.role ?? undefined}
+                          value={r.role ?? ""}
                           onValueChange={(role) =>
                             setRole.mutate({ id: r.id, role: role as AppRole })
                           }
