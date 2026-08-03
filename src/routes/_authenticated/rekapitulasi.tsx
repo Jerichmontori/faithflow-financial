@@ -168,6 +168,7 @@ function RekapitulasiPage() {
 }
 
 function GroupSection({ rows, kind }: { rows: Row[]; kind: "penerimaan" | "pengeluaran" }) {
+  const [selected, setSelected] = useState<string | null>(null);
   const pagu = rows.reduce((a, r) => a + r.pagu, 0);
   const real = rows.reduce((a, r) => a + r.realisasi, 0);
   const persen = pagu > 0 ? (real / pagu) * 100 : 0;
@@ -214,10 +215,27 @@ function GroupSection({ rows, kind }: { rows: Row[]; kind: "penerimaan" | "penge
       </section>
 
       <section className="panel p-5">
-        <h2 className="text-base font-semibold">Rincian Grup Mata Anggaran</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold">Rincian Grup Mata Anggaran</h2>
+            <p className="text-xs text-muted-foreground">
+              Klik grup untuk melihat rincian per mata anggaran
+            </p>
+          </div>
+          {selected && (
+            <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
+              <X className="size-4" /> Reset pilihan
+            </Button>
+          )}
+        </div>
         <div className="mt-4 space-y-5">
-          {rows.map((r) => (
+          {(selected ? rows.filter((r) => r.grup === selected) : rows).map((r) => (
             <div key={r.grup}>
+              <button
+                type="button"
+                className="w-full text-left"
+                onClick={() => setSelected(selected === r.grup ? null : r.grup)}
+              >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium uppercase tracking-wide">{r.grup}</p>
@@ -233,6 +251,43 @@ function GroupSection({ rows, kind }: { rows: Row[]; kind: "penerimaan" | "penge
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Realisasi {rupiah(r.realisasi)} dari pagu {rupiah(r.pagu)} · sisa {rupiah(r.sisa)}
               </p>
+              </button>
+              {selected === r.grup && (
+                <div className="mt-4 overflow-x-auto rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Kode</TableHead>
+                        <TableHead>Mata Anggaran</TableHead>
+                        <TableHead className="text-right">Pagu</TableHead>
+                        <TableHead className="text-right">Realisasi</TableHead>
+                        <TableHead className="text-right">Sisa</TableHead>
+                        <TableHead className="text-right">%</TableHead>
+                        <TableHead className="text-right">Trx</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {r.lines.map((l) => (
+                        <TableRow key={l.id}>
+                          <TableCell className="font-mono text-xs">{l.code}</TableCell>
+                          <TableCell className="text-sm">{l.name}</TableCell>
+                          <TableCell className="text-right text-sm">{rupiah(l.pagu)}</TableCell>
+                          <TableCell className="text-right text-sm font-medium">
+                            {rupiah(l.realisasi)}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {rupiah(l.pagu - l.realisasi)}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {l.persen.toFixed(0)}%
+                          </TableCell>
+                          <TableCell className="text-right text-sm">{l.trx}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </div>
           ))}
           {rows.length === 0 && (
