@@ -60,7 +60,7 @@ function AuthPage() {
         });
         if (error) throw error;
         if (data.session) navigate({ to: "/dashboard", replace: true });
-        else toast.success("Cek email Anda untuk konfirmasi pendaftaran.");
+        else toast.success("Pendaftaran berhasil. Akun menunggu persetujuan Super Admin.");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
