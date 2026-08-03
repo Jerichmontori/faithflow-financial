@@ -30,6 +30,7 @@ const NAV = [
   { to: "/buku-pembantu", label: "Buku Pembantu", icon: BookOpen },
   { to: "/rekapitulasi", label: "Rekapitulasi", icon: PieChart },
   { to: "/laporan-harian", label: "Laporan Harian Kas", icon: CalendarClock },
+  { to: "/rincian-uang", label: "Rincian Uang", icon: Coins },
   { to: "/laporan", label: "Laporan Kolom", icon: FileSpreadsheet },
   { to: "/laporan-bank", label: "Laporan Bank", icon: Landmark },
   { to: "/reklas", label: "Pengembalian / Reklas", icon: Undo2 },
