@@ -61,23 +61,41 @@ function BukuPembantuPage() {
   const budgets = useQuery(budgetLinesQuery);
 
   const [kind, setKind] = useState<KindFilter>("semua");
+  const [grup, setGrup] = useState<string>("semua");
   const [budgetId, setBudgetId] = useState<string>("semua");
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [q, setQ] = useState("");
   const [openBudget, setOpenBudget] = useState(false);
 
-  const budgetOptions = useMemo(
-    () => (budgets.data ?? []).filter((b) => kind === "semua" || b.kind === kind),
+  const grupOptions = useMemo(
+    () =>
+      [
+        ...new Set(
+          (budgets.data ?? [])
+            .filter((b) => kind === "semua" || b.kind === kind)
+            .map((b) => b.grup || "Tanpa Grup"),
+        ),
+      ].sort((a, b) => a.localeCompare(b)),
     [budgets.data, kind],
   );
+
+  const budgetOptions = useMemo(
+    () =>
+      (budgets.data ?? [])
+        .filter((b) => kind === "semua" || b.kind === kind)
+        .filter((b) => grup === "semua" || (b.grup || "Tanpa Grup") === grup),
+    [budgets.data, kind, grup],
+  );
   const selectedBudget = budgetOptions.find((b) => b.id === budgetId);
+  const grupBudgetIds = useMemo(() => new Set(budgetOptions.map((b) => b.id)), [budgetOptions]);
 
   const rows = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     return (trx.data ?? [])
       .filter((t) => t.status !== "rejected")
       .filter((t) => kind === "semua" || t.kind === kind)
+      .filter((t) => grup === "semua" || grupBudgetIds.has(t.budget_line_id))
       .filter((t) => budgetId === "semua" || t.budget_line_id === budgetId)
       .filter((t) => (dari ? t.trx_date >= dari : true))
       .filter((t) => (sampai ? t.trx_date <= sampai : true))
@@ -95,7 +113,7 @@ function BukuPembantuPage() {
           ? a.created_at.localeCompare(b.created_at)
           : a.trx_date.localeCompare(b.trx_date),
       );
-  }, [trx.data, kind, budgetId, dari, sampai, q]);
+  }, [trx.data, kind, grup, grupBudgetIds, budgetId, dari, sampai, q]);
 
   const totalMasuk = rows
     .filter((t) => t.kind === "penerimaan")
@@ -111,10 +129,16 @@ function BukuPembantuPage() {
   });
 
   const adaFilter =
-    kind !== "semua" || budgetId !== "semua" || dari !== "" || sampai !== "" || q !== "";
+    kind !== "semua" ||
+    grup !== "semua" ||
+    budgetId !== "semua" ||
+    dari !== "" ||
+    sampai !== "" ||
+    q !== "";
 
   function reset() {
     setKind("semua");
+    setGrup("semua");
     setBudgetId("semua");
     setDari("");
     setSampai("");
@@ -134,13 +158,14 @@ function BukuPembantuPage() {
       }
     >
       <section className="panel p-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <div className="space-y-1.5">
             <Label>Jenis Transaksi</Label>
             <Select
               value={kind}
               onValueChange={(v) => {
                 setKind(v as KindFilter);
+                setGrup("semua");
                 setBudgetId("semua");
               }}
             >
@@ -151,6 +176,29 @@ function BukuPembantuPage() {
                 <SelectItem value="semua">Semua Jenis</SelectItem>
                 <SelectItem value="penerimaan">Penerimaan</SelectItem>
                 <SelectItem value="pengeluaran">Pengeluaran</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Grup Anggaran</Label>
+            <Select
+              value={grup}
+              onValueChange={(v) => {
+                setGrup(v);
+                setBudgetId("semua");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="semua">Semua Grup</SelectItem>
+                {grupOptions.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -237,7 +285,7 @@ function BukuPembantuPage() {
               onChange={(e) => setSampai(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5 md:col-span-2 xl:col-span-5">
+          <div className="space-y-1.5 md:col-span-2 xl:col-span-6">
             <Label htmlFor="q">Kata Kunci</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
