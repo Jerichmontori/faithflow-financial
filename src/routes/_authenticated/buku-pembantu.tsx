@@ -5,6 +5,7 @@ import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
+import { parseKolom, labelKolom } from "@/lib/kolom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,7 @@ function BukuPembantuPage() {
   const [kind, setKind] = useState<KindFilter>("semua");
   const [grup, setGrup] = useState<string>("semua");
   const [budgetId, setBudgetId] = useState<string>("semua");
+  const [kolom, setKolom] = useState<string>("semua");
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [q, setQ] = useState("");
@@ -90,6 +92,20 @@ function BukuPembantuPage() {
   const selectedBudget = budgetOptions.find((b) => b.id === budgetId);
   const grupBudgetIds = useMemo(() => new Set(budgetOptions.map((b) => b.id)), [budgetOptions]);
 
+  const kolomOptions = useMemo(() => {
+    const set = new Set<number>();
+    let adaTanpa = false;
+    for (const t of trx.data ?? []) {
+      const k = parseKolom(t.description);
+      if (k === null) adaTanpa = true;
+      else set.add(k);
+    }
+    return {
+      list: [...set].sort((a, b) => a - b),
+      adaTanpa,
+    };
+  }, [trx.data]);
+
   const rows = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     return (trx.data ?? [])
@@ -97,6 +113,11 @@ function BukuPembantuPage() {
       .filter((t) => kind === "semua" || t.kind === kind)
       .filter((t) => grup === "semua" || grupBudgetIds.has(t.budget_line_id))
       .filter((t) => budgetId === "semua" || t.budget_line_id === budgetId)
+      .filter((t) => {
+        if (kolom === "semua") return true;
+        const k = parseKolom(t.description);
+        return kolom === "tanpa" ? k === null : k === Number(kolom);
+      })
       .filter((t) => (dari ? t.trx_date >= dari : true))
       .filter((t) => (sampai ? t.trx_date <= sampai : true))
       .filter((t) =>
@@ -113,7 +134,7 @@ function BukuPembantuPage() {
           ? a.created_at.localeCompare(b.created_at)
           : a.trx_date.localeCompare(b.trx_date),
       );
-  }, [trx.data, kind, grup, grupBudgetIds, budgetId, dari, sampai, q]);
+  }, [trx.data, kind, grup, grupBudgetIds, budgetId, kolom, dari, sampai, q]);
 
   const totalMasuk = rows
     .filter((t) => t.kind === "penerimaan")
@@ -132,6 +153,7 @@ function BukuPembantuPage() {
     kind !== "semua" ||
     grup !== "semua" ||
     budgetId !== "semua" ||
+    kolom !== "semua" ||
     dari !== "" ||
     sampai !== "" ||
     q !== "";
@@ -140,6 +162,7 @@ function BukuPembantuPage() {
     setKind("semua");
     setGrup("semua");
     setBudgetId("semua");
+    setKolom("semua");
     setDari("");
     setSampai("");
     setQ("");
