@@ -555,6 +555,16 @@ function LaporanPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {rows.length > 0 && (
+                  <TableRow className="bg-muted/40">
+                    <TableCell colSpan={6} className="text-right font-semibold">
+                      Total
+                    </TableCell>
+                    <TableCell className="text-right font-bold whitespace-nowrap text-success">
+                      {rupiah(grandTotal)}
+                    </TableCell>
+                  </TableRow>
+                )}
                 {rows.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
