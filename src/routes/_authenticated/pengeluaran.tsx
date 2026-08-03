@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Check, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
+import { KoreksiDialog } from "@/components/KoreksiDialog";
+import { HapusTransaksiDialog } from "@/components/HapusTransaksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
@@ -194,6 +196,7 @@ function PengeluaranPage() {
               <TableHead>Keterangan</TableHead>
               <TableHead className="text-right">Nominal</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Koreksi</TableHead>
               {canApprove && <TableHead className="text-right">Aksi</TableHead>}
             </TableRow>
           </TableHeader>
@@ -223,6 +226,10 @@ function PengeluaranPage() {
                     {STATUS_LABEL[t.status]}
                   </Badge>
                 </TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                  <KoreksiDialog trx={t} />
+                  <HapusTransaksiDialog trx={t} />
+                </TableCell>
                 {canApprove && (
                   <TableCell className="text-right whitespace-nowrap">
                     {t.status === "pending" ? (
@@ -251,7 +258,7 @@ function PengeluaranPage() {
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={canApprove ? 8 : 7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={canApprove ? 9 : 8} className="py-10 text-center text-muted-foreground">
                   {trx.isLoading
                     ? "Memuat data…"
                     : aktif
