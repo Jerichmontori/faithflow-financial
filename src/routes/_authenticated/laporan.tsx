@@ -113,6 +113,23 @@ function LaporanPage() {
     setSampai("");
   }
 
+  async function downloadPdf() {
+    setIsGeneratingPdf(true);
+    await new Promise((r) => setTimeout(r, 100));
+    const element = pdfRef.current;
+    if (!element) {
+      setIsGeneratingPdf(false);
+      return;
+    }
+    await html2pdf(element, {
+      filename: `laporan-penerimaan-kolom-${new Date().toISOString().slice(0, 10)}.pdf`,
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+      html2canvas: { scale: 2, useCORS: true },
+      margin: [10, 10],
+    });
+    setIsGeneratingPdf(false);
+  }
+
 
   const rows = useMemo(
     () =>
