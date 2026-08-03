@@ -309,7 +309,13 @@ function LaporanPage() {
 
         <div className="space-y-1.5">
           <Label>Kolom</Label>
-          <Select value={kolomFilter} onValueChange={setKolomFilter}>
+          <Select
+            value={kolomFilter}
+            onValueChange={(v) => {
+              setKolomFilter(v);
+              if (v !== "semua") setTab("rincian");
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
