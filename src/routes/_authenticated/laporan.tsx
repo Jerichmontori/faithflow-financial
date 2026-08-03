@@ -6,7 +6,14 @@ import html2pdf from "html2pdf.js";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
-import { BULAN_PANJANG, labelBulan, labelKolom, parseBulan, parseKolom } from "@/lib/kolom";
+import {
+  BULAN_PANJANG,
+  labelBulan,
+  labelKolom,
+  parseBulan,
+  parseKolom,
+  parseNamaKolom,
+} from "@/lib/kolom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,6 +99,7 @@ function LaporanPage() {
           ...t,
           kolom: parseKolom(t.description),
           bulan: parseBulan(t.description),
+          nama: parseNamaKolom(t.description),
         })),
     [trx.data],
   );
@@ -138,8 +146,13 @@ function LaporanPage() {
         if (!GRUP_LAPORAN.includes(b?.grup || "")) return false;
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
         if (kolomFilter !== "semua") {
-          if (kolomFilter === "tanpa" ? t.kolom !== null : String(t.kolom) !== kolomFilter)
+          if (kolomFilter === "tanpa") {
+            if (t.kolom !== null) return false;
+          } else if (kolomFilter.startsWith("nama:")) {
+            if (t.nama !== kolomFilter.slice(5)) return false;
+          } else if (String(t.kolom) !== kolomFilter) {
             return false;
+          }
         }
         if (bulanFilter !== "semua") {
           if (bulanFilter === "tanpa" ? t.bulan !== null : String(t.bulan) !== bulanFilter)
@@ -163,6 +176,20 @@ function LaporanPage() {
       if (allowed.has(t.budget_line_id) && t.kolom !== null) set.add(t.kolom);
     });
     return [...set].sort((a, b) => a - b);
+  }, [parsed, budgets.data]);
+
+  /** Daftar nama kolom hasil ekstraksi keterangan */
+  const namaList = useMemo(() => {
+    const allowed = new Set(
+      (budgets.data ?? [])
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .map((b) => b.id),
+    );
+    const set = new Set<string>();
+    parsed.forEach((t) => {
+      if (allowed.has(t.budget_line_id) && t.nama) set.add(t.nama);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b));
   }, [parsed, budgets.data]);
 
   /** Matriks kolom × bulan */
@@ -338,6 +365,11 @@ function LaporanPage() {
               {kolomList.map((k) => (
                 <SelectItem key={k} value={String(k)}>
                   Kolom {k}
+                </SelectItem>
+              ))}
+              {namaList.map((n) => (
+                <SelectItem key={`nama:${n}`} value={`nama:${n}`}>
+                  {n}
                 </SelectItem>
               ))}
             </SelectContent>

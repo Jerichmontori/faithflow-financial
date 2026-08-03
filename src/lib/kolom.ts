@@ -50,3 +50,28 @@ export const labelKolom = (kolom: number | null) =>
 
 export const labelBulan = (bulan: number | null) =>
   bulan === null ? "Tanpa Bulan" : BULAN_PANJANG[bulan];
+
+/**
+ * Nama kolom dari keterangan:
+ * - Ada tanda "(" -> ambil teks sebelum tanda kurung.
+ *   "PKB Musafir (5,12,19,26) Bulan Juli" -> "PKB Musafir"
+ * - Tidak ada "(" tetapi ada kata "Bulan" -> ambil teks sebelum kata "Bulan".
+ *   "WKI Debora Bulan Maret" -> "WKI Debora"
+ * - Selain itu -> null (tidak ditambahkan ke filter).
+ */
+export const parseNamaKolom = (description: string | null | undefined): string | null => {
+  const text = (description ?? "").trim();
+  if (!text) return null;
+
+  let raw: string | null = null;
+  const kurung = text.indexOf("(");
+  if (kurung > 0) {
+    raw = text.slice(0, kurung);
+  } else if (kurung === -1) {
+    const m = /\bbulan\b/i.exec(text);
+    if (m && m.index > 0) raw = text.slice(0, m.index);
+  }
+
+  const nama = (raw ?? "").replace(/[\s,.\-–—:]+$/g, "").trim();
+  return nama.length > 0 ? nama : null;
+};
