@@ -140,9 +140,16 @@ function LaporanPage() {
 
   const kolomList = useMemo(() => {
     const set = new Set<number>();
-    parsed.forEach((t) => t.kolom !== null && set.add(t.kolom));
+    const allowed = new Set(
+      (budgets.data ?? [])
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .map((b) => b.id),
+    );
+    parsed.forEach((t) => {
+      if (allowed.has(t.budget_line_id) && t.kolom !== null) set.add(t.kolom);
+    });
     return [...set].sort((a, b) => a - b);
-  }, [parsed]);
+  }, [parsed, budgets.data]);
 
   /** Matriks kolom × bulan */
   const matrix = useMemo(() => {
@@ -348,7 +355,7 @@ function LaporanPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="matriks">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="matriks">Kolom × Bulan</TabsTrigger>
           <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
@@ -371,7 +378,14 @@ function LaporanPage() {
               </TableHeader>
               <TableBody>
                 {matrix.map((r) => (
-                  <TableRow key={String(r.kolom)}>
+                  <TableRow
+                    key={String(r.kolom)}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setKolomFilter(r.kolom === null ? "tanpa" : String(r.kolom));
+                      setTab("rincian");
+                    }}
+                  >
                     <TableCell className="sticky left-0 bg-card font-medium">
                       {labelKolom(r.kolom)}
                     </TableCell>
