@@ -54,7 +54,8 @@ export const transactionsQuery = queryOptions({
         "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, budget_lines(code, name)",
       )
       .order("trx_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, 49999);
     if (error) throw error;
     return (data ?? []) as unknown as Transaction[];
   },
