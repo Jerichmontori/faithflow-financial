@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
+import { KoreksiDialog } from "@/components/KoreksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
@@ -142,6 +143,7 @@ function PenerimaanPage() {
               <TableHead>Mata Anggaran</TableHead>
               <TableHead>Keterangan</TableHead>
               <TableHead className="text-right">Nominal</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,11 +159,14 @@ function PenerimaanPage() {
                 <TableCell className="text-right font-medium text-success">
                   {rupiah(t.amount)}
                 </TableCell>
+                <TableCell className="text-right">
+                  <KoreksiDialog trx={t} />
+                </TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                   {trx.isLoading
                     ? "Memuat data…"
                     : aktif
