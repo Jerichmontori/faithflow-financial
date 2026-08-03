@@ -266,14 +266,6 @@ function LaporanPage() {
         </div>
       }
     >
-      <div className="print-only mb-4 hidden border-b border-black pb-3">
-        <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom</h2>
-        <p className="text-sm">BUMOTIK FINANCIAL</p>
-        <p className="text-sm">
-          {rows.length} transaksi · total {rupiah(grandTotal)}
-          {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
-        </p>
-      </div>
       <div className="panel no-print mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="space-y-1.5 xl:col-span-2">
           <Label>Mata Anggaran</Label>
@@ -382,7 +374,16 @@ function LaporanPage() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <div ref={pdfRef}>
+        <div className={cn("mb-4 border-b border-black pb-3", isGeneratingPdf ? "block" : "hidden")}>
+          <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom</h2>
+          <p className="text-sm">BUMOTIK FINANCIAL</p>
+          <p className="text-sm">
+            {rows.length} transaksi · total {rupiah(grandTotal)}
+            {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
+          </p>
+        </div>
+        <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="no-print">
           <TabsTrigger value="matriks">Kolom × Bulan</TabsTrigger>
           <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
