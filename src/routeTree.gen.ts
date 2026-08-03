@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAnggaranRouteImport } from './routes/_authenticated/anggaran'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPenerimaanRouteImport } from './routes/_authenticated/penerimaan'
 import { Route as AuthenticatedPengeluaranRouteImport } from './routes/_authenticated/pengeluaran'
@@ -29,6 +30,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAnggaranRoute = AuthenticatedAnggaranRouteImport.update({
+  id: '/anggaran',
+  path: '/anggaran',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -50,6 +56,7 @@ const AuthenticatedPengeluaranRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/anggaran': typeof AuthenticatedAnggaranRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/anggaran': typeof AuthenticatedAnggaranRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
@@ -66,20 +74,24 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/anggaran': typeof AuthenticatedAnggaranRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/_authenticated/pengeluaran': typeof AuthenticatedPengeluaranRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/penerimaan' | '/pengeluaran'
+  fullPaths:
+    '/' | '/auth' | '/anggaran' | '/dashboard' | '/penerimaan' | '/pengeluaran'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/penerimaan' | '/pengeluaran'
+  to:
+    '/' | '/auth' | '/anggaran' | '/dashboard' | '/penerimaan' | '/pengeluaran'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/anggaran'
     | '/_authenticated/dashboard'
     | '/_authenticated/penerimaan'
     | '/_authenticated/pengeluaran'
@@ -114,6 +126,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/anggaran': {
+      id: '/_authenticated/anggaran'
+      path: '/anggaran'
+      fullPath: '/anggaran'
+      preLoaderRoute: typeof AuthenticatedAnggaranRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -139,12 +158,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAnggaranRoute: typeof AuthenticatedAnggaranRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPenerimaanRoute: typeof AuthenticatedPenerimaanRoute
   AuthenticatedPengeluaranRoute: typeof AuthenticatedPengeluaranRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAnggaranRoute: AuthenticatedAnggaranRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPenerimaanRoute: AuthenticatedPenerimaanRoute,
   AuthenticatedPengeluaranRoute: AuthenticatedPengeluaranRoute,
