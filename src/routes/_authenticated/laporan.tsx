@@ -468,7 +468,7 @@ function LaporanPage() {
               <TableBody>
                 {perAnggaran.map((r) => (
                   <TableRow key={r.label}>
-                    <TableCell className="sticky left-0 bg-card max-w-72 truncate text-sm">
+                    <TableCell className="sticky left-0 bg-card min-w-72 text-sm">
                       {r.label}
                     </TableCell>
                     {activeMonths.map((m) => {
