@@ -46,6 +46,15 @@ const BULAN = [
  *  Kas Keluar (kas gereja berkurang) = setoran ke bank → pemasukan bank. */
 const isBankIn = (t: Transaction) => t.budget_lines?.code === "2.2.22.22";
 
+/** Transaksi reklas / pengembalian — bukan mutasi bank, dikeluarkan dari perhitungan */
+const REKLAS_VOUCHERS = [
+  "KM-2026-0184",
+  "KM-2026-2575",
+  "KM-2026-2576",
+  "KM-2026-2577",
+];
+const isReklas = (t: Transaction) => REKLAS_VOUCHERS.includes(t.voucher_no);
+
 function LaporanBankPage() {
   const trx = useQuery(transactionsQuery);
   const [start, setStart] = useState("");
@@ -70,6 +79,7 @@ function LaporanBankPage() {
       .filter(
         (t) =>
           INTERNAL_CASH_CODES.includes(t.budget_lines?.code ?? "") &&
+          !isReklas(t) &&
           t.status !== "rejected" &&
           t.status !== "draft" &&
           (!start || t.trx_date >= start) &&
@@ -85,6 +95,23 @@ function LaporanBankPage() {
           : a.trx_date.localeCompare(b.trx_date),
       );
   }, [trx.data, start, end, q]);
+
+  const reklasRows = useMemo(() => {
+    return (trx.data ?? [])
+      .filter(
+        (t) =>
+          isReklas(t) &&
+          (!start || t.trx_date >= start) &&
+          (!end || t.trx_date <= end) &&
+          (!q ||
+            `${t.voucher_no} ${t.description} ${t.payee ?? ""}`
+              .toLowerCase()
+              .includes(q.toLowerCase())),
+      )
+      .sort((a, b) => a.trx_date.localeCompare(b.trx_date));
+  }, [trx.data, start, end, q]);
+
+  const totalReklas = reklasRows.reduce((a, t) => a + Number(t.amount), 0);
 
   const totalIn = rows.filter(isBankIn).reduce((a, t) => a + Number(t.amount), 0);
   const totalOut = rows.filter((t) => !isBankIn(t)).reduce((a, t) => a + Number(t.amount), 0);
