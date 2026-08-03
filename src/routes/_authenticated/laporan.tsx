@@ -440,7 +440,14 @@ function LaporanPage() {
               </TableHeader>
               <TableBody>
                 {perAnggaran.map((r) => (
-                  <TableRow key={r.label}>
+                  <TableRow
+                    key={r.label}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      if (r.id) setBudgetId(r.id);
+                      setTab("rincian");
+                    }}
+                  >
                     <TableCell className="sticky left-0 bg-card min-w-72 text-sm">
                       {r.label}
                     </TableCell>
