@@ -36,10 +36,19 @@ function AnggaranPage() {
     return { ...b, realisasi, persen };
   });
 
-  const groups = [
+  const kinds = [
     { kind: "penerimaan" as const, title: "Mata Anggaran Penerimaan" },
     { kind: "pengeluaran" as const, title: "Mata Anggaran Pengeluaran" },
   ];
+
+  const grupsOf = (kind: "penerimaan" | "pengeluaran") => {
+    const map = new Map<string, typeof list>();
+    for (const b of list.filter((x) => x.kind === kind)) {
+      const key = b.grup || "Tanpa Grup";
+      map.set(key, [...(map.get(key) ?? []), b]);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  };
 
   return (
     <AppShell
@@ -47,13 +56,22 @@ function AnggaranPage() {
       subtitle={`Tahun anggaran ${new Date().getFullYear()} · ${list.length} kode anggaran`}
     >
       <div className="grid gap-5 xl:grid-cols-2">
-        {groups.map((g) => (
+        {kinds.map((g) => (
           <section key={g.kind} className="panel p-5">
             <h2 className="text-base font-semibold">{g.title}</h2>
-            <div className="mt-5 space-y-5">
-              {list
-                .filter((b) => b.kind === g.kind)
-                .map((b) => (
+            <div className="mt-5 space-y-7">
+              {grupsOf(g.kind).map(([grup, items]) => {
+                const pagu = items.reduce((a, b) => a + Number(b.planned_amount), 0);
+                const real = items.reduce((a, b) => a + b.realisasi, 0);
+                return (
+                  <div key={grup} className="space-y-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2">
+                      <h3 className="text-sm font-semibold uppercase tracking-wide">{grup}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {rupiah(real)} / {rupiah(pagu)} · {items.length} kode
+                      </p>
+                    </div>
+                    {items.map((b) => (
                   <div key={b.id}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -69,7 +87,10 @@ function AnggaranPage() {
                       Realisasi {rupiah(b.realisasi)} dari pagu {rupiah(b.planned_amount)}
                     </p>
                   </div>
-                ))}
+                    ))}
+                  </div>
+                );
+              })}
               {list.filter((b) => b.kind === g.kind).length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   {budgets.isLoading ? "Memuat…" : "Belum ada mata anggaran."}

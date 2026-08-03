@@ -19,6 +19,7 @@ export type Database = {
           code: string
           created_at: string
           fiscal_year: number
+          grup: string
           id: string
           kind: Database["public"]["Enums"]["trx_kind"]
           name: string
@@ -28,6 +29,7 @@ export type Database = {
           code: string
           created_at?: string
           fiscal_year?: number
+          grup?: string
           id?: string
           kind: Database["public"]["Enums"]["trx_kind"]
           name: string
@@ -37,6 +39,7 @@ export type Database = {
           code?: string
           created_at?: string
           fiscal_year?: number
+          grup?: string
           id?: string
           kind?: Database["public"]["Enums"]["trx_kind"]
           name?: string
