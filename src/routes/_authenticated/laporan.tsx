@@ -76,6 +76,9 @@ const GRUP_LAPORAN = [
   "PERSEMBAHAN IBADAH KHUSUS",
 ];
 
+/** Nama kolom hasil ekstraksi keterangan hanya berlaku untuk grup ini */
+const GRUP_NAMA_KOLOM = "Persembahan Ibd Kompelka BIPRA";
+
 function LaporanPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
@@ -178,11 +181,11 @@ function LaporanPage() {
     return [...set].sort((a, b) => a - b);
   }, [parsed, budgets.data]);
 
-  /** Daftar nama kolom hasil ekstraksi keterangan */
+  /** Daftar nama kolom hasil ekstraksi keterangan (khusus grup BIPRA) */
   const namaList = useMemo(() => {
     const allowed = new Set(
       (budgets.data ?? [])
-        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .filter((b) => (b.grup || "") === GRUP_NAMA_KOLOM)
         .map((b) => b.id),
     );
     const set = new Set<string>();
