@@ -47,6 +47,17 @@ type Row = {
   persen: number;
   kode: number;
   trx: number;
+  lines: LineRow[];
+};
+
+type LineRow = {
+  id: string;
+  code: string;
+  name: string;
+  pagu: number;
+  realisasi: number;
+  trx: number;
+  persen: number;
 };
 
 function RekapitulasiPage() {
@@ -80,12 +91,24 @@ function RekapitulasiPage() {
         const key = b.grup || "Tanpa Grup";
         const r =
           map.get(key) ??
-          { grup: key, pagu: 0, realisasi: 0, sisa: 0, persen: 0, kode: 0, trx: 0 };
+          { grup: key, pagu: 0, realisasi: 0, sisa: 0, persen: 0, kode: 0, trx: 0, lines: [] };
         const hit = realByLine.get(b.id);
         r.pagu += Number(b.planned_amount);
         r.realisasi += hit?.amount ?? 0;
         r.trx += hit?.count ?? 0;
         r.kode += 1;
+        r.lines.push({
+          id: b.id,
+          code: b.code,
+          name: b.name,
+          pagu: Number(b.planned_amount),
+          realisasi: hit?.amount ?? 0,
+          trx: hit?.count ?? 0,
+          persen:
+            Number(b.planned_amount) > 0
+              ? ((hit?.amount ?? 0) / Number(b.planned_amount)) * 100
+              : 0,
+        });
         map.set(key, r);
       }
       return [...map.values()]
@@ -93,6 +116,7 @@ function RekapitulasiPage() {
           ...r,
           sisa: r.pagu - r.realisasi,
           persen: r.pagu > 0 ? (r.realisasi / r.pagu) * 100 : 0,
+          lines: r.lines.slice().sort((a, b) => b.realisasi - a.realisasi),
         }))
         .sort((a, b) => b.realisasi - a.realisasi);
     };
