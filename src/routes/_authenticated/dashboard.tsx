@@ -217,6 +217,7 @@ function DashboardPage() {
 
       <section className="panel mt-5 p-5">
         <h2 className="text-base font-semibold">Anggaran vs Realisasi</h2>
+        <span className="hidden" />
         <p className="text-xs text-muted-foreground">Enam mata anggaran dengan serapan tertinggi</p>
         <div className="mt-5 space-y-4">
           {serapan.map((b) => (
