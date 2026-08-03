@@ -86,29 +86,13 @@ function PenerimaanPage() {
       <div className="panel mb-4 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <div className="space-y-1.5 xl:col-span-2">
-            <Label htmlFor="cari">Cari</Label>
+            <Label htmlFor="cari">Filter Keterangan</Label>
             <Input
               id="cari"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="No. bukti, keterangan, mata anggaran…"
+              placeholder="Cari keterangan transaksi…"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Grup Anggaran</Label>
-            <Select value={grup} onValueChange={setGrup}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua grup</SelectItem>
-                {grupOptions.map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {g}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Mata Anggaran</Label>
@@ -118,13 +102,11 @@ function PenerimaanPage() {
               </SelectTrigger>
               <SelectContent className="max-h-72">
                 <SelectItem value="all">Semua mata anggaran</SelectItem>
-                {budgetOptions
-                  .filter((b) => grup === "all" || (b.grup || "Tanpa Grup") === grup)
-                  .map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.code} — {b.name}
-                    </SelectItem>
-                  ))}
+                {budgetOptions.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.code} — {b.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
