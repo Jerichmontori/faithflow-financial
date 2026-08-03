@@ -248,7 +248,7 @@ function LaporanPage() {
           {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
         </p>
       </div>
-      <div className="panel mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="panel no-print mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="space-y-1.5 xl:col-span-2">
           <Label>Mata Anggaran</Label>
           <Popover open={openBudget} onOpenChange={setOpenBudget}>
