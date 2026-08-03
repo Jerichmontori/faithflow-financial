@@ -296,8 +296,25 @@ function BukuPembantuPage() {
           </div>
 
           <div className="space-y-1.5">
+            <Label>Kolom</Label>
+            <Select value={kolom} onValueChange={setKolom}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="semua">Semua Kolom</SelectItem>
+                {kolomOptions.list.map((k) => (
+                  <SelectItem key={k} value={String(k)}>
+                    {labelKolom(k)}
+                  </SelectItem>
+                ))}
+                {kolomOptions.adaTanpa && <SelectItem value="tanpa">Tanpa Kolom</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="dari">Dari Tanggal</Label>
-            <span className="hidden" />
             <Input id="dari" type="date" value={dari} onChange={(e) => setDari(e.target.value)} />
           </div>
           <div className="space-y-1.5">
