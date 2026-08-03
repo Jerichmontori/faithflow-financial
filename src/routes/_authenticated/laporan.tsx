@@ -110,18 +110,6 @@ function LaporanPage() {
     setSampai("");
   }
 
-  /** Semua penerimaan (kecuali mutasi kas internal) dengan kolom & bulan hasil parsing keterangan */
-  const parsed = useMemo(
-    () =>
-      (trx.data ?? [])
-        .filter((t) => t.kind === "penerimaan" && !isInternalCash(t))
-        .map((t) => ({
-          ...t,
-          kolom: parseKolom(t.description),
-          bulan: parseBulan(t.description),
-        })),
-    [trx.data],
-  );
 
   const rows = useMemo(
     () =>
