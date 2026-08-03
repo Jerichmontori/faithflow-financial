@@ -1,9 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
-import { transactionsQuery } from "@/lib/queries";
+import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -30,7 +41,44 @@ export const Route = createFileRoute("/_authenticated/penerimaan")({
 
 function PenerimaanPage() {
   const trx = useQuery(transactionsQuery);
-  const rows = (trx.data ?? []).filter((t) => t.kind === "penerimaan");
+  const budgets = useQuery(budgetLinesQuery);
+  const [q, setQ] = useState("");
+  const [budget, setBudget] = useState("all");
+  const [grup, setGrup] = useState("all");
+  const [dari, setDari] = useState("");
+  const [sampai, setSampai] = useState("");
+
+  const budgetOptions = (budgets.data ?? []).filter((b) => b.kind === "penerimaan");
+  const grupOptions = [...new Set(budgetOptions.map((b) => b.grup || "Tanpa Grup"))].sort();
+  const grupById = new Map(budgetOptions.map((b) => [b.id, b.grup || "Tanpa Grup"]));
+
+  const rows = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return (trx.data ?? []).filter((t) => {
+      if (t.kind !== "penerimaan") return false;
+      if (budget !== "all" && t.budget_line_id !== budget) return false;
+      if (grup !== "all" && grupById.get(t.budget_line_id) !== grup) return false;
+      if (dari && t.trx_date < dari) return false;
+      if (sampai && t.trx_date > sampai) return false;
+      if (
+        term &&
+        !`${t.voucher_no} ${t.description} ${t.category} ${t.budget_lines?.code ?? ""} ${t.budget_lines?.name ?? ""}`
+          .toLowerCase()
+          .includes(term)
+      )
+        return false;
+      return true;
+    });
+  }, [trx.data, q, budget, grup, dari, sampai, grupById]);
+
+  const aktif = q !== "" || budget !== "all" || grup !== "all" || dari !== "" || sampai !== "";
+  const reset = () => {
+    setQ("");
+    setBudget("all");
+    setGrup("all");
+    setDari("");
+    setSampai("");
+  };
   const total = rows.reduce((a, t) => a + Number(t.amount), 0);
 
   return (
@@ -39,6 +87,74 @@ function PenerimaanPage() {
       subtitle={`${rows.length} transaksi · total ${rupiah(total)}`}
       actions={<TransactionDialog kind="penerimaan" />}
     >
+      <div className="panel mb-4 p-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="space-y-1.5 xl:col-span-2">
+            <Label htmlFor="cari">Cari</Label>
+            <Input
+              id="cari"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="No. bukti, keterangan, mata anggaran…"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Grup Anggaran</Label>
+            <Select value={grup} onValueChange={setGrup}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua grup</SelectItem>
+                {grupOptions.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Mata Anggaran</Label>
+            <Select value={budget} onValueChange={setBudget}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Semua mata anggaran</SelectItem>
+                {budgetOptions
+                  .filter((b) => grup === "all" || (b.grup || "Tanpa Grup") === grup)
+                  .map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.code} — {b.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="dari">Dari</Label>
+              <Input id="dari" type="date" value={dari} onChange={(e) => setDari(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sampai">Sampai</Label>
+              <Input
+                id="sampai"
+                type="date"
+                value={sampai}
+                onChange={(e) => setSampai(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button variant="outline" size="sm" onClick={reset} disabled={!aktif}>
+            Reset filter
+          </Button>
+        </div>
+      </div>
+
       <div className="panel overflow-x-auto">
         <Table>
           <TableHeader>
@@ -69,7 +185,11 @@ function PenerimaanPage() {
             {rows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  {trx.isLoading ? "Memuat data…" : "Belum ada transaksi penerimaan."}
+                  {trx.isLoading
+                    ? "Memuat data…"
+                    : aktif
+                      ? "Tidak ada transaksi yang cocok dengan filter."
+                      : "Belum ada transaksi penerimaan."}
                 </TableCell>
               </TableRow>
             )}
