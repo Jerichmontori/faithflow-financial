@@ -34,7 +34,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const JENIS: Record<"penerimaan" | "pengeluaran", string[]> = {
@@ -61,7 +61,7 @@ const METODE = ["Tunai", "Transfer Bank", "QRIS", "Cek/Giro"];
 
 const schema = z.object({
   trx_date: z.string().min(1, "Tanggal wajib diisi"),
-  category: z.string().min(1, "Jenis wajib dipilih"),
+  category: z.string().max(150),
   budget_line_id: z.string().uuid("Mata anggaran wajib dipilih"),
   amount: z.number().positive("Nominal harus lebih dari 0").max(1_000_000_000_000),
   description: z.string().trim().max(500),
@@ -76,6 +76,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
+  const [items, setItems] = useState([{ description: "", amount: "" }]);
   const [form, setForm] = useState({
     trx_date: new Date().toISOString().slice(0, 10),
     category: "",
@@ -92,34 +93,47 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const parsed = schema.parse({
-        ...form,
-        amount: Number(form.amount),
-        payee: form.payee || undefined,
-        attachment_url: form.attachment_url || undefined,
+      const baris =
+        kind === "penerimaan"
+          ? items.filter((i) => i.amount !== "" || i.description.trim() !== "")
+          : [{ description: form.description, amount: form.amount }];
+      if (baris.length === 0) throw new Error("Minimal satu keterangan wajib diisi");
+      const rows = baris.map((b) => {
+        const parsed = schema.parse({
+          ...form,
+          description: b.description,
+          amount: Number(b.amount),
+          payee: form.payee || undefined,
+          attachment_url: form.attachment_url || undefined,
+        });
+        return {
+          trx_date: parsed.trx_date,
+          kind,
+          category: kind === "penerimaan" ? "" : parsed.category,
+          budget_line_id: parsed.budget_line_id,
+          amount: parsed.amount,
+          description: parsed.description,
+          payee: kind === "pengeluaran" ? (parsed.payee ?? null) : null,
+          payment_method: kind === "pengeluaran" ? (parsed.payment_method ?? null) : null,
+          attachment_url: kind === "pengeluaran" ? (parsed.attachment_url ?? null) : null,
+          status: (kind === "pengeluaran" ? "pending" : "approved") as "pending" | "approved",
+          created_by: user!.id,
+          voucher_no: "",
+        };
       });
-      const { error } = await supabase.from("transactions").insert({
-        trx_date: parsed.trx_date,
-        kind,
-        category: parsed.category,
-        budget_line_id: parsed.budget_line_id,
-        amount: parsed.amount,
-        description: parsed.description,
-        payee: kind === "pengeluaran" ? (parsed.payee ?? null) : null,
-        payment_method: kind === "pengeluaran" ? (parsed.payment_method ?? null) : null,
-        attachment_url: kind === "pengeluaran" ? (parsed.attachment_url ?? null) : null,
-        status: kind === "pengeluaran" ? "pending" : "approved",
-        created_by: user!.id,
-        voucher_no: "",
-      });
+      const { error } = await supabase.from("transactions").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
+    onSuccess: (count) => {
       toast.success(
-        kind === "penerimaan" ? "Penerimaan tercatat" : "Pengeluaran diajukan untuk approval",
+        kind === "penerimaan"
+          ? `${count} penerimaan tercatat`
+          : "Pengeluaran diajukan untuk approval",
       );
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       setOpen(false);
+      setItems([{ description: "", amount: "" }]);
       setForm((f) => ({ ...f, amount: "", description: "", payee: "", attachment_url: "" }));
     },
     onError: (err) => {
@@ -170,24 +184,26 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Jenis {kind === "penerimaan" ? "Penerimaan" : "Pengeluaran"}</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih jenis" />
-                </SelectTrigger>
-                <SelectContent>
-                  {JENIS[kind].map((j) => (
-                    <SelectItem key={j} value={j}>
-                      {j}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {kind === "pengeluaran" && (
+              <div className="space-y-2">
+                <Label>Jenis Pengeluaran</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) => setForm({ ...form, category: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih jenis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JENIS[kind].map((j) => (
+                      <SelectItem key={j} value={j}>
+                        {j}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -243,18 +259,70 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </Popover>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="nominal">Nominal (Rp)</Label>
-            <Input
-              id="nominal"
-              type="number"
-              min={1}
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              placeholder="0"
-              required
-            />
-          </div>
+          {kind === "penerimaan" ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Rincian Keterangan (maks. 5)</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={items.length >= 5}
+                  onClick={() => setItems([...items, { description: "", amount: "" }])}
+                >
+                  Tambah baris
+                </Button>
+              </div>
+              {items.map((it, idx) => (
+                <div key={idx} className="grid gap-2 sm:grid-cols-[1fr_10rem_auto]">
+                  <Input
+                    value={it.description}
+                    onChange={(e) =>
+                      setItems(
+                        items.map((x, i) =>
+                          i === idx ? { ...x, description: e.target.value } : x,
+                        ),
+                      )
+                    }
+                    placeholder={`Keterangan ${idx + 1}`}
+                    maxLength={500}
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={it.amount}
+                    onChange={(e) =>
+                      setItems(items.map((x, i) => (i === idx ? { ...x, amount: e.target.value } : x)))
+                    }
+                    placeholder="Nominal"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={items.length === 1}
+                    onClick={() => setItems(items.filter((_, i) => i !== idx))}
+                    aria-label="Hapus baris"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="nominal">Nominal (Rp)</Label>
+              <Input
+                id="nominal"
+                type="number"
+                min={1}
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                placeholder="0"
+                required
+              />
+            </div>
+          )}
 
           {kind === "pengeluaran" && (
             <>
@@ -301,16 +369,18 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="ket">Keterangan</Label>
-            <Textarea
-              id="ket"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Uraian transaksi"
-              maxLength={500}
-            />
-          </div>
+          {kind === "pengeluaran" && (
+            <div className="space-y-2">
+              <Label htmlFor="ket">Keterangan</Label>
+              <Textarea
+                id="ket"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Uraian transaksi"
+                maxLength={500}
+              />
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
