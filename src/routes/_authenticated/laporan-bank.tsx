@@ -275,6 +275,46 @@ function LaporanBankPage() {
           </tbody>
         </table>
       </section>
+
+      <section className="panel mt-5 overflow-x-auto p-5">
+        <h2 className="text-base font-semibold">Transaksi Reklas / Pengembalian</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Tidak dihitung sebagai mutasi bank. Total {rupiah(totalReklas)} dari {reklasRows.length} transaksi.
+        </p>
+        <table className="mt-4 w-full min-w-[760px] text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="py-2 pr-3">Tanggal</th>
+              <th className="py-2 pr-3">No. Bukti</th>
+              <th className="py-2 pr-3">Mata Anggaran</th>
+              <th className="py-2 pr-3">Keterangan</th>
+              <th className="py-2 text-right">Nominal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reklasRows.map((t) => (
+              <tr key={t.id} className="border-b last:border-0">
+                <td className="py-2 pr-3 whitespace-nowrap">{tanggal(t.trx_date)}</td>
+                <td className="py-2 pr-3 font-mono text-xs">{t.voucher_no}</td>
+                <td className="py-2 pr-3">
+                  <Badge variant="outline">
+                    {t.budget_lines?.code} — {t.budget_lines?.name}
+                  </Badge>
+                </td>
+                <td className="py-2 pr-3 max-w-[320px] truncate">{t.description}</td>
+                <td className="py-2 text-right font-medium">{rupiah(Number(t.amount))}</td>
+              </tr>
+            ))}
+            {reklasRows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                  Tidak ada transaksi reklas pada filter ini.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
     </AppShell>
   );
 }
