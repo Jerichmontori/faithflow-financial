@@ -234,9 +234,20 @@ function LaporanPage() {
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="size-4" /> Ekspor CSV
           </Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <FileDown className="size-4" /> Download PDF
+          </Button>
         </div>
       }
     >
+      <div className="print-only mb-4 hidden border-b border-black pb-3">
+        <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom</h2>
+        <p className="text-sm">BUMOTIK FINANCIAL</p>
+        <p className="text-sm">
+          {rows.length} transaksi · total {rupiah(grandTotal)}
+          {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
+        </p>
+      </div>
       <div className="panel mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="space-y-1.5 xl:col-span-2">
           <Label>Mata Anggaran</Label>
