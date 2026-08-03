@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { KoreksiDialog } from "@/components/KoreksiDialog";
+import { HapusTransaksiDialog } from "@/components/HapusTransaksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
@@ -161,6 +162,7 @@ function PenerimaanPage() {
                 </TableCell>
                 <TableCell className="text-right">
                   <KoreksiDialog trx={t} />
+                  <HapusTransaksiDialog trx={t} />
                 </TableCell>
               </TableRow>
             ))}
