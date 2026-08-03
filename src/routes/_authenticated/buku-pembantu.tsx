@@ -297,6 +297,7 @@ function BukuPembantuPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="dari">Dari Tanggal</Label>
+            <span className="hidden" />
             <Input id="dari" type="date" value={dari} onChange={(e) => setDari(e.target.value)} />
           </div>
           <div className="space-y-1.5">
