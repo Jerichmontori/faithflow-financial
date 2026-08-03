@@ -52,12 +52,33 @@ export const labelBulan = (bulan: number | null) =>
   bulan === null ? "Tanpa Bulan" : BULAN_PANJANG[bulan];
 
 /**
+ * Normalisasi nama kolom hasil ekstraksi keterangan.
+ * Abaikan perbedaan huruf kapital; samakan varian tulisan ke nama standar.
+ */
+const NORMALISASI_NAMA: Array<[RegExp, string]> = [
+  [/^Lansia\s+Aras\b.*/i, "Lansia Aras"],
+  [/^PKB\s+Aras\b.*/i, "PKB ARAS"],
+  [/^WKI\s+(Lidya|Lydia)\b.*/i, "WKI Lidya"],
+  [/^WKI\s+(Ester|Easter)\b.*/i, "WKI Ester Eunike"],
+  [/^WKI\s+(Marta|Martha)\b.*/i, "WKI Martha Maria"],
+  [/^WKI\s+Monika\b.*/i, "WKI Monika"],
+];
+
+function normalisasiNama(nama: string): string {
+  for (const [re, canonical] of NORMALISASI_NAMA) {
+    if (re.test(nama)) return canonical;
+  }
+  return nama;
+}
+
+/**
  * Nama kolom dari keterangan:
  * - Ada tanda "(" -> ambil teks sebelum tanda kurung.
  *   "PKB Musafir (5,12,19,26) Bulan Juli" -> "PKB Musafir"
  * - Tidak ada "(" tetapi ada kata "Bulan" -> ambil teks sebelum kata "Bulan".
  *   "WKI Debora Bulan Maret" -> "WKI Debora"
  * - Selain itu -> null (tidak ditambahkan ke filter).
+ * Varian nama tertentu akan dinormalisasi ke nama standar.
  */
 export const parseNamaKolom = (description: string | null | undefined): string | null => {
   const text = (description ?? "").trim();
@@ -73,5 +94,6 @@ export const parseNamaKolom = (description: string | null | undefined): string |
   }
 
   const nama = (raw ?? "").replace(/[\s,.\-–—:]+$/g, "").trim();
-  return nama.length > 0 ? nama : null;
+  const normalized = normalisasiNama(nama);
+  return normalized.length > 0 ? normalized : null;
 };
