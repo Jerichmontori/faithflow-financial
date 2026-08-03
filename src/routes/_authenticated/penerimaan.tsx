@@ -48,7 +48,6 @@ function PenerimaanPage() {
   const [sampai, setSampai] = useState("");
 
   const budgetOptions = (budgets.data ?? []).filter((b) => b.kind === "penerimaan");
-  const grupById = new Map(budgetOptions.map((b) => [b.id, b.grup || "Tanpa Grup"]));
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
