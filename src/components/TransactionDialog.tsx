@@ -25,6 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const JENIS: Record<"penerimaan" | "pengeluaran", string[]> = {
   penerimaan: [
@@ -64,6 +75,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const budgets = useQuery(budgetLinesQuery);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(false);
   const [form, setForm] = useState({
     trx_date: new Date().toISOString().slice(0, 10),
     category: "",
@@ -179,21 +191,55 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
 
           <div className="space-y-2">
             <Label>Mata Anggaran (wajib)</Label>
-            <Select
-              value={form.budget_line_id}
-              onValueChange={(v) => setForm({ ...form, budget_line_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kode mata anggaran" />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.code} — {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={budgetOpen} onOpenChange={setBudgetOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={budgetOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {selected ? `${selected.code} — ${selected.name}` : "Pilih kode mata anggaran"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command
+                  filter={(value, search) =>
+                    value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                  }
+                >
+                  <CommandInput placeholder="Cari kode atau nama…" />
+                  <CommandList>
+                    <CommandEmpty>Mata anggaran tidak ditemukan.</CommandEmpty>
+                    <CommandGroup>
+                      {options.map((b) => (
+                        <CommandItem
+                          key={b.id}
+                          value={`${b.code} ${b.name}`}
+                          onSelect={() => {
+                            setForm({ ...form, budget_line_id: b.id });
+                            setBudgetOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 size-4",
+                              form.budget_line_id === b.id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          <span className="font-mono text-xs">{b.code}</span>
+                          <span className="truncate">{b.name}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
