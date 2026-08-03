@@ -22,6 +22,7 @@ import { Route as AuthenticatedPenerimaanRouteImport } from './routes/_authentic
 import { Route as AuthenticatedPengeluaranRouteImport } from './routes/_authenticated/pengeluaran'
 import { Route as AuthenticatedRekapitulasiRouteImport } from './routes/_authenticated/rekapitulasi'
 import { Route as AuthenticatedReklasRouteImport } from './routes/_authenticated/reklas'
+import { Route as AuthenticatedRincianUangRouteImport } from './routes/_authenticated/rincian-uang'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -92,6 +93,12 @@ const AuthenticatedReklasRoute = AuthenticatedReklasRouteImport.update({
   path: '/reklas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRincianUangRoute =
+  AuthenticatedRincianUangRouteImport.update({
+    id: '/rincian-uang',
+    path: '/rincian-uang',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
   '/reklas': typeof AuthenticatedReklasRoute
+  '/rincian-uang': typeof AuthenticatedRincianUangRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,6 +128,7 @@ export interface FileRoutesByTo {
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
   '/reklas': typeof AuthenticatedReklasRoute
+  '/rincian-uang': typeof AuthenticatedRincianUangRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -136,6 +145,7 @@ export interface FileRoutesById {
   '/_authenticated/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/_authenticated/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
   '/_authenticated/reklas': typeof AuthenticatedReklasRoute
+  '/_authenticated/rincian-uang': typeof AuthenticatedRincianUangRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/pengeluaran'
     | '/rekapitulasi'
     | '/reklas'
+    | '/rincian-uang'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/pengeluaran'
     | '/rekapitulasi'
     | '/reklas'
+    | '/rincian-uang'
   id:
     | '__root__'
     | '/'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pengeluaran'
     | '/_authenticated/rekapitulasi'
     | '/_authenticated/reklas'
+    | '/_authenticated/rincian-uang'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -282,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReklasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/rincian-uang': {
+      id: '/_authenticated/rincian-uang'
+      path: '/rincian-uang'
+      fullPath: '/rincian-uang'
+      preLoaderRoute: typeof AuthenticatedRincianUangRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -296,6 +316,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPengeluaranRoute: typeof AuthenticatedPengeluaranRoute
   AuthenticatedRekapitulasiRoute: typeof AuthenticatedRekapitulasiRoute
   AuthenticatedReklasRoute: typeof AuthenticatedReklasRoute
+  AuthenticatedRincianUangRoute: typeof AuthenticatedRincianUangRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -309,6 +330,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPengeluaranRoute: AuthenticatedPengeluaranRoute,
   AuthenticatedRekapitulasiRoute: AuthenticatedRekapitulasiRoute,
   AuthenticatedReklasRoute: AuthenticatedReklasRoute,
+  AuthenticatedRincianUangRoute: AuthenticatedRincianUangRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -322,3 +344,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

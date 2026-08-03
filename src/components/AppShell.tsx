@@ -11,6 +11,7 @@ import {
   Landmark,
   CalendarClock,
   Undo2,
+  Coins,
   LogOut,
   Church,
   Menu,
