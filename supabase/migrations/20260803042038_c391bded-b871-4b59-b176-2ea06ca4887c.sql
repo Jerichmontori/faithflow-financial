@@ -1,0 +1,2 @@
+ALTER TABLE public.budget_lines DROP CONSTRAINT IF EXISTS budget_lines_code_fiscal_year_key;
+ALTER TABLE public.budget_lines ADD CONSTRAINT budget_lines_code_kind_year_key UNIQUE (code, kind, fiscal_year);
