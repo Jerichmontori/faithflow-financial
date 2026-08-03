@@ -620,6 +620,7 @@ function LaporanPage() {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </AppShell>
   );
 }
