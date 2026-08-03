@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { ArrowDownCircle, ArrowUpCircle, Landmark, CalendarRange } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { budgetLinesQuery, transactionsQuery } from "@/lib/queries";
+import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah, rupiahShort, namaBulan, tanggal } from "@/lib/format";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +67,7 @@ function DashboardPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
 
-  const rows = (trx.data ?? []).filter((t) => t.status !== "rejected");
+  const rows = (trx.data ?? []).filter((t) => t.status !== "rejected" && !isInternalCash(t));
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
 

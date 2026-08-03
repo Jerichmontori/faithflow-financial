@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
-import { budgetLinesQuery, transactionsQuery } from "@/lib/queries";
+import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah } from "@/lib/format";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,9 @@ export const Route = createFileRoute("/_authenticated/anggaran")({
 function AnggaranPage() {
   const budgets = useQuery(budgetLinesQuery);
   const trx = useQuery(transactionsQuery);
-  const rows = (trx.data ?? []).filter((t) => t.status !== "rejected" && t.status !== "draft");
+  const rows = (trx.data ?? []).filter(
+    (t) => t.status !== "rejected" && t.status !== "draft" && !isInternalCash(t),
+  );
 
   const list = (budgets.data ?? []).map((b) => {
     const realisasi = rows
