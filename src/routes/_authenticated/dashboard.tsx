@@ -216,8 +216,53 @@ function DashboardPage() {
       </div>
 
       <section className="panel mt-5 p-5">
+        <h2 className="text-base font-semibold">Persembahan Ibadah Subuh, Pagi & Malam</h2>
+        <p className="text-xs text-muted-foreground">Penerimaan per bulan tahun berjalan</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {ibadahTotal.map((item) => (
+            <div key={item.code} className="rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Persembahan {item.label}
+                </p>
+              </div>
+              <p className="mt-1 text-lg font-semibold">{rupiah(item.total)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={ibadahChart}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="bulan" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis
+                tickFormatter={(v) => rupiahShort(Number(v))}
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                width={70}
+              />
+              <Tooltip formatter={(v) => rupiah(Number(v))} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {IBADAH.map((item) => (
+                <Bar
+                  key={item.code}
+                  dataKey={item.label}
+                  fill={item.color}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      <section className="panel mt-5 p-5">
         <h2 className="text-base font-semibold">Anggaran vs Realisasi</h2>
-        <span className="hidden" />
         <p className="text-xs text-muted-foreground">Enam mata anggaran dengan serapan tertinggi</p>
         <div className="mt-5 space-y-4">
           {serapan.map((b) => (
