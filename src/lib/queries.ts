@@ -27,10 +27,13 @@ export type Transaction = {
   budget_lines?: { code: string; name: string } | null;
 };
 
+/** Kode mutasi kas internal (setoran/tarikan bank) — bukan pendapatan/belanja riil */
+export const INTERNAL_CASH_CODES = ["1.1.11.11", "2.2.22.22"];
+
+export const isInternalCash = (t: Transaction) =>
+  INTERNAL_CASH_CODES.includes(t.budget_lines?.code ?? "");
+
 export const budgetLinesQuery = queryOptions({
-  // Kode mutasi kas internal (setoran/tarikan) — bukan pendapatan/belanja riil
-  ...{},
-  queryKey: ["budget_lines"],
   queryKey: ["budget_lines"],
   queryFn: async (): Promise<BudgetLine[]> => {
     const { data, error } = await supabase
