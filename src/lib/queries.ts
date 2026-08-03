@@ -8,6 +8,7 @@ export type BudgetLine = {
   kind: "penerimaan" | "pengeluaran";
   fiscal_year: number;
   planned_amount: number;
+  grup: string;
 };
 
 export type Transaction = {
@@ -38,10 +39,10 @@ export const budgetLinesQuery = queryOptions({
   queryFn: async (): Promise<BudgetLine[]> => {
     const { data, error } = await supabase
       .from("budget_lines")
-      .select("id, code, name, kind, fiscal_year, planned_amount")
+      .select("id, code, name, kind, fiscal_year, planned_amount, grup")
       .order("code");
     if (error) throw error;
-    return (data ?? []) as BudgetLine[];
+    return (data ?? []) as unknown as BudgetLine[];
   },
 });
 
