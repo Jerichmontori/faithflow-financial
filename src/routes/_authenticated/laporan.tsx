@@ -152,6 +152,7 @@ function LaporanPage() {
           if (kolomFilter === "tanpa") {
             if (t.kolom !== null) return false;
           } else if (kolomFilter.startsWith("nama:")) {
+            if ((b?.grup || "") !== GRUP_NAMA_KOLOM) return false;
             if (t.nama !== kolomFilter.slice(5)) return false;
           } else if (String(t.kolom) !== kolomFilter) {
             return false;
