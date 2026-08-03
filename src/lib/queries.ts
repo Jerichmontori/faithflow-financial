@@ -48,15 +48,23 @@ export const budgetLinesQuery = queryOptions({
 export const transactionsQuery = queryOptions({
   queryKey: ["transactions"],
   queryFn: async (): Promise<Transaction[]> => {
-    const { data, error } = await supabase
-      .from("transactions")
-      .select(
-        "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, budget_lines(code, name)",
-      )
-      .order("trx_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(0, 49999);
-    if (error) throw error;
-    return (data ?? []) as unknown as Transaction[];
+    const PAGE = 1000;
+    const all: Transaction[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, budget_lines(code, name)",
+        )
+        .order("trx_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const page = (data ?? []) as unknown as Transaction[];
+      all.push(...page);
+      if (page.length < PAGE) break;
+    }
+    return all;
   },
 });
