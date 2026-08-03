@@ -182,6 +182,15 @@ function LaporanPage() {
       string,
       { label: string; cells: Map<string, number>; total: number }
     >();
+    // tampilkan seluruh mata anggaran pada grup laporan (termasuk yang belum ada transaksi)
+    for (const b of budgets.data ?? []) {
+      if (b.kind !== "penerimaan") continue;
+      if (!GRUP_LAPORAN.includes(b.grup || "")) continue;
+      if (grup !== "semua" && (b.grup || "Tanpa Grup") !== grup) continue;
+      if (budgetId !== "semua" && b.id !== budgetId) continue;
+      const label = `${b.code} — ${b.name}`;
+      if (!map.has(label)) map.set(label, { label, cells: new Map(), total: 0 });
+    }
     for (const t of rows) {
       const label = t.budget_lines
         ? `${t.budget_lines.code} — ${t.budget_lines.name}`
@@ -193,7 +202,7 @@ function LaporanPage() {
       entry.total += Number(t.amount);
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows]);
+  }, [rows, budgets.data, grup, budgetId]);
 
   const activeMonths = useMemo(
     () => MONTH_KEYS.filter((m) => columnTotals.has(m === null ? "tanpa" : String(m))),
