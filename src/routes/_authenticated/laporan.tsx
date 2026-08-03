@@ -80,6 +80,8 @@ function LaporanPage() {
   const [sampai, setSampai] = useState("");
   const [openBudget, setOpenBudget] = useState(false);
   const [tab, setTab] = useState("matriks");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   /** Semua penerimaan (kecuali mutasi kas internal) dengan kolom & bulan hasil parsing keterangan */
   const parsed = useMemo(
