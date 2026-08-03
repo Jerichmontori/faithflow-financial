@@ -6,6 +6,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -99,6 +100,29 @@ function DashboardPage() {
     .sort((a, b) => b.persen - a.persen)
     .slice(0, 6);
 
+  const IBADAH = [
+    { code: "1.3.50.01", label: "Ibadah Subuh", color: "var(--color-chart-1)" },
+    { code: "1.3.50.02", label: "Ibadah Pagi", color: "var(--color-chart-3)" },
+    { code: "1.3.50.04", label: "Ibadah Malam", color: "var(--color-chart-4)" },
+  ];
+  const idByCode = new Map(
+    (budgets.data ?? []).map((b) => [b.code, b.id] as const),
+  );
+  const ibadahChart = Array.from({ length: 12 }, (_, i) => {
+    const row: Record<string, string | number> = { bulan: namaBulan(i) };
+    for (const item of IBADAH) {
+      const id = idByCode.get(item.code);
+      row[item.label] = sum(
+        masuk.filter((t) => t.budget_line_id === id && new Date(t.trx_date).getMonth() === i),
+      );
+    }
+    return row;
+  });
+  const ibadahTotal = IBADAH.map((item) => ({
+    ...item,
+    total: ibadahChart.reduce((a, r) => a + Number(r[item.label] ?? 0), 0),
+  }));
+
   return (
     <AppShell
       title="Dashboard"
@@ -190,6 +214,52 @@ function DashboardPage() {
           </div>
         </section>
       </div>
+
+      <section className="panel mt-5 p-5">
+        <h2 className="text-base font-semibold">Persembahan Ibadah Subuh, Pagi & Malam</h2>
+        <p className="text-xs text-muted-foreground">Penerimaan per bulan tahun berjalan</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {ibadahTotal.map((item) => (
+            <div key={item.code} className="rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Persembahan {item.label}
+                </p>
+              </div>
+              <p className="mt-1 text-lg font-semibold">{rupiah(item.total)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={ibadahChart}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="bulan" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis
+                tickFormatter={(v) => rupiahShort(Number(v))}
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                width={70}
+              />
+              <Tooltip formatter={(v) => rupiah(Number(v))} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {IBADAH.map((item) => (
+                <Bar
+                  key={item.code}
+                  dataKey={item.label}
+                  fill={item.color}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       <section className="panel mt-5 p-5">
         <h2 className="text-base font-semibold">Anggaran vs Realisasi</h2>
