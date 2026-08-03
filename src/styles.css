@@ -180,3 +180,89 @@
 @utility bg-gradient-gold {
   background-image: var(--gradient-gold);
 }
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 12mm;
+  }
+
+  aside,
+  header > div:last-child,
+  .no-print,
+  [data-state="active"]:not([role="tabpanel"]) {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  header {
+    position: static !important;
+    border: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  header h1 {
+    font-size: 1.25rem !important;
+    color: black !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .panel {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #999 !important;
+    padding: 4px 6px !important;
+  }
+
+  th {
+    background: #f3f4f6 !important;
+    color: black !important;
+  }
+
+  .text-success {
+    color: #166534 !important;
+  }
+
+  .text-muted-foreground,
+  .text-muted-foreground\/50 {
+    color: #6b7280 !important;
+  }
+
+  tr.bg-muted\/40 td {
+    background: #e5e7eb !important;
+  }
+
+  td.sticky,
+  th.sticky {
+    position: static !important;
+    background: inherit !important;
+  }
+}
