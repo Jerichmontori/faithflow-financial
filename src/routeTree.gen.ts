@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAnggaranRouteImport } from './routes/_authenticated/anggaran'
+import { Route as AuthenticatedBukuPembantuRouteImport } from './routes/_authenticated/buku-pembantu'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPenerimaanRouteImport } from './routes/_authenticated/penerimaan'
 import { Route as AuthenticatedPengeluaranRouteImport } from './routes/_authenticated/pengeluaran'
@@ -36,6 +37,12 @@ const AuthenticatedAnggaranRoute = AuthenticatedAnggaranRouteImport.update({
   path: '/anggaran',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBukuPembantuRoute =
+  AuthenticatedBukuPembantuRouteImport.update({
+    id: '/buku-pembantu',
+    path: '/buku-pembantu',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/anggaran': typeof AuthenticatedAnggaranRoute
+  '/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
@@ -65,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/anggaran': typeof AuthenticatedAnggaranRoute
+  '/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
@@ -75,6 +84,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/anggaran': typeof AuthenticatedAnggaranRoute
+  '/_authenticated/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/_authenticated/pengeluaran': typeof AuthenticatedPengeluaranRoute
@@ -82,16 +92,29 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/anggaran' | '/dashboard' | '/penerimaan' | '/pengeluaran'
+    | '/'
+    | '/auth'
+    | '/anggaran'
+    | '/buku-pembantu'
+    | '/dashboard'
+    | '/penerimaan'
+    | '/pengeluaran'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/auth' | '/anggaran' | '/dashboard' | '/penerimaan' | '/pengeluaran'
+    | '/'
+    | '/auth'
+    | '/anggaran'
+    | '/buku-pembantu'
+    | '/dashboard'
+    | '/penerimaan'
+    | '/pengeluaran'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/anggaran'
+    | '/_authenticated/buku-pembantu'
     | '/_authenticated/dashboard'
     | '/_authenticated/penerimaan'
     | '/_authenticated/pengeluaran'
@@ -133,6 +156,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAnggaranRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/buku-pembantu': {
+      id: '/_authenticated/buku-pembantu'
+      path: '/buku-pembantu'
+      fullPath: '/buku-pembantu'
+      preLoaderRoute: typeof AuthenticatedBukuPembantuRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -159,6 +189,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnggaranRoute: typeof AuthenticatedAnggaranRoute
+  AuthenticatedBukuPembantuRoute: typeof AuthenticatedBukuPembantuRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPenerimaanRoute: typeof AuthenticatedPenerimaanRoute
   AuthenticatedPengeluaranRoute: typeof AuthenticatedPengeluaranRoute
@@ -166,6 +197,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnggaranRoute: AuthenticatedAnggaranRoute,
+  AuthenticatedBukuPembantuRoute: AuthenticatedBukuPembantuRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPenerimaanRoute: AuthenticatedPenerimaanRoute,
   AuthenticatedPengeluaranRoute: AuthenticatedPengeluaranRoute,
@@ -182,3 +214,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
