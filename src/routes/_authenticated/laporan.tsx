@@ -84,8 +84,9 @@ function LaporanPage() {
     () =>
       (budgets.data ?? [])
         .filter((b) => b.kind === "penerimaan")
-        .filter((b) => GRUP_LAPORAN.includes(b.grup || "")),
-    [budgets.data],
+        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .filter((b) => parsed.some((t) => t.budget_line_id === b.id)),
+    [budgets.data, parsed],
   );
 
   function resetFilter() {
