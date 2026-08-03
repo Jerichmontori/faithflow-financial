@@ -46,6 +46,15 @@ const BULAN = [
  *  Kas Keluar (kas gereja berkurang) = setoran ke bank → pemasukan bank. */
 const isBankIn = (t: Transaction) => t.budget_lines?.code === "2.2.22.22";
 
+/** Transaksi reklas / pengembalian — bukan mutasi bank, dikeluarkan dari perhitungan */
+const REKLAS_VOUCHERS = [
+  "KM-2026-0184",
+  "KM-2026-2575",
+  "KM-2026-2576",
+  "KM-2026-2577",
+];
+const isReklas = (t: Transaction) => REKLAS_VOUCHERS.includes(t.voucher_no);
+
 function LaporanBankPage() {
   const trx = useQuery(transactionsQuery);
   const [start, setStart] = useState("");
@@ -70,6 +79,7 @@ function LaporanBankPage() {
       .filter(
         (t) =>
           INTERNAL_CASH_CODES.includes(t.budget_lines?.code ?? "") &&
+          !isReklas(t) &&
           t.status !== "rejected" &&
           t.status !== "draft" &&
           (!start || t.trx_date >= start) &&
@@ -85,6 +95,23 @@ function LaporanBankPage() {
           : a.trx_date.localeCompare(b.trx_date),
       );
   }, [trx.data, start, end, q]);
+
+  const reklasRows = useMemo(() => {
+    return (trx.data ?? [])
+      .filter(
+        (t) =>
+          isReklas(t) &&
+          (!start || t.trx_date >= start) &&
+          (!end || t.trx_date <= end) &&
+          (!q ||
+            `${t.voucher_no} ${t.description} ${t.payee ?? ""}`
+              .toLowerCase()
+              .includes(q.toLowerCase())),
+      )
+      .sort((a, b) => a.trx_date.localeCompare(b.trx_date));
+  }, [trx.data, start, end, q]);
+
+  const totalReklas = reklasRows.reduce((a, t) => a + Number(t.amount), 0);
 
   const totalIn = rows.filter(isBankIn).reduce((a, t) => a + Number(t.amount), 0);
   const totalOut = rows.filter((t) => !isBankIn(t)).reduce((a, t) => a + Number(t.amount), 0);
@@ -242,6 +269,46 @@ function LaporanBankPage() {
               <tr>
                 <td colSpan={7} className="py-6 text-center text-muted-foreground">
                   Belum ada mutasi bank pada filter ini.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="panel mt-5 overflow-x-auto p-5">
+        <h2 className="text-base font-semibold">Transaksi Reklas / Pengembalian</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Tidak dihitung sebagai mutasi bank. Total {rupiah(totalReklas)} dari {reklasRows.length} transaksi.
+        </p>
+        <table className="mt-4 w-full min-w-[760px] text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="py-2 pr-3">Tanggal</th>
+              <th className="py-2 pr-3">No. Bukti</th>
+              <th className="py-2 pr-3">Mata Anggaran</th>
+              <th className="py-2 pr-3">Keterangan</th>
+              <th className="py-2 text-right">Nominal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reklasRows.map((t) => (
+              <tr key={t.id} className="border-b last:border-0">
+                <td className="py-2 pr-3 whitespace-nowrap">{tanggal(t.trx_date)}</td>
+                <td className="py-2 pr-3 font-mono text-xs">{t.voucher_no}</td>
+                <td className="py-2 pr-3">
+                  <Badge variant="outline">
+                    {t.budget_lines?.code} — {t.budget_lines?.name}
+                  </Badge>
+                </td>
+                <td className="py-2 pr-3 max-w-[320px] truncate">{t.description}</td>
+                <td className="py-2 text-right font-medium">{rupiah(Number(t.amount))}</td>
+              </tr>
+            ))}
+            {reklasRows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                  Tidak ada transaksi reklas pada filter ini.
                 </td>
               </tr>
             )}
