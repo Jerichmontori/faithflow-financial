@@ -254,8 +254,14 @@ function LaporanPage() {
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="size-4" /> Ekspor CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileDown className="size-4" /> Download PDF
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadPdf}
+            disabled={isGeneratingPdf}
+          >
+            <FileDown className="size-4" />
+            {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
           </Button>
         </div>
       }
