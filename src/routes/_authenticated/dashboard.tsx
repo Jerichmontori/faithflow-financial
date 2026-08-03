@@ -100,6 +100,29 @@ function DashboardPage() {
     .sort((a, b) => b.persen - a.persen)
     .slice(0, 6);
 
+  const IBADAH = [
+    { code: "1.3.50.01", label: "Ibadah Subuh", color: "var(--color-chart-1)" },
+    { code: "1.3.50.02", label: "Ibadah Pagi", color: "var(--color-chart-3)" },
+    { code: "1.3.50.04", label: "Ibadah Malam", color: "var(--color-chart-4)" },
+  ];
+  const idByCode = new Map(
+    (budgets.data ?? []).map((b) => [b.code, b.id] as const),
+  );
+  const ibadahChart = Array.from({ length: 12 }, (_, i) => {
+    const row: Record<string, string | number> = { bulan: namaBulan(i) };
+    for (const item of IBADAH) {
+      const id = idByCode.get(item.code);
+      row[item.label] = sum(
+        masuk.filter((t) => t.budget_line_id === id && new Date(t.trx_date).getMonth() === i),
+      );
+    }
+    return row;
+  });
+  const ibadahTotal = IBADAH.map((item) => ({
+    ...item,
+    total: ibadahChart.reduce((a, r) => a + Number(r[item.label] ?? 0), 0),
+  }));
+
   return (
     <AppShell
       title="Dashboard"
