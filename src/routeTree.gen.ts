@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedPenerimaanRouteImport } from './routes/_authenticated/penerimaan'
+import { Route as AuthenticatedPengeluaranRouteImport } from './routes/_authenticated/pengeluaran'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,18 +40,26 @@ const AuthenticatedPenerimaanRoute = AuthenticatedPenerimaanRouteImport.update({
   path: '/penerimaan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPengeluaranRoute =
+  AuthenticatedPengeluaranRouteImport.update({
+    id: '/pengeluaran',
+    path: '/pengeluaran',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
+  '/pengeluaran': typeof AuthenticatedPengeluaranRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
+  '/pengeluaran': typeof AuthenticatedPengeluaranRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +68,13 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/penerimaan': typeof AuthenticatedPenerimaanRoute
+  '/_authenticated/pengeluaran': typeof AuthenticatedPengeluaranRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/penerimaan'
+  fullPaths: '/' | '/auth' | '/dashboard' | '/penerimaan' | '/pengeluaran'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/penerimaan'
+  to: '/' | '/auth' | '/dashboard' | '/penerimaan' | '/pengeluaran'
   id:
     | '__root__'
     | '/'
@@ -72,6 +82,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/penerimaan'
+    | '/_authenticated/pengeluaran'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,17 +128,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPenerimaanRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pengeluaran': {
+      id: '/_authenticated/pengeluaran'
+      path: '/pengeluaran'
+      fullPath: '/pengeluaran'
+      preLoaderRoute: typeof AuthenticatedPengeluaranRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPenerimaanRoute: typeof AuthenticatedPenerimaanRoute
+  AuthenticatedPengeluaranRoute: typeof AuthenticatedPengeluaranRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPenerimaanRoute: AuthenticatedPenerimaanRoute,
+  AuthenticatedPengeluaranRoute: AuthenticatedPengeluaranRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
