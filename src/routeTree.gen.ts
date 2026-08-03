@@ -20,6 +20,7 @@ import { Route as AuthenticatedLaporanBankRouteImport } from './routes/_authenti
 import { Route as AuthenticatedPenerimaanRouteImport } from './routes/_authenticated/penerimaan'
 import { Route as AuthenticatedPengeluaranRouteImport } from './routes/_authenticated/pengeluaran'
 import { Route as AuthenticatedRekapitulasiRouteImport } from './routes/_authenticated/rekapitulasi'
+import { Route as AuthenticatedReklasRouteImport } from './routes/_authenticated/reklas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -79,6 +80,11 @@ const AuthenticatedRekapitulasiRoute =
     path: '/rekapitulasi',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReklasRoute = AuthenticatedReklasRouteImport.update({
+  id: '/reklas',
+  path: '/reklas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
+  '/reklas': typeof AuthenticatedReklasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
+  '/reklas': typeof AuthenticatedReklasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/_authenticated/penerimaan': typeof AuthenticatedPenerimaanRoute
   '/_authenticated/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/_authenticated/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
+  '/_authenticated/reklas': typeof AuthenticatedReklasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/penerimaan'
     | '/pengeluaran'
     | '/rekapitulasi'
+    | '/reklas'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/penerimaan'
     | '/pengeluaran'
     | '/rekapitulasi'
+    | '/reklas'
   id:
     | '__root__'
     | '/'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/_authenticated/penerimaan'
     | '/_authenticated/pengeluaran'
     | '/_authenticated/rekapitulasi'
+    | '/_authenticated/reklas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -243,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRekapitulasiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reklas': {
+      id: '/_authenticated/reklas'
+      path: '/reklas'
+      fullPath: '/reklas'
+      preLoaderRoute: typeof AuthenticatedReklasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -255,6 +274,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPenerimaanRoute: typeof AuthenticatedPenerimaanRoute
   AuthenticatedPengeluaranRoute: typeof AuthenticatedPengeluaranRoute
   AuthenticatedRekapitulasiRoute: typeof AuthenticatedRekapitulasiRoute
+  AuthenticatedReklasRoute: typeof AuthenticatedReklasRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -266,6 +286,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPenerimaanRoute: AuthenticatedPenerimaanRoute,
   AuthenticatedPengeluaranRoute: AuthenticatedPengeluaranRoute,
   AuthenticatedRekapitulasiRoute: AuthenticatedRekapitulasiRoute,
+  AuthenticatedReklasRoute: AuthenticatedReklasRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

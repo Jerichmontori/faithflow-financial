@@ -34,6 +34,16 @@ export const INTERNAL_CASH_CODES = ["1.1.11.11", "2.2.22.22"];
 export const isInternalCash = (t: Transaction) =>
   INTERNAL_CASH_CODES.includes(t.budget_lines?.code ?? "");
 
+/** Transaksi reklas / pengembalian — bukan mutasi bank riil */
+export const REKLAS_VOUCHERS = [
+  "KM-2026-0184",
+  "KM-2026-2575",
+  "KM-2026-2576",
+  "KM-2026-2577",
+];
+
+export const isReklas = (t: Transaction) => REKLAS_VOUCHERS.includes(t.voucher_no);
+
 export const budgetLinesQuery = queryOptions({
   queryKey: ["budget_lines"],
   queryFn: async (): Promise<BudgetLine[]> => {
