@@ -5,6 +5,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Wallet,
+  BookOpen,
   LogOut,
   Church,
   Menu,
@@ -20,6 +21,7 @@ const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/penerimaan", label: "Penerimaan", icon: ArrowDownCircle },
   { to: "/pengeluaran", label: "Pengeluaran", icon: ArrowUpCircle },
+  { to: "/buku-pembantu", label: "Buku Pembantu", icon: BookOpen },
   { to: "/anggaran", label: "Mata Anggaran", icon: Wallet },
 ] as const;
 
