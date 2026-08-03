@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -51,6 +51,19 @@ function LaporanBankPage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [q, setQ] = useState("");
+  const [saldoAwal, setSaldoAwal] = useState<string>("");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("bumotik.saldoAwalBank");
+    if (saved !== null) setSaldoAwal(saved);
+  }, []);
+
+  const saldoAwalNum = Number(saldoAwal.replace(/[^\d-]/g, "")) || 0;
+
+  function onSaldoAwalChange(v: string) {
+    setSaldoAwal(v);
+    localStorage.setItem("bumotik.saldoAwalBank", v);
+  }
 
   const rows = useMemo(() => {
     return (trx.data ?? [])
@@ -90,7 +103,7 @@ function LaporanBankPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
   }, [rows]);
 
-  let saldo = 0;
+  let saldo = saldoAwalNum;
   const ledger = rows.map((t) => {
     const masuk = isBankIn(t) ? Number(t.amount) : 0;
     const keluar = isBankIn(t) ? 0 : Number(t.amount);
@@ -141,18 +154,30 @@ function LaporanBankPage() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="saldo-awal">Saldo Awal Bank</Label>
+          <Input
+            id="saldo-awal"
+            inputMode="numeric"
+            placeholder="0"
+            className="w-[180px] text-right"
+            value={saldoAwal}
+            onChange={(e) => onSaldoAwalChange(e.target.value)}
+          />
+        </div>
         <button type="button" className="text-sm text-muted-foreground underline" onClick={exportCsv}>
           Ekspor CSV
         </button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Saldo Awal Bank" value={rupiah(saldoAwalNum)} hint="Saldo sebelum periode" />
         <Stat label="Pemasukan Bank (Kas Keluar)" value={rupiah(totalIn)} />
         <Stat label="Pengeluaran Bank (Kas Masuk)" value={rupiah(totalOut)} />
         <Stat
-          label="Saldo Mutasi Bank"
-          value={rupiah(totalIn - totalOut)}
-          hint={totalIn - totalOut >= 0 ? "Surplus di bank" : "Defisit di bank"}
+          label="Saldo Akhir Bank"
+          value={rupiah(saldoAwalNum + totalIn - totalOut)}
+          hint={`Mutasi ${rupiah(totalIn - totalOut)}`}
         />
         <Stat label="Jumlah Transaksi" value={String(rows.length)} hint={`${rows.filter(isBankIn).length} setoran · ${rows.filter((t) => !isBankIn(t)).length} penarikan`} />
       </div>
@@ -192,6 +217,12 @@ function LaporanBankPage() {
             </tr>
           </thead>
           <tbody>
+            <tr className="border-b bg-muted/40">
+              <td className="py-2 pr-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={6}>
+                Saldo Awal Bank
+              </td>
+              <td className="py-2 text-right font-medium">{rupiah(saldoAwalNum)}</td>
+            </tr>
             {ledger.map((r) => (
               <tr key={r.t.id} className="border-b last:border-0">
                 <td className="py-2 pr-3 whitespace-nowrap">{tanggal(r.t.trx_date)}</td>
