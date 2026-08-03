@@ -88,6 +88,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   });
 
   const options = (budgets.data ?? []).filter((b) => b.kind === kind);
+  const selected = options.find((b) => b.id === form.budget_line_id);
 
   const mutation = useMutation({
     mutationFn: async () => {
