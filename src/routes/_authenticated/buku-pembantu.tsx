@@ -324,12 +324,3 @@ function BukuPembantuPage() {
     </AppShell>
   );
 }
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/_authenticated/buku-pembantu')({
-  component: RouteComponent,
-})
-
-function RouteComponent() {
-  return <div>Hello "/_authenticated/buku-pembantu"!</div>
-}
