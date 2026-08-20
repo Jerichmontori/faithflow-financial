@@ -77,6 +77,50 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_corrections: {
+        Row: {
+          corrected_by: string | null
+          created_at: string
+          field: string
+          id: string
+          new_value: string
+          old_value: string
+          reason: string
+          transaction_id: string
+          voucher_no: string
+        }
+        Insert: {
+          corrected_by?: string | null
+          created_at?: string
+          field: string
+          id?: string
+          new_value?: string
+          old_value?: string
+          reason?: string
+          transaction_id: string
+          voucher_no?: string
+        }
+        Update: {
+          corrected_by?: string | null
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: string
+          old_value?: string
+          reason?: string
+          transaction_id?: string
+          voucher_no?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_corrections_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -90,6 +134,8 @@ export type Database = {
           description: string
           id: string
           kind: Database["public"]["Enums"]["trx_kind"]
+          koreksi_catatan: string | null
+          koreksi_dari: string | null
           payee: string | null
           payment_method: string | null
           status: Database["public"]["Enums"]["approval_status"]
@@ -108,6 +154,8 @@ export type Database = {
           description?: string
           id?: string
           kind: Database["public"]["Enums"]["trx_kind"]
+          koreksi_catatan?: string | null
+          koreksi_dari?: string | null
           payee?: string | null
           payment_method?: string | null
           status?: Database["public"]["Enums"]["approval_status"]
@@ -126,6 +174,8 @@ export type Database = {
           description?: string
           id?: string
           kind?: Database["public"]["Enums"]["trx_kind"]
+          koreksi_catatan?: string | null
+          koreksi_dari?: string | null
           payee?: string | null
           payment_method?: string | null
           status?: Database["public"]["Enums"]["approval_status"]
