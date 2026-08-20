@@ -5,6 +5,8 @@ import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { KoreksiDialog } from "@/components/KoreksiDialog";
 import { HapusTransaksiDialog } from "@/components/HapusTransaksiDialog";
+import { ImportMassalDialog } from "@/components/ImportMassalDialog";
+import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
@@ -82,7 +84,13 @@ function PenerimaanPage() {
     <AppShell
       title="Transaksi Penerimaan"
       subtitle={`${rows.length} transaksi · total ${rupiah(total)}`}
-      actions={<TransactionDialog kind="penerimaan" />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <TransactionDialog kind="penerimaan" />
+          <ImportMassalDialog kind="penerimaan" />
+          <ResetTransaksiDialog kind="penerimaan" jumlah={rows.length} />
+        </div>
+      }
     >
       <div className="panel mb-4 p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
