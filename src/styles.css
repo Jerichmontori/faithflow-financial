@@ -182,9 +182,10 @@
 }
 
 @media print {
+  /* Kertas F4 / Folio (215 x 330 mm) posisi landscape */
   @page {
-    size: landscape;
-    margin: 12mm;
+    size: 330mm 215mm;
+    margin: 8mm;
   }
 
   aside,
@@ -264,5 +265,49 @@
   th.sticky {
     position: static !important;
     background: inherit !important;
+  }
+}
+
+/* ── Warta Keuangan ─────────────────────────────────────────── */
+.warta-table th,
+.warta-table td {
+  border: 1px solid #cbd5e1;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  vertical-align: top;
+}
+
+.warta-copy-2 {
+  margin-top: 2rem;
+  border-top: 2px dashed #cbd5e1;
+  padding-top: 2rem;
+}
+
+@media print {
+  .warta-area {
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  .warta-sheet {
+    page-break-inside: auto;
+  }
+
+  .warta-copy-2 {
+    page-break-before: always;
+    margin-top: 0 !important;
+    border-top: none !important;
+    padding-top: 0 !important;
+  }
+
+  .warta-table th,
+  .warta-table td {
+    border: 1px solid #999 !important;
+    padding: 1px 4px !important;
+    font-size: 8.5pt !important;
+  }
+
+  .warta-table tr {
+    page-break-inside: avoid;
   }
 }
