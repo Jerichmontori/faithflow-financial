@@ -72,3 +72,22 @@ Tabel rekap mengikuti contoh: kolom **Dana Rutin**, **Simpanan Bank**, **Jumlah*
 - Perlu perubahan database: kolom catatan koreksi pada tabel transaksi + tabel riwayat koreksi (transaksi, kolom yang diubah, nilai lama/baru, alasan, pengoreksi, waktu) beserta aturan aksesnya.
 - Export Excel memakai pustaka spreadsheet di sisi klien (tanpa server tambahan).
 - Halaman baru `src/routes/_authenticated/koreksi.tsx` + entri menu di `src/components/AppShell.tsx`.
+
+## 7. Laporan Harian Kas — cetakan identik contoh
+
+Menyesuaikan halaman Laporan Harian Kas dengan file contoh `cth_kas.xlsx`:
+
+- Blok kepala kiri: **Tanggal / Bulan / Tahun** (mis. 14 · Agustus · 2026).
+- Blok ringkasan kanan: **Saldo Awal**, **Total Debit**, **Total Kredit**, **Saldo Akhir**.
+- Tabel utama dengan kolom: No | Tanggal | Mata Anggaran | Nama Mata Anggaran | Keterangan | Debit | Kredit | Saldo.
+  - Nomor urut dan tanggal hanya ditulis pada baris pertama hari itu.
+  - Debit = penerimaan, Kredit = pengeluaran, Saldo = saldo berjalan.
+- Baris total di bawah tabel dan garis tanda tangan sesuai contoh.
+
+Tombol pada halaman ini:
+- **Cetak** — cetak rapi (F4), header ringkasan ikut tercetak di setiap halaman, tabel tidak terpotong.
+- **Export Excel** — file .xlsx dengan susunan kolom persis seperti contoh, nama file `Laporan-Kas-<tanggal>.xlsx`.
+
+## 8. Tombol pada Warta Keuangan
+
+Halaman Warta Keuangan memiliki dua tombol berdampingan: **Cetak (F4, 2 rangkap)** dan **Export Excel** (isi sesuai bagian 6).
