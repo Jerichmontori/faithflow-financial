@@ -51,3 +51,24 @@ Tabel rekap mengikuti contoh: kolom **Dana Rutin**, **Simpanan Bank**, **Jumlah*
 - Data duka & saldo awal bank disimpan lokal di perangkat (localStorage), pola sama seperti halaman Rincian Uang; tidak ada perubahan skema database.
 - Mutasi bank memakai helper `INTERNAL_CASH_CODES` dan `isReklas` yang sudah ada di `src/lib/queries.ts`.
 - Penyesuaian aturan cetak di `src/styles.css`.
+
+## 6. Tambahan (permintaan lanjutan)
+
+### Export ke Excel
+- Tombol **Export Excel** di halaman Warta Keuangan (di samping tombol Cetak).
+- File .xlsx berisi tabel utama (Tgl, Uraian, Masuk, Keluar, Saldo), Rekapitulasi 3 kolom, dan blok Dana Duka — mengikuti susunan yang sama dengan versi cetak.
+- Nama file otomatis: `Warta-Keuangan-<tanggal mulai>-sd-<tanggal selesai>.xlsx`.
+
+### Kolom keterangan koreksi
+- Tambahan kolom/keterangan **"Koreksi"** pada warta: transaksi yang merupakan hasil koreksi dari transaksi sebelumnya diberi catatan singkat (mis. "koreksi dari KM-2026-0184") agar jemaat/pemeriksa tahu asal perubahannya.
+- Data koreksi disimpan di transaksi (catatan koreksi + nomor bukti asal) dan ikut tampil di Buku Pembantu serta laporan cetak.
+
+### Menu Koreksi Transaksi
+- Halaman baru **Koreksi Transaksi** di sidebar: mencari transaksi berdasarkan nomor bukti/tanggal/keterangan, lalu memperbaiki **keterangan** dan/atau **mata anggaran** (selain nominal yang sudah bisa dikoreksi lewat tombol yang ada).
+- Setiap koreksi wajib mengisi alasan; sistem mencatat siapa yang mengoreksi, kapan, serta nilai lama dan nilai baru sebagai riwayat koreksi yang bisa dilihat kembali.
+- Hak akses: Admin Keuangan dan Super Administrator.
+
+### Catatan teknis tambahan
+- Perlu perubahan database: kolom catatan koreksi pada tabel transaksi + tabel riwayat koreksi (transaksi, kolom yang diubah, nilai lama/baru, alasan, pengoreksi, waktu) beserta aturan aksesnya.
+- Export Excel memakai pustaka spreadsheet di sisi klien (tanpa server tambahan).
+- Halaman baru `src/routes/_authenticated/koreksi.tsx` + entri menu di `src/components/AppShell.tsx`.
