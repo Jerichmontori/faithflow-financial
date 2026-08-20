@@ -25,6 +25,8 @@ export type Transaction = {
   attachment_url: string | null;
   status: "draft" | "pending" | "approved" | "rejected";
   created_at: string;
+  koreksi_dari: string | null;
+  koreksi_catatan: string | null;
   budget_lines?: { code: string; name: string } | null;
 };
 
@@ -65,7 +67,7 @@ export const transactionsQuery = queryOptions({
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, budget_lines(code, name)",
+          "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, koreksi_dari, koreksi_catatan, budget_lines(code, name)",
         )
         .order("trx_date", { ascending: false })
         .order("created_at", { ascending: false })

@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { Printer, FileDown } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { transactionsQuery } from "@/lib/queries";
-import { rupiah, tanggal } from "@/lib/format";
+import { rupiah } from "@/lib/format";
+import { exportAoa, type Cell } from "@/lib/xlsx";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/laporan-harian")({
   head: () => ({
@@ -15,12 +17,12 @@ export const Route = createFileRoute("/_authenticated/laporan-harian")({
       {
         name: "description",
         content:
-          "Laporan kas harian gereja: saldo awal otomatis, penerimaan dan pengeluaran hari ini, serta saldo akhir kas.",
+          "Laporan kas harian gereja: saldo awal otomatis, total debit dan kredit, saldo berjalan per mata anggaran, siap cetak dan ekspor Excel.",
       },
       { property: "og:title", content: "Laporan Harian Kas — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Rincian transaksi kas hari ini dengan saldo awal otomatis dan saldo berjalan.",
+        content: "Rincian transaksi kas harian dengan saldo awal otomatis, cetak dan ekspor Excel.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -29,10 +31,27 @@ export const Route = createFileRoute("/_authenticated/laporan-harian")({
   component: LaporanHarianPage,
 });
 
+const BULAN = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
+
+const angka = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
 
 function LaporanHarianPage() {
   const trx = useQuery(transactionsQuery);
@@ -40,6 +59,7 @@ function LaporanHarianPage() {
   const [q, setQ] = useState("");
 
   const all = trx.data ?? [];
+  const [y, m, d] = date.split("-").map(Number);
 
   /** Saldo awal = akumulasi seluruh mutasi kas sebelum tanggal terpilih */
   const saldoAwal = useMemo(
@@ -56,7 +76,8 @@ function LaporanHarianPage() {
         .filter((t) => t.trx_date === date)
         .sort(
           (a, b) =>
-            a.kind.localeCompare(b.kind) || a.voucher_no.localeCompare(b.voucher_no),
+            (a.kind === "pengeluaran" ? 1 : 0) - (b.kind === "pengeluaran" ? 1 : 0) ||
+            a.voucher_no.localeCompare(b.voucher_no),
         ),
     [all, date],
   );
@@ -73,49 +94,63 @@ function LaporanHarianPage() {
     [harian, q],
   );
 
-  const masuk = harian
+  const totalDebit = harian
     .filter((t) => t.kind === "penerimaan")
     .reduce((a, t) => a + Number(t.amount), 0);
-  const keluar = harian
+  const totalKredit = harian
     .filter((t) => t.kind === "pengeluaran")
     .reduce((a, t) => a + Number(t.amount), 0);
-  const saldoAkhir = saldoAwal + masuk - keluar;
+  const saldoAkhir = saldoAwal + totalDebit - totalKredit;
 
-  let running = saldoAwal;
+  const baris = useMemo(() => {
+    let saldo = saldoAwal;
+    return rows.map((t, i) => {
+      const nilai = Number(t.amount);
+      saldo += t.kind === "penerimaan" ? nilai : -nilai;
+      return { t, no: i + 1, saldo, debit: t.kind === "penerimaan" ? nilai : 0, kredit: t.kind === "pengeluaran" ? nilai : 0 };
+    });
+  }, [rows, saldoAwal]);
 
-  function exportCsv() {
-    const head = ["Tanggal", "No Bukti", "Jenis", "Mata Anggaran", "Keterangan", "Masuk", "Keluar"];
-    const body = rows.map((t) => [
-      t.trx_date,
-      t.voucher_no,
-      t.kind,
-      `${t.budget_lines?.code ?? ""} ${t.budget_lines?.name ?? ""}`,
-      (t.description ?? "").replace(/"/g, "'"),
-      t.kind === "penerimaan" ? t.amount : 0,
-      t.kind === "pengeluaran" ? t.amount : 0,
-    ]);
-    const csv = [
-      ["Saldo Awal", "", "", "", "", saldoAwal, ""],
-      head,
-      ...body,
-      ["Saldo Akhir", "", "", "", "", saldoAkhir, ""],
-    ]
-      .map((r) => r.map((c) => `"${c}"`).join(","))
-      .join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `laporan-harian-kas-${date}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  function exportExcel() {
+    const data: Cell[][] = [
+      ["LAPORAN HARIAN KAS", "", "", "", "", "", "", ""],
+      ["Tanggal", d ?? "", "", "", "", "", "Saldo Awal", saldoAwal],
+      ["Bulan", BULAN[(m ?? 1) - 1] ?? "", "", "", "", "", "Total Debit", totalDebit],
+      ["Tahun", y ?? "", "", "", "", "", "Total Kredit", totalKredit],
+      ["", "", "", "", "", "", "Saldo Akhir", saldoAkhir],
+      [],
+      ["No", "Tanggal", "Mata Anggaran", "Nama Mata Anggaran", "Keterangan", "Debit", "Kredit", "Saldo"],
+      ...baris.map((b) => [
+        b.no,
+        b.no === 1 ? date : "",
+        b.t.budget_lines?.code ?? "",
+        b.t.budget_lines?.name ?? "",
+        b.t.koreksi_catatan ? `${b.t.description} [${b.t.koreksi_catatan}]` : b.t.description,
+        b.debit || "",
+        b.kredit || "",
+        b.saldo,
+      ]),
+      ["", "", "", "", "TOTAL", totalDebit, totalKredit, saldoAkhir],
+    ];
+    exportAoa(data, `Laporan-Kas-${date}.xlsx`, "Laporan", [6, 12, 14, 34, 46, 14, 14, 16]);
   }
 
   return (
     <AppShell
       title="Laporan Harian Kas"
       subtitle="Transaksi kas hari ini dengan saldo awal terisi otomatis dari mutasi sebelumnya"
+      actions={
+        <div className="no-print flex gap-2">
+          <Button variant="outline" onClick={exportExcel}>
+            <FileDown className="mr-2 size-4" /> Export Excel
+          </Button>
+          <Button onClick={() => window.print()}>
+            <Printer className="mr-2 size-4" /> Cetak
+          </Button>
+        </div>
+      }
     >
-      <div className="panel mb-5 flex flex-wrap items-end gap-4 p-4">
+      <div className="panel no-print mb-5 flex flex-wrap items-end gap-4 p-4">
         <div className="space-y-1.5">
           <Label htmlFor="date">Tanggal</Label>
           <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -129,96 +164,121 @@ function LaporanHarianPage() {
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <button type="button" className="text-sm text-muted-foreground underline" onClick={exportCsv}>
-          Ekspor CSV
-        </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Saldo Awal" value={rupiah(saldoAwal)} />
-        <Stat label="Kas Masuk Hari Ini" value={rupiah(masuk)} tone="in" />
-        <Stat label="Kas Keluar Hari Ini" value={rupiah(keluar)} tone="out" />
-        <Stat label="Saldo Akhir" value={rupiah(saldoAkhir)} />
-      </div>
-
-      <section className="panel mt-5 overflow-x-auto p-5">
-        <h2 className="text-base font-semibold">Rincian Kas {tanggal(date)}</h2>
-        <table className="mt-4 w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="py-2 pr-3">No. Bukti</th>
-              <th className="py-2 pr-3">Mata Anggaran</th>
-              <th className="py-2 pr-3">Keterangan</th>
-              <th className="py-2 pr-3 text-right">Masuk</th>
-              <th className="py-2 pr-3 text-right">Keluar</th>
-              <th className="py-2 text-right">Saldo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b bg-muted/40">
-              <td className="py-2 pr-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={5}>
-                Saldo Awal
-              </td>
-              <td className="py-2 text-right font-semibold">{rupiah(saldoAwal)}</td>
-            </tr>
-            {rows.map((t) => {
-              const amount = Number(t.amount);
-              running += t.kind === "penerimaan" ? amount : -amount;
-              return (
-                <tr key={t.id} className="border-b last:border-0">
-                  <td className="py-2 pr-3 font-mono text-xs">{t.voucher_no}</td>
-                  <td className="py-2 pr-3">
-                    <Badge variant="outline">
-                      {t.budget_lines?.code} — {t.budget_lines?.name}
-                    </Badge>
-                  </td>
-                  <td className="py-2 pr-3 max-w-[300px] truncate">{t.description}</td>
-                  <td className="py-2 pr-3 text-right">
-                    {t.kind === "penerimaan" ? rupiah(amount) : "—"}
-                  </td>
-                  <td className="py-2 pr-3 text-right">
-                    {t.kind === "pengeluaran" ? rupiah(amount) : "—"}
-                  </td>
-                  <td className="py-2 text-right font-medium">{rupiah(running)}</td>
+      <div className="warta-area panel p-6">
+        <div className="kas-sheet">
+          <h2 className="text-center text-lg font-bold uppercase tracking-wide">Laporan Harian Kas</h2>
+          <div className="mt-3 flex flex-wrap justify-between gap-4">
+            <table className="kas-info">
+              <tbody>
+                <tr>
+                  <td className="w-24">Tanggal</td>
+                  <td className="font-semibold">{d}</td>
                 </tr>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-6 text-center text-muted-foreground">
-                  Tidak ada transaksi pada tanggal ini.
-                </td>
-              </tr>
-            )}
-          </tbody>
-          <tfoot>
-            <tr className="border-t bg-muted/40">
-              <td className="py-2 pr-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={3}>
-                Total Hari Ini / Saldo Akhir
-              </td>
-              <td className="py-2 pr-3 text-right font-semibold">{rupiah(masuk)}</td>
-              <td className="py-2 pr-3 text-right font-semibold">{rupiah(keluar)}</td>
-              <td className="py-2 text-right font-semibold">{rupiah(saldoAkhir)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </section>
-    </AppShell>
-  );
-}
+                <tr>
+                  <td>Bulan</td>
+                  <td className="font-semibold">{BULAN[(m ?? 1) - 1]}</td>
+                </tr>
+                <tr>
+                  <td>Tahun</td>
+                  <td className="font-semibold">{y}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table className="kas-info">
+              <tbody>
+                <tr>
+                  <td className="w-32">Saldo Awal</td>
+                  <td className="text-right font-semibold">{angka(saldoAwal)}</td>
+                </tr>
+                <tr>
+                  <td>Total Debit</td>
+                  <td className="text-right font-semibold">{angka(totalDebit)}</td>
+                </tr>
+                <tr>
+                  <td>Total Kredit</td>
+                  <td className="text-right font-semibold">{angka(totalKredit)}</td>
+                </tr>
+                <tr>
+                  <td>Saldo Akhir</td>
+                  <td className="text-right font-bold">{angka(saldoAkhir)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "in" | "out" }) {
-  return (
-    <div className="panel p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p
-        className={
-          "mt-1 text-xl font-semibold " +
-          (tone === "in" ? "text-emerald-600" : tone === "out" ? "text-destructive" : "")
-        }
-      >
-        {value}
-      </p>
-    </div>
+          <table className="warta-table mt-3 w-full">
+            <thead>
+              <tr>
+                <th className="w-10 text-left">No</th>
+                <th className="w-24 text-left">Tanggal</th>
+                <th className="w-24 text-left">Mata Anggaran</th>
+                <th className="w-56 text-left">Nama Mata Anggaran</th>
+                <th className="text-left">Keterangan</th>
+                <th className="w-28 text-right">Debit</th>
+                <th className="w-28 text-right">Kredit</th>
+                <th className="w-32 text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="font-bold">
+                <td />
+                <td />
+                <td />
+                <td>Saldo Awal</td>
+                <td />
+                <td />
+                <td />
+                <td className="text-right">{angka(saldoAwal)}</td>
+              </tr>
+              {baris.map((b) => (
+                <tr key={b.t.id}>
+                  <td>{b.no}</td>
+                  <td className="whitespace-nowrap">{b.no === 1 ? `${d} ${BULAN[(m ?? 1) - 1]}` : ""}</td>
+                  <td className="whitespace-nowrap font-mono">{b.t.budget_lines?.code}</td>
+                  <td>{b.t.budget_lines?.name}</td>
+                  <td>
+                    {b.t.description}
+                    {b.t.koreksi_catatan && (
+                      <span className="ml-1 italic text-[0.72rem]">({b.t.koreksi_catatan})</span>
+                    )}
+                  </td>
+                  <td className="text-right">{b.debit ? angka(b.debit) : ""}</td>
+                  <td className="text-right">{b.kredit ? angka(b.kredit) : ""}</td>
+                  <td className="text-right">{angka(b.saldo)}</td>
+                </tr>
+              ))}
+              {baris.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-6 text-center text-muted-foreground">
+                    {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi pada tanggal ini."}
+                  </td>
+                </tr>
+              )}
+              <tr className="font-bold">
+                <td colSpan={5}>TOTAL</td>
+                <td className="text-right">{angka(totalDebit)}</td>
+                <td className="text-right">{angka(totalKredit)}</td>
+                <td className="text-right">{angka(saldoAkhir)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="mt-8 flex justify-between text-xs">
+            <div className="text-center">
+              <p>Mengetahui,</p>
+              <p className="font-semibold">Ketua BPMJ</p>
+              <p className="mt-12">(…………………………………)</p>
+            </div>
+            <div className="text-center">
+              <p>Tikala Baru, {`${d} ${BULAN[(m ?? 1) - 1]} ${y}`}</p>
+              <p className="font-semibold">Bendahara</p>
+              <p className="mt-12">(…………………………………)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppShell>
   );
 }

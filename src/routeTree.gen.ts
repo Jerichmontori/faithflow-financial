@@ -14,7 +14,9 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAnggaranRouteImport } from './routes/_authenticated/anggaran'
 import { Route as AuthenticatedBukuPembantuRouteImport } from './routes/_authenticated/buku-pembantu'
+import { Route as AuthenticatedDanaDukaRouteImport } from './routes/_authenticated/dana-duka'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedKoreksiRouteImport } from './routes/_authenticated/koreksi'
 import { Route as AuthenticatedLaporanRouteImport } from './routes/_authenticated/laporan'
 import { Route as AuthenticatedLaporanBankRouteImport } from './routes/_authenticated/laporan-bank'
 import { Route as AuthenticatedLaporanHarianRouteImport } from './routes/_authenticated/laporan-harian'
@@ -51,9 +53,19 @@ const AuthenticatedBukuPembantuRoute =
     path: '/buku-pembantu',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDanaDukaRoute = AuthenticatedDanaDukaRouteImport.update({
+  id: '/dana-duka',
+  path: '/dana-duka',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedKoreksiRoute = AuthenticatedKoreksiRouteImport.update({
+  id: '/koreksi',
+  path: '/koreksi',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLaporanRoute = AuthenticatedLaporanRouteImport.update({
@@ -117,7 +129,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/anggaran': typeof AuthenticatedAnggaranRoute
   '/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
+  '/dana-duka': typeof AuthenticatedDanaDukaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/koreksi': typeof AuthenticatedKoreksiRoute
   '/laporan': typeof AuthenticatedLaporanRoute
   '/laporan-bank': typeof AuthenticatedLaporanBankRoute
   '/laporan-harian': typeof AuthenticatedLaporanHarianRoute
@@ -134,7 +148,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/anggaran': typeof AuthenticatedAnggaranRoute
   '/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
+  '/dana-duka': typeof AuthenticatedDanaDukaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/koreksi': typeof AuthenticatedKoreksiRoute
   '/laporan': typeof AuthenticatedLaporanRoute
   '/laporan-bank': typeof AuthenticatedLaporanBankRoute
   '/laporan-harian': typeof AuthenticatedLaporanHarianRoute
@@ -153,7 +169,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/anggaran': typeof AuthenticatedAnggaranRoute
   '/_authenticated/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
+  '/_authenticated/dana-duka': typeof AuthenticatedDanaDukaRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/koreksi': typeof AuthenticatedKoreksiRoute
   '/_authenticated/laporan': typeof AuthenticatedLaporanRoute
   '/_authenticated/laporan-bank': typeof AuthenticatedLaporanBankRoute
   '/_authenticated/laporan-harian': typeof AuthenticatedLaporanHarianRoute
@@ -172,7 +190,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/anggaran'
     | '/buku-pembantu'
+    | '/dana-duka'
     | '/dashboard'
+    | '/koreksi'
     | '/laporan'
     | '/laporan-bank'
     | '/laporan-harian'
@@ -189,7 +209,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/anggaran'
     | '/buku-pembantu'
+    | '/dana-duka'
     | '/dashboard'
+    | '/koreksi'
     | '/laporan'
     | '/laporan-bank'
     | '/laporan-harian'
@@ -207,7 +229,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/anggaran'
     | '/_authenticated/buku-pembantu'
+    | '/_authenticated/dana-duka'
     | '/_authenticated/dashboard'
+    | '/_authenticated/koreksi'
     | '/_authenticated/laporan'
     | '/_authenticated/laporan-bank'
     | '/_authenticated/laporan-harian'
@@ -263,11 +287,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBukuPembantuRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dana-duka': {
+      id: '/_authenticated/dana-duka'
+      path: '/dana-duka'
+      fullPath: '/dana-duka'
+      preLoaderRoute: typeof AuthenticatedDanaDukaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/koreksi': {
+      id: '/_authenticated/koreksi'
+      path: '/koreksi'
+      fullPath: '/koreksi'
+      preLoaderRoute: typeof AuthenticatedKoreksiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/laporan': {
@@ -346,7 +384,9 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnggaranRoute: typeof AuthenticatedAnggaranRoute
   AuthenticatedBukuPembantuRoute: typeof AuthenticatedBukuPembantuRoute
+  AuthenticatedDanaDukaRoute: typeof AuthenticatedDanaDukaRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedKoreksiRoute: typeof AuthenticatedKoreksiRoute
   AuthenticatedLaporanRoute: typeof AuthenticatedLaporanRoute
   AuthenticatedLaporanBankRoute: typeof AuthenticatedLaporanBankRoute
   AuthenticatedLaporanHarianRoute: typeof AuthenticatedLaporanHarianRoute
@@ -362,7 +402,9 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnggaranRoute: AuthenticatedAnggaranRoute,
   AuthenticatedBukuPembantuRoute: AuthenticatedBukuPembantuRoute,
+  AuthenticatedDanaDukaRoute: AuthenticatedDanaDukaRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedKoreksiRoute: AuthenticatedKoreksiRoute,
   AuthenticatedLaporanRoute: AuthenticatedLaporanRoute,
   AuthenticatedLaporanBankRoute: AuthenticatedLaporanBankRoute,
   AuthenticatedLaporanHarianRoute: AuthenticatedLaporanHarianRoute,
