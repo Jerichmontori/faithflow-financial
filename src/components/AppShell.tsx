@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Newspaper,
   LayoutDashboard,
   ArrowDownCircle,
   ArrowUpCircle,
@@ -33,6 +34,7 @@ const NAV = [
   { to: "/laporan-harian", label: "Laporan Harian Kas", icon: CalendarClock },
   { to: "/rincian-uang", label: "Rincian Uang", icon: Coins },
   { to: "/laporan", label: "Laporan Kolom", icon: FileSpreadsheet },
+  { to: "/warta", label: "Warta Keuangan", icon: Newspaper },
   { to: "/laporan-bank", label: "Laporan Bank", icon: Landmark },
   { to: "/reklas", label: "Pengembalian / Reklas", icon: Undo2 },
   { to: "/anggaran", label: "Mata Anggaran", icon: Wallet },
