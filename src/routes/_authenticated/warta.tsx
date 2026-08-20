@@ -72,8 +72,8 @@ const plusHari = (s: string, n: number) => {
 };
 
 type Baris =
-  | { tipe: "grup"; nama: string; key: string }
-  | { tipe: "trx"; trx: Transaction; key: string; saldo: number; tanggal: string | null };
+  | { tipe: "grup"; nama: string; key: string; tanggal: string | null }
+  | { tipe: "trx"; trx: Transaction; key: string; saldo: number };
 
 function WartaPage() {
   const trx = useQuery(transactionsQuery);
@@ -113,15 +113,16 @@ function WartaPage() {
     let grupAktif = "";
 
     for (const t of rentang) {
-      const tanggalBaru = t.trx_date !== tglAktif;
-      if (tanggalBaru) {
+      let tanggalBaris: string | null = null;
+      if (t.trx_date !== tglAktif) {
         tglAktif = t.trx_date;
         grupAktif = "";
+        tanggalBaris = t.trx_date;
       }
       const nama = t.budget_lines ? t.budget_lines.name : t.category || "Lain-lain";
       if (nama !== grupAktif) {
         grupAktif = nama;
-        out.push({ tipe: "grup", nama, key: `g-${t.id}` });
+        out.push({ tipe: "grup", nama, key: `g-${t.id}`, tanggal: tanggalBaris });
       }
       const nilai = Number(t.amount);
       if (t.kind === "penerimaan") {
@@ -131,23 +132,7 @@ function WartaPage() {
         saldo -= nilai;
         keluar += nilai;
       }
-      out.push({
-        tipe: "trx",
-        trx: t,
-        key: t.id,
-        saldo,
-        tanggal: tanggalBaru ? t.trx_date : null,
-      });
-      if (tanggalBaru) {
-        // tanggal ditempel pada baris grup pertama tanggal tersebut
-        const idxGrup = out.length - 2;
-        const g = out[idxGrup];
-        if (g && g.tipe === "grup") {
-          out[out.length - 1] = { ...(out[out.length - 1] as Baris & { tipe: "trx" }), tanggal: null };
-          out[idxGrup] = { ...g, key: `${g.key}-${t.trx_date}` };
-          (out[idxGrup] as unknown as { tanggal?: string }).tanggal = t.trx_date;
-        }
-      }
+      out.push({ tipe: "trx", trx: t, key: t.id, saldo });
     }
     return { baris: out, totalMasuk: masuk, totalKeluar: keluar };
   }, [rentang, saldoAwal]);
@@ -186,9 +171,7 @@ function WartaPage() {
             b.tipe === "grup" ? (
               <tr key={b.key}>
                 <td className="whitespace-nowrap font-semibold">
-                  {(b as unknown as { tanggal?: string }).tanggal
-                    ? tglPendek((b as unknown as { tanggal: string }).tanggal)
-                    : ""}
+                  {b.tanggal ? tglPendek(b.tanggal) : ""}
                 </td>
                 <td className="font-bold">{b.nama}</td>
                 <td />

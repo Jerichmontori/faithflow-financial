@@ -24,6 +24,7 @@ import { Route as AuthenticatedPenggunaRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedRekapitulasiRouteImport } from './routes/_authenticated/rekapitulasi'
 import { Route as AuthenticatedReklasRouteImport } from './routes/_authenticated/reklas'
 import { Route as AuthenticatedRincianUangRouteImport } from './routes/_authenticated/rincian-uang'
+import { Route as AuthenticatedWartaRouteImport } from './routes/_authenticated/warta'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -105,6 +106,11 @@ const AuthenticatedRincianUangRoute =
     path: '/rincian-uang',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedWartaRoute = AuthenticatedWartaRouteImport.update({
+  id: '/warta',
+  path: '/warta',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
   '/reklas': typeof AuthenticatedReklasRoute
   '/rincian-uang': typeof AuthenticatedRincianUangRoute
+  '/warta': typeof AuthenticatedWartaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
   '/reklas': typeof AuthenticatedReklasRoute
   '/rincian-uang': typeof AuthenticatedRincianUangRoute
+  '/warta': typeof AuthenticatedWartaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/_authenticated/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
   '/_authenticated/reklas': typeof AuthenticatedReklasRoute
   '/_authenticated/rincian-uang': typeof AuthenticatedRincianUangRoute
+  '/_authenticated/warta': typeof AuthenticatedWartaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/rekapitulasi'
     | '/reklas'
     | '/rincian-uang'
+    | '/warta'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/rekapitulasi'
     | '/reklas'
     | '/rincian-uang'
+    | '/warta'
   id:
     | '__root__'
     | '/'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rekapitulasi'
     | '/_authenticated/reklas'
     | '/_authenticated/rincian-uang'
+    | '/_authenticated/warta'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -321,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRincianUangRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/warta': {
+      id: '/_authenticated/warta'
+      path: '/warta'
+      fullPath: '/warta'
+      preLoaderRoute: typeof AuthenticatedWartaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -337,6 +356,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRekapitulasiRoute: typeof AuthenticatedRekapitulasiRoute
   AuthenticatedReklasRoute: typeof AuthenticatedReklasRoute
   AuthenticatedRincianUangRoute: typeof AuthenticatedRincianUangRoute
+  AuthenticatedWartaRoute: typeof AuthenticatedWartaRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -352,6 +372,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRekapitulasiRoute: AuthenticatedRekapitulasiRoute,
   AuthenticatedReklasRoute: AuthenticatedReklasRoute,
   AuthenticatedRincianUangRoute: AuthenticatedRincianUangRoute,
+  AuthenticatedWartaRoute: AuthenticatedWartaRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
