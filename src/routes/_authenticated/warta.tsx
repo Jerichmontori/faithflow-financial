@@ -97,6 +97,7 @@ function WartaPage() {
         .filter((t) => t.trx_date >= dari && t.trx_date <= sampai)
         .sort(
           (a, b) =>
+            (a.kind === "pengeluaran" ? 1 : 0) - (b.kind === "pengeluaran" ? 1 : 0) ||
             a.trx_date.localeCompare(b.trx_date) ||
             (a.budget_lines?.name ?? "").localeCompare(b.budget_lines?.name ?? "") ||
             a.voucher_no.localeCompare(b.voucher_no),
