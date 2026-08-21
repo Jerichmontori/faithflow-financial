@@ -23,14 +23,16 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(trx.amount));
   const [description, setDescription] = useState(trx.description ?? "");
+  const [paymentMethod, setPaymentMethod] = useState(trx.payment_method || "cash");
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) {
       setAmount(String(trx.amount));
       setDescription(trx.description ?? "");
+      setPaymentMethod(trx.payment_method || "cash");
     }
-  }, [open, trx.amount, trx.description]);
+  }, [open, trx.amount, trx.description, trx.payment_method]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -38,7 +40,7 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
       if (!Number.isFinite(nominal) || nominal <= 0) throw new Error("Nominal harus lebih dari 0");
       const { error } = await supabase
         .from("transactions")
-        .update({ amount: nominal, description })
+        .update({ amount: nominal, description, payment_method: paymentMethod })
         .eq("id", trx.id);
       if (error) throw error;
     },
@@ -86,6 +88,18 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="koreksi-metode">Metode Pembayaran / Sumber Kas</Label>
+            <select
+              id="koreksi-metode"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="cash">💵 Kas Fisik (Tunai)</option>
+              <option value="transfer">🏦 Bank / Non-Tunai (Tidak Kurangi Fisik)</option>
+            </select>
           </div>
         </div>
         <DialogFooter>

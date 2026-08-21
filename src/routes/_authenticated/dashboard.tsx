@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { ArrowDownCircle, ArrowUpCircle, Landmark, CalendarRange, Info, Calendar } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
+import { budgetLinesQuery, transactionsQuery, isInternalCash, isCashPayment } from "@/lib/queries";
 import { rupiah, rupiahShort, namaBulan, tanggal } from "@/lib/format";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -111,17 +111,17 @@ function DashboardPage() {
   const keluar = rows.filter((t) => t.kind === "pengeluaran" && t.status === "approved");
 
   // SALDO KAS FISIK MINGGU BERJALAN:
-  // Transaksi dari tanggal setelah warta terakhir (misal: 15 Agustus) sampai hari ini
+  // Hanya transaksi KAS FISIK (Tunai) — Pengeluaran Bank tidak mengurangi kas fisik
   const masukMingguBerjalan = sum(
-    masuk.filter((t) => t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
+    masuk.filter((t) => isCashPayment(t) && t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
   );
   const keluarMingguBerjalan = sum(
-    keluar.filter((t) => t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
+    keluar.filter((t) => isCashPayment(t) && t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
   );
   const saldoKasFisikBerjalan = masukMingguBerjalan - keluarMingguBerjalan;
 
-  const masukHariIni = sum(masuk.filter((t) => t.trx_date === today));
-  const keluarHariIni = sum(keluar.filter((t) => t.trx_date === today));
+  const masukHariIni = sum(masuk.filter((t) => isCashPayment(t) && t.trx_date === today));
+  const keluarHariIni = sum(keluar.filter((t) => isCashPayment(t) && t.trx_date === today));
 
   const bulanIni = (t: (typeof rows)[number]) => {
     const d = new Date(t.trx_date);

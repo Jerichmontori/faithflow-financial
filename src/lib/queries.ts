@@ -50,6 +50,15 @@ export const isReklas = (t: Transaction) =>
   Boolean(t.koreksi_dari?.toLowerCase().includes("reklas")) ||
   REKLAS_VOUCHERS.includes(t.voucher_no);
 
+/** Menentukan apakah transaksi adalah non-tunai / Bank (Transfer / Giro) */
+export const isBankPayment = (t: Transaction) => {
+  const m = t.payment_method?.toLowerCase()?.trim();
+  return m === "transfer" || m === "bank" || m === "non_tunai" || m === "debit";
+};
+
+/** Menentukan apakah transaksi adalah Kas Fisik (Tunai / Kasir) */
+export const isCashPayment = (t: Transaction) => !isBankPayment(t);
+
 export const budgetLinesQuery = queryOptions({
   queryKey: ["budget_lines"],
   queryFn: async (): Promise<BudgetLine[]> => {

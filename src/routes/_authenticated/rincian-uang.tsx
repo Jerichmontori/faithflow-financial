@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { transactionsQuery, isInternalCash } from "@/lib/queries";
+import { transactionsQuery, isInternalCash, isCashPayment } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { normalizeDateInput } from "@/components/ui/date-input";
 import { exportAoa } from "@/lib/xlsx";
@@ -151,24 +151,24 @@ function RincianUangPage() {
     [trx.data],
   );
 
-  // 1. Saldo Kas Minggu Berjalan (15 Ags s/d date) -> Rp 8.446.000
+  // 1. Saldo Kas Minggu Berjalan (15 Ags s/d date)
   const saldoKasMingguBerjalan = useMemo(() => {
     const masuk = all
-      .filter((t) => t.kind === "penerimaan" && t.trx_date >= tglMulaiKasMinggu && t.trx_date <= date)
+      .filter((t) => t.kind === "penerimaan" && isCashPayment(t) && t.trx_date >= tglMulaiKasMinggu && t.trx_date <= date)
       .reduce((a, t) => a + Number(t.amount || 0), 0);
     const keluar = all
-      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && t.trx_date >= tglMulaiKasMinggu && t.trx_date <= date)
+      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && isCashPayment(t) && t.trx_date >= tglMulaiKasMinggu && t.trx_date <= date)
       .reduce((a, t) => a + Number(t.amount || 0), 0);
     return masuk - keluar;
   }, [all, tglMulaiKasMinggu, date]);
 
-  // 2. Saldo Kas Kumulatif (Awal tahun s/d date) -> Rp 4.878.000
+  // 2. Saldo Kas Kumulatif (Awal tahun s/d date)
   const saldoKasKumulatif = useMemo(() => {
     const masuk = all
-      .filter((t) => t.kind === "penerimaan" && t.trx_date <= date)
+      .filter((t) => t.kind === "penerimaan" && isCashPayment(t) && t.trx_date <= date)
       .reduce((a, t) => a + Number(t.amount || 0), 0);
     const keluar = all
-      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && t.trx_date <= date)
+      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && isCashPayment(t) && t.trx_date <= date)
       .reduce((a, t) => a + Number(t.amount || 0), 0);
     return masuk - keluar;
   }, [all, date]);
@@ -176,10 +176,10 @@ function RincianUangPage() {
   // 3. Saldo Kas Hari Ini (Khusus tanggal terpilih)
   const saldoKasHarian = useMemo(() => {
     const masuk = all
-      .filter((t) => t.kind === "penerimaan" && t.trx_date === date)
+      .filter((t) => t.kind === "penerimaan" && isCashPayment(t) && t.trx_date === date)
       .reduce((a, t) => a + Number(t.amount || 0), 0);
     const keluar = all
-      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && t.trx_date === date)
+      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && isCashPayment(t) && t.trx_date === date)
       .reduce((a, t) => a + Number(t.amount || 0), 0);
     return masuk - keluar;
   }, [all, date]);

@@ -47,6 +47,7 @@ const schema = z.object({
   amount: z.number().positive("Nominal harus lebih dari 0").max(1_000_000_000_000),
   description: z.string().trim().max(500),
   payee: z.string().trim().max(150).optional(),
+  payment_method: z.string().optional().nullable(),
 });
 
 const DAFTAR_KOLOM = Array.from({ length: 29 }, (_, i) => i + 1);
@@ -112,6 +113,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     amount: "",
     description: "",
     payee: "",
+    payment_method: "cash",
   });
 
   const resetState = () => {
@@ -122,6 +124,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       amount: "",
       description: "",
       payee: "",
+      payment_method: "cash",
     });
     setItems([{ description: "", amount: "" }]);
     setBudgetOpen(false);
@@ -368,7 +371,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
           amount: parsed.amount,
           description: parsed.description,
           payee: kind === "pengeluaran" ? (parsed.payee ?? null) : null,
-          payment_method: null,
+          payment_method: parsed.payment_method || "cash",
           attachment_url: null,
           status: "approved" as const,
           created_by: user!.id,
@@ -1237,21 +1240,54 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </div>
           ) : (
             <>
-              <div className="space-y-1.5">
-                <Label htmlFor="nominal" className="text-xs font-semibold">
-                  Nominal (Rp) <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="nominal"
-                  type="number"
-                  min={1}
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  placeholder="0"
-                  required
-                  className="h-9 font-mono"
-                />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nominal" className="text-xs font-semibold">
+                    Nominal (Rp) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="nominal"
+                    type="number"
+                    min={1}
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                    placeholder="0"
+                    required
+                    className="h-9 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="metode" className="text-xs font-semibold">
+                    Metode / Sumber Dana <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={form.payment_method || "cash"}
+                    onValueChange={(val) => setForm({ ...form, payment_method: val })}
+                  >
+                    <SelectTrigger id="metode" className="h-9 text-xs bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash" className="text-xs">
+                        💵 Kas Fisik (Tunai / Brankas)
+                      </SelectItem>
+                      <SelectItem value="transfer" className="text-xs">
+                        🏦 Bank / Transfer (Tidak Kurangi Fisik)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {form.payment_method === "transfer" && (
+                <div className="rounded-md bg-blue-50 border border-blue-200 p-2.5 text-[11px] text-blue-800 flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-blue-600 shrink-0" />
+                  <span>
+                    Pengeluaran via <strong>Bank / Transfer</strong> dicatat pada Laporan Bank dan <strong>TIDAK MENGURANGI Saldo Kas Fisik</strong> di brankas/kasir.
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="penerima" className="text-xs font-semibold">Penerima</Label>

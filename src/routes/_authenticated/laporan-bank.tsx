@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
-import { transactionsQuery, INTERNAL_CASH_CODES, isReklas, type Transaction } from "@/lib/queries";
+import { transactionsQuery, INTERNAL_CASH_CODES, isReklas, isBankPayment, type Transaction } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,8 @@ export const Route = createFileRoute("/_authenticated/laporan-bank")({
         property: "og:description",
         content: "Dashboard mutasi bank berdasarkan mata anggaran kas masuk dan kas keluar.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LaporanBankPage,
@@ -42,9 +44,13 @@ const BULAN = [
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
 
-/** Kas Masuk (kas gereja bertambah) = penarikan dari bank → pengeluaran bank.
- *  Kas Keluar (kas gereja berkurang) = setoran ke bank → pemasukan bank. */
-const isBankIn = (t: Transaction) => t.budget_lines?.code === "2.2.22.22";
+/** Pemasukan ke Rekening Bank: Setoran Kas ke Bank (2.2.22.22) atau Penerimaan via Transfer */
+const isBankIn = (t: Transaction) =>
+  t.budget_lines?.code === "2.2.22.22" || (t.kind === "penerimaan" && isBankPayment(t));
+
+/** Pengeluaran dari Rekening Bank: Tarikan Tunai (1.1.11.11) atau Belanja langsung via Transfer */
+const isBankOut = (t: Transaction) =>
+  t.budget_lines?.code === "1.1.11.11" || (t.kind === "pengeluaran" && isBankPayment(t));
 
 function LaporanBankPage() {
   const trx = useQuery(transactionsQuery);
@@ -69,7 +75,7 @@ function LaporanBankPage() {
     return (trx.data ?? [])
       .filter(
         (t) =>
-          INTERNAL_CASH_CODES.includes(t.budget_lines?.code ?? "") &&
+          (INTERNAL_CASH_CODES.includes(t.budget_lines?.code ?? "") || isBankPayment(t)) &&
           !isReklas(t) &&
           t.status !== "rejected" &&
           t.status !== "draft" &&
@@ -88,7 +94,7 @@ function LaporanBankPage() {
   }, [trx.data, start, end, q]);
 
   const totalIn = rows.filter(isBankIn).reduce((a, t) => a + Number(t.amount), 0);
-  const totalOut = rows.filter((t) => !isBankIn(t)).reduce((a, t) => a + Number(t.amount), 0);
+  const totalOut = rows.filter(isBankOut).reduce((a, t) => a + Number(t.amount), 0);
 
   const chart = useMemo(() => {
     const map = new Map<string, { name: string; masuk: number; keluar: number }>();
@@ -98,7 +104,7 @@ function LaporanBankPage() {
       const item =
         map.get(key) ?? { name: `${BULAN[d.getMonth()]} ${d.getFullYear()}`, masuk: 0, keluar: 0 };
       if (isBankIn(t)) item.masuk += Number(t.amount);
-      else item.keluar += Number(t.amount);
+      if (isBankOut(t)) item.keluar += Number(t.amount);
       map.set(key, item);
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
@@ -107,7 +113,7 @@ function LaporanBankPage() {
   let saldo = saldoAwalNum;
   const ledger = rows.map((t) => {
     const masuk = isBankIn(t) ? Number(t.amount) : 0;
-    const keluar = isBankIn(t) ? 0 : Number(t.amount);
+    const keluar = isBankOut(t) ? Number(t.amount) : 0;
     saldo += masuk - keluar;
     return { t, masuk, keluar, saldo };
   });
