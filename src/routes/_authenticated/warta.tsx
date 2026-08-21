@@ -111,7 +111,7 @@ function WartaPage() {
   const saldoAwal = useMemo(
     () =>
       all
-        .filter((t) => t.trx_date < dari && isCashPayment(t) && !isInternalCash(t) && t.status !== "rejected")
+        .filter((t) => t.trx_date < dari && isCashPayment(t) && t.status !== "rejected")
         .reduce((a, t) => a + (t.kind === "penerimaan" ? Number(t.amount) : -Number(t.amount)), 0),
     [all, dari],
   );
@@ -174,7 +174,7 @@ function WartaPage() {
         out.push({ tipe: "grup", nama, key: `g-${t.id}`, tanggal: tanggalBaris });
       }
       const nilai = Number(t.amount);
-      if (isCashPayment(t) && !isInternalCash(t)) {
+      if (isCashPayment(t)) {
         if (t.kind === "penerimaan") {
           saldo += nilai;
           masuk += nilai;

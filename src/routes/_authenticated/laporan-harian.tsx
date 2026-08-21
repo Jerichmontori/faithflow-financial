@@ -65,7 +65,7 @@ function LaporanHarianPage() {
   const saldoAwal = useMemo(
     () =>
       all
-        .filter((t) => t.trx_date < date && isCashPayment(t) && !isInternalCash(t) && t.status !== "rejected")
+        .filter((t) => t.trx_date < date && isCashPayment(t) && t.status !== "rejected")
         .reduce((a, t) => a + (t.kind === "penerimaan" ? Number(t.amount) : -Number(t.amount)), 0),
     [all, date],
   );
@@ -96,10 +96,10 @@ function LaporanHarianPage() {
   );
 
   const totalDebit = harian
-    .filter((t) => t.kind === "penerimaan" && isCashPayment(t) && !isInternalCash(t))
+    .filter((t) => t.kind === "penerimaan" && isCashPayment(t))
     .reduce((a, t) => a + Number(t.amount), 0);
   const totalKredit = harian
-    .filter((t) => t.kind === "pengeluaran" && isCashPayment(t) && !isInternalCash(t))
+    .filter((t) => t.kind === "pengeluaran" && isCashPayment(t))
     .reduce((a, t) => a + Number(t.amount), 0);
   const saldoAkhir = saldoAwal + totalDebit - totalKredit;
 
@@ -107,7 +107,7 @@ function LaporanHarianPage() {
     let saldo = saldoAwal;
     return rows.map((t, i) => {
       const nilai = Number(t.amount);
-      const isFisik = isCashPayment(t) && !isInternalCash(t);
+      const isFisik = isCashPayment(t);
       if (isFisik) {
         saldo += t.kind === "penerimaan" ? nilai : -nilai;
       }

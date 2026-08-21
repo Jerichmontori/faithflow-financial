@@ -147,7 +147,7 @@ function RincianUangPage() {
   }, [date]);
 
   const all = useMemo(
-    () => (trx.data ?? []).filter((t) => t.status !== "rejected" && !isInternalCash(t)),
+    () => (trx.data ?? []).filter((t) => t.status !== "rejected"),
     [trx.data],
   );
 

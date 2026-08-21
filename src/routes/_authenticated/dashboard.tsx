@@ -96,7 +96,8 @@ function DashboardPage() {
     }
   }, [tglTerakhirWarta]);
 
-  const rows = (trx.data ?? []).filter((t) => t.status !== "rejected" && !isInternalCash(t));
+  const allRows = (trx.data ?? []).filter((t) => t.status !== "rejected");
+  const budgetRows = allRows.filter((t) => !isInternalCash(t));
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
 
@@ -106,39 +107,39 @@ function DashboardPage() {
     [tglTerakhirWarta],
   );
 
-  const sum = (list: typeof rows) => list.reduce((a, t) => a + Number(t.amount), 0);
-  const masuk = rows.filter((t) => t.kind === "penerimaan");
-  const keluar = rows.filter((t) => t.kind === "pengeluaran" && t.status === "approved");
+  const sum = (list: typeof allRows) => list.reduce((a, t) => a + Number(t.amount), 0);
+  const masukBudget = budgetRows.filter((t) => t.kind === "penerimaan");
+  const keluarBudget = budgetRows.filter((t) => t.kind === "pengeluaran" && t.status === "approved");
 
   // SALDO KAS FISIK MINGGU BERJALAN:
-  // Hanya transaksi KAS FISIK (Tunai) — Pengeluaran Bank tidak mengurangi kas fisik
+  // Seluruh mutasi kas fisik tunai (termasuk setoran fisik kas keluar ke bank 2.2.22.22)
   const masukMingguBerjalan = sum(
-    masuk.filter((t) => isCashPayment(t) && t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
+    allRows.filter((t) => t.kind === "penerimaan" && isCashPayment(t) && t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
   );
   const keluarMingguBerjalan = sum(
-    keluar.filter((t) => isCashPayment(t) && t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
+    allRows.filter((t) => t.kind === "pengeluaran" && t.status === "approved" && isCashPayment(t) && t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
   );
   const saldoKasFisikBerjalan = masukMingguBerjalan - keluarMingguBerjalan;
 
-  const masukHariIni = sum(masuk.filter((t) => isCashPayment(t) && t.trx_date === today));
-  const keluarHariIni = sum(keluar.filter((t) => isCashPayment(t) && t.trx_date === today));
+  const masukHariIni = sum(allRows.filter((t) => t.kind === "penerimaan" && isCashPayment(t) && t.trx_date === today));
+  const keluarHariIni = sum(allRows.filter((t) => t.kind === "pengeluaran" && t.status === "approved" && isCashPayment(t) && t.trx_date === today));
 
-  const bulanIni = (t: (typeof rows)[number]) => {
+  const bulanIni = (t: (typeof allRows)[number]) => {
     const d = new Date(t.trx_date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   };
-  const totalBulan = sum(masuk.filter(bulanIni)) - sum(keluar.filter(bulanIni));
+  const totalBulan = sum(masukBudget.filter(bulanIni)) - sum(keluarBudget.filter(bulanIni));
   const pending = (trx.data ?? []).filter((t) => t.status === "pending");
 
   const chart = Array.from({ length: 12 }, (_, i) => ({
     bulan: namaBulan(i),
-    pendapatan: sum(masuk.filter((t) => new Date(t.trx_date).getMonth() === i)),
-    pengeluaran: sum(keluar.filter((t) => new Date(t.trx_date).getMonth() === i)),
+    pendapatan: sum(masukBudget.filter((t) => new Date(t.trx_date).getMonth() === i)),
+    pengeluaran: sum(keluarBudget.filter((t) => new Date(t.trx_date).getMonth() === i)),
   }));
 
   const serapan = (budgets.data ?? [])
     .map((b) => {
-      const realisasi = sum(rows.filter((t) => t.budget_line_id === b.id && t.status !== "draft"));
+      const realisasi = sum(budgetRows.filter((t) => t.budget_line_id === b.id && t.status !== "draft"));
       const persen = b.planned_amount > 0 ? (realisasi / Number(b.planned_amount)) * 100 : 0;
       return { ...b, realisasi, persen };
     })
@@ -158,7 +159,7 @@ function DashboardPage() {
     for (const item of IBADAH) {
       const id = idByCode.get(item.code);
       row[item.label] = sum(
-        masuk.filter((t) => t.budget_line_id === id && new Date(t.trx_date).getMonth() === i),
+        masukBudget.filter((t) => t.budget_line_id === id && new Date(t.trx_date).getMonth() === i),
       );
     }
     return row;
