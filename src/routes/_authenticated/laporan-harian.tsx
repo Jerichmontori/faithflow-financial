@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Printer, FileDown } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { transactionsQuery, isInternalCash, isReklas } from "@/lib/queries";
+import { transactionsQuery, isInternalCash, isReklas, isCashPayment } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { exportAoa, type Cell } from "@/lib/xlsx";
 import { Input } from "@/components/ui/input";
@@ -61,11 +61,11 @@ function LaporanHarianPage() {
   const [y, m, d] = date.split("-").map(Number);
   const bulanNama = BULAN[(m ?? 1) - 1] ?? "";
 
-  /** Saldo awal = akumulasi seluruh mutasi kas sebelum tanggal terpilih */
+  /** Saldo awal = akumulasi seluruh mutasi kas fisik sebelum tanggal terpilih */
   const saldoAwal = useMemo(
     () =>
       all
-        .filter((t) => t.trx_date < date)
+        .filter((t) => t.trx_date < date && isCashPayment(t) && !isInternalCash(t) && t.status !== "rejected")
         .reduce((a, t) => a + (t.kind === "penerimaan" ? Number(t.amount) : -Number(t.amount)), 0),
     [all, date],
   );
@@ -73,7 +73,7 @@ function LaporanHarianPage() {
   const harian = useMemo(
     () =>
       all
-        .filter((t) => t.trx_date === date)
+        .filter((t) => t.trx_date === date && t.status !== "rejected")
         .sort(
           (a, b) =>
             (a.kind === "pengeluaran" ? 1 : 0) - (b.kind === "pengeluaran" ? 1 : 0) ||
@@ -96,10 +96,10 @@ function LaporanHarianPage() {
   );
 
   const totalDebit = harian
-    .filter((t) => t.kind === "penerimaan")
+    .filter((t) => t.kind === "penerimaan" && isCashPayment(t) && !isInternalCash(t))
     .reduce((a, t) => a + Number(t.amount), 0);
   const totalKredit = harian
-    .filter((t) => t.kind === "pengeluaran")
+    .filter((t) => t.kind === "pengeluaran" && isCashPayment(t) && !isInternalCash(t))
     .reduce((a, t) => a + Number(t.amount), 0);
   const saldoAkhir = saldoAwal + totalDebit - totalKredit;
 
@@ -107,13 +107,16 @@ function LaporanHarianPage() {
     let saldo = saldoAwal;
     return rows.map((t, i) => {
       const nilai = Number(t.amount);
-      saldo += t.kind === "penerimaan" ? nilai : -nilai;
+      const isFisik = isCashPayment(t) && !isInternalCash(t);
+      if (isFisik) {
+        saldo += t.kind === "penerimaan" ? nilai : -nilai;
+      }
       return {
         t,
         no: i + 1,
         saldo,
-        debit: t.kind === "penerimaan" ? nilai : 0,
-        kredit: t.kind === "pengeluaran" ? nilai : 0,
+        debit: t.kind === "penerimaan" && isFisik ? nilai : 0,
+        kredit: t.kind === "pengeluaran" && isFisik ? nilai : 0,
       };
     });
   }, [rows, saldoAwal]);

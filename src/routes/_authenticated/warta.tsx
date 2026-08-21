@@ -7,6 +7,8 @@ import {
   transactionsQuery,
   isInternalCash,
   isReklas,
+  isCashPayment,
+  isBankPayment,
   type Transaction,
 } from "@/lib/queries";
 import { rupiah } from "@/lib/format";
@@ -109,20 +111,23 @@ function WartaPage() {
   const saldoAwal = useMemo(
     () =>
       all
-        .filter((t) => t.trx_date < dari)
+        .filter((t) => t.trx_date < dari && isCashPayment(t) && !isInternalCash(t) && t.status !== "rejected")
         .reduce((a, t) => a + (t.kind === "penerimaan" ? Number(t.amount) : -Number(t.amount)), 0),
     [all, dari],
   );
 
-  /** Mutasi bank: kas keluar (setoran) = bank masuk, kas masuk (tarikan) = bank keluar */
+  /** Mutasi bank: setoran & penerimaan transfer = bank masuk; tarikan & pengeluaran transfer = bank keluar */
   const bankMutasi = (list: Transaction[]) =>
     list
-      .filter((t) => isInternalCash(t) && !isReklas(t))
+      .filter((t) => !isReklas(t) && t.status !== "rejected")
       .reduce(
         (acc, t) => {
           const n = Number(t.amount);
-          if (t.kind === "pengeluaran") acc.masuk += n;
-          else acc.keluar += n;
+          if (t.budget_lines?.code === "2.2.22.22" || (t.kind === "penerimaan" && isBankPayment(t))) {
+            acc.masuk += n;
+          } else if (t.budget_lines?.code === "1.1.11.11" || (t.kind === "pengeluaran" && isBankPayment(t))) {
+            acc.keluar += n;
+          }
           return acc;
         },
         { masuk: 0, keluar: 0 },
@@ -134,7 +139,7 @@ function WartaPage() {
   const rentang = useMemo(
     () =>
       all
-        .filter((t) => t.trx_date >= dari && t.trx_date <= sampai)
+        .filter((t) => t.trx_date >= dari && t.trx_date <= sampai && t.status !== "rejected")
         .sort(
           (a, b) =>
             a.trx_date.localeCompare(b.trx_date) ||
@@ -169,12 +174,14 @@ function WartaPage() {
         out.push({ tipe: "grup", nama, key: `g-${t.id}`, tanggal: tanggalBaris });
       }
       const nilai = Number(t.amount);
-      if (t.kind === "penerimaan") {
-        saldo += nilai;
-        masuk += nilai;
-      } else {
-        saldo -= nilai;
-        keluar += nilai;
+      if (isCashPayment(t) && !isInternalCash(t)) {
+        if (t.kind === "penerimaan") {
+          saldo += nilai;
+          masuk += nilai;
+        } else {
+          saldo -= nilai;
+          keluar += nilai;
+        }
       }
       out.push({ tipe: "trx", trx: t, key: t.id, saldo });
     }
