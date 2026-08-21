@@ -173,7 +173,7 @@ function LaporanPage() {
             if (t.kolom !== null) return false;
           } else if (kolomFilter.startsWith("nama:")) {
             if ((b?.grup || "") !== GRUP_NAMA_KOLOM) return false;
-            if (t.nama !== kolomFilter.slice(5)) return false;
+            if ((t.nama || "").toLowerCase() !== kolomFilter.slice(5).toLowerCase()) return false;
           } else if (String(t.kolom) !== kolomFilter) {
             return false;
           }

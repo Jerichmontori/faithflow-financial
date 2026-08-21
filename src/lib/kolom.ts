@@ -56,20 +56,57 @@ export const labelBulan = (bulan: number | null) =>
  * Abaikan perbedaan huruf kapital; samakan varian tulisan ke nama standar.
  */
 const NORMALISASI_NAMA: Array<[RegExp, string]> = [
-  [/^Lansia\s+Aras\b.*/i, "Lansia Aras"],
-  [/^PKB\s+Aras\b.*/i, "PKB ARAS"],
-  [/^Remaja\s+Aras\b.*/i, "Remaja Aras"],
+  // Lansia Rayon 1 - 5 & Aras (Case-Insensitive)
+  [/^Lansia\s+Rayon\s*0*1\b.*/i, "Lansia Rayon 1"],
+  [/^Lansia\s+Rayon\s*0*2\b.*/i, "Lansia Rayon 2"],
+  [/^Lansia\s+Rayon\s*0*3\b.*/i, "Lansia Rayon 3"],
+  [/^Lansia\s+Rayon\s*0*4\b.*/i, "Lansia Rayon 4"],
+  [/^Lansia\s+Rayon\s*0*5\b.*/i, "Lansia Rayon 5"],
+  [/^Lansia\s+(Aras|Rayon\s+Aras)\b.*/i, "Lansia Aras"],
+
+  // WKI
   [/^WKI\s+(Lidya|Lydia)\b.*/i, "WKI Lidya"],
   [/^WKI\s+(Ester|Easter)\b.*/i, "WKI Ester Eunike"],
   [/^WKI\s+(Marta|Martha)\b.*/i, "WKI Martha Maria"],
+  [/^WKI\s+(Debora|Deborah)\b.*/i, "WKI Debora"],
+  [/^WKI\s+(Sifra|Shifra)\b.*/i, "WKI Sifra"],
   [/^WKI\s+.*Monika\b.*/i, "WKI Monika"],
+  [/^WKI\s+.*Aras\b.*/i, "WKI Aras"],
+
+  // PKB
+  [/^PKB\s+(Musafir|Muzafir)\b.*/i, "PKB Musafir"],
+  [/^PKB\s+(Abraham|Ibrahim)\b.*/i, "PKB Abraham"],
+  [/^PKB\s+.*Aras\b.*/i, "PKB ARAS"],
+
+  // Pemuda & Remaja & ASM
+  [/^Pemuda\s+(Imanuel|Immanuel)\b.*/i, "Pemuda Imanuel"],
+  [/^Pemuda\s+(Baithany|Betania|Bethany)\b.*/i, "Pemuda Bethany"],
+  [/^Remaja\s+.*Aras\b.*/i, "Remaja Aras"],
+  [/^ASM\s+.*Aras\b.*/i, "ASM Aras"],
+  [/^Katekisasi\s+sidi\s+Baru\b.*/i, "Katekisasi Sidi Baru"],
 ];
 
+function toTitleCase(str: string): string {
+  return str
+    .split(/\s+/)
+    .map((word) => {
+      const lower = word.toLowerCase();
+      if (lower === "wki") return "WKI";
+      if (lower === "pkb") return "PKB";
+      if (lower === "asm") return "ASM";
+      if (lower === "bipra") return "BIPRA";
+      if (lower === "aras") return "Aras";
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
 function normalisasiNama(nama: string): string {
+  const trimmed = nama.trim();
   for (const [re, canonical] of NORMALISASI_NAMA) {
-    if (re.test(nama)) return canonical;
+    if (re.test(trimmed)) return canonical;
   }
-  return nama;
+  return toTitleCase(trimmed);
 }
 
 /**
