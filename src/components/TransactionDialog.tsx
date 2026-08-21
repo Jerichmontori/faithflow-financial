@@ -114,6 +114,41 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     payee: "",
   });
 
+  const resetState = () => {
+    setForm({
+      trx_date: new Date().toISOString().slice(0, 10),
+      category: "",
+      budget_line_id: "",
+      amount: "",
+      description: "",
+      payee: "",
+    });
+    setItems([{ description: "", amount: "" }]);
+    setBudgetOpen(false);
+    setPilihKolom("1");
+    setPilihBulan(String(new Date().getMonth()));
+    setRincianTanggal("");
+    setNamaPkbTerpilih(NAMA_PKB_ARAS[0]);
+    setNamaWkiTerpilih(NAMA_WKI_ARAS[0]);
+    setNamaLansiaTerpilih(NAMA_LANSIA_RAYON[0]);
+    setNamaPemudaTerpilih(NAMA_PEMUDA_ARAS[0]);
+    setJumlahDuka("1 Duka");
+    setKetDuka("");
+    setJumlahSampul("");
+    setPemberiSampul("");
+    setPbtkKeluarga("");
+    setPbtkKolom("1");
+    setPbtkBulan(String(new Date().getMonth()));
+    setPbtkPeriodeTeks("");
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      resetState();
+    }
+    setOpen(nextOpen);
+  };
+
   const options = useMemo(() => (budgets.data ?? []).filter((b) => b.kind === kind), [budgets.data, kind]);
   const selected = options.find((b) => b.id === form.budget_line_id);
 
@@ -352,7 +387,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   if (!canManageFinance) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm">
           {kind === "penerimaan" ? "Catat Penerimaan" : "Catat Pengeluaran"}
