@@ -195,10 +195,20 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     if (code === "3.3.03.01" || code === "1.3.55.01" || name.includes("dana duka") || name.includes("duka"))
       return "duka";
 
-    // 9. Sampul PBTK
+    // 9. Persembahan Sekolah (TK Bumotik & SD GMIM)
+    if (
+      code === "2.3.50.07" ||
+      code === "2.3.50.08" ||
+      name.includes("tk bumotik") ||
+      name.includes("sd gmim") ||
+      name.includes("sekolah")
+    )
+      return "sekolah";
+
+    // 10. Sampul PBTK
     if (code === "1.3.66.14") return "pbtk";
 
-    // 10. Sampul-Sampul Lainnya
+    // 11. Sampul-Sampul Lainnya
     if (code.startsWith("1.3.66.") || code === "4.3.64.00" || code === "1.3.50.06" || name.startsWith("sampul"))
       return "sampul_lain";
 
@@ -313,6 +323,13 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
         const jlhPart = jumlahSampul.trim() ? `${jumlahSampul.trim()} ` : "";
         const namaPart = pemberiSampul.trim() ? ` (${pemberiSampul.trim()})` : "";
         ket = `${jlhPart}${selected?.name || "Sampul"}${namaPart}`;
+        break;
+      }
+      case "sekolah": {
+        const isSd = selected?.code === "2.3.50.07" || selected?.name.toLowerCase().includes("sd");
+        const namaSekolah = isSd ? "SD GMIM 5" : "TK Bumotik";
+        const tglPart = rincianTanggal.trim() ? ` (${rincianTanggal.trim()})` : "";
+        ket = `${namaSekolah}${tglPart} Bulan ${bulanNama}`;
         break;
       }
       default:
@@ -1051,7 +1068,56 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                 </div>
               )}
 
-              {/* 9. MATA ANGGARAN UMUM */}
+              {/* 9. KHUSUS PERSEMBAHAN TK BUMOTIK & SD GMIM */}
+              {templateType === "sekolah" && (
+                <div className="space-y-3">
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">
+                        Tanggal Setoran / Ibadah <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Contoh: 4, 11 / 13, 20 / 25"
+                        className="h-8 text-xs bg-background font-medium"
+                      />
+                      <span className="text-[11px] text-muted-foreground block">
+                        Ketik tanggal-tanggal setoran (misal: 4, 11 atau 25)
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format {selected.name} {rincianTanggal.trim() ? `(${rincianTanggal.trim()})` : ""} Bulan {BULAN_PANJANG[Number(pilihBulan)]}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 10. MATA ANGGARAN UMUM */}
               {templateType === "umum" && (
                 <div className="space-y-2.5">
                   <div className="grid gap-2.5 sm:grid-cols-2">

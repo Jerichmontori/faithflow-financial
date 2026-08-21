@@ -160,6 +160,10 @@ export function standardizeDescription(text: string): string {
   clean = clean.replace(/\bpkb\b/gi, "PKB");
   clean = clean.replace(/\basm\b/gi, "ASM");
 
+  // 9. Standardisasi TK Bumotik & SD GMIM
+  clean = clean.replace(/\b(persembahan\s+)?tk\s+bumotik\b/gi, "TK Bumotik");
+  clean = clean.replace(/\b(persembahan\s+)?sd\s+gmim\s*(0*5|v)(\s+manado)?\b/gi, "SD GMIM 5");
+
   return clean;
 }
 
