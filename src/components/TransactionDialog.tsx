@@ -133,6 +133,40 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const options = useMemo(() => (budgets.data ?? []).filter((b) => b.kind === kind), [budgets.data, kind]);
   const selected = options.find((b) => b.id === form.budget_line_id);
 
+  // Fungsi helper untuk menerapkan format ke baris keterangan yang kosong tanpa mengganti yang sudah ada
+  const applyDescriptionToEmpty = (ket: string, targetBudgetId?: string) => {
+    if (targetBudgetId) {
+      setForm((f) => ({ ...f, budget_line_id: targetBudgetId }));
+    }
+
+    setItems((prev) => {
+      // Cari baris pertama yang keterangannya masih kosong
+      const emptyIndex = prev.findIndex((it) => it.description.trim() === "");
+
+      if (emptyIndex !== -1) {
+        // Isi baris kosong tersebut, pertahankan nominal jika ada
+        const targetRow = prev[emptyIndex]!;
+        const updated = [...prev];
+        updated[emptyIndex] = {
+          description: ket,
+          amount: targetRow.amount,
+        };
+        return updated;
+      }
+
+      // Jika semua baris yang ada sudah terisi dan masih kurang dari 5 baris, tambahkan baris baru
+      if (prev.length < 5) {
+        return [...prev, { description: ket, amount: "" }];
+      }
+
+      // Jika sudah mencapai 5 baris dan semuanya penuh
+      toast.warning("Maksimal 5 baris tercapai. Kosongkan salah satu baris untuk menerapkan keterangan baru.");
+      return prev;
+    });
+
+    toast.success(`Keterangan diterapkan: "${ket}"`);
+  };
+
   // Terapkan Asisten Kolom & BIPRA
   const terapkanKolom = () => {
     const preset = PRESET_KOLOM.find((p) => p.code === pilihPresetKolom);
@@ -147,13 +181,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       ket = `${preset?.prefix || "Setoran"} ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
     }
 
-    if (targetBudget) setForm((f) => ({ ...f, budget_line_id: targetBudget.id }));
-    setItems((prev) => {
-      if (prev.length === 0) return [{ description: ket, amount: "" }];
-      const first = prev[0];
-      return [{ description: ket, amount: first ? first.amount : "" }, ...prev.slice(1)];
-    });
-    toast.success(`Keterangan disesuaikan: "${ket}"`);
+    applyDescriptionToEmpty(ket, targetBudget?.id);
   };
 
   // Terapkan Asisten Dana Duka
@@ -165,13 +193,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     const extra = ketDuka.trim() ? ` - ${ketDuka.trim()}` : "";
     const ket = `Dana Duka Kolom ${pilihKolomDuka}${dukaCount}${extra}`;
 
-    if (targetBudget) setForm((f) => ({ ...f, budget_line_id: targetBudget.id }));
-    setItems((prev) => {
-      if (prev.length === 0) return [{ description: ket, amount: "" }];
-      const first = prev[0];
-      return [{ description: ket, amount: first ? first.amount : "" }, ...prev.slice(1)];
-    });
-    toast.success(`Keterangan disesuaikan: "${ket}"`);
+    applyDescriptionToEmpty(ket, targetBudget?.id);
   };
 
   // Terapkan Asisten Sampul
@@ -199,13 +221,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       ket = `${jlhPart}${preset?.label || "Sampul"}${namaPart}`;
     }
 
-    if (targetBudget) setForm((f) => ({ ...f, budget_line_id: targetBudget.id }));
-    setItems((prev) => {
-      if (prev.length === 0) return [{ description: ket, amount: "" }];
-      const first = prev[0];
-      return [{ description: ket, amount: first ? first.amount : "" }, ...prev.slice(1)];
-    });
-    toast.success(`Keterangan disesuaikan: "${ket}"`);
+    applyDescriptionToEmpty(ket, targetBudget?.id);
   };
 
   const totalNominal =
@@ -379,15 +395,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                   type="button"
                   variant={asistenAktif ? "default" : "outline"}
                   size="sm"
-                  onClick={() => {
-                    const next = !asistenAktif;
-                    setAsistenAktif(next);
-                    if (next) {
-                      if (asistenTab === "sampul") terapkanSampul();
-                      else if (asistenTab === "duka") terapkanDuka();
-                      else if (asistenTab === "kolom") terapkanKolom();
-                    }
-                  }}
+                  onClick={() => setAsistenAktif(!asistenAktif)}
                   className="h-7 text-xs px-2.5 font-medium gap-1"
                 >
                   {asistenAktif ? "Sembunyikan Asisten" : "Buka Asisten Pengisian"}
