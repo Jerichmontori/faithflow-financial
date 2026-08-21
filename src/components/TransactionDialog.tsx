@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BULAN_PANJANG, standardizeDescription } from "@/lib/kolom";
@@ -52,55 +51,25 @@ const schema = z.object({
 
 const DAFTAR_KOLOM = Array.from({ length: 29 }, (_, i) => i + 1);
 
-const PRESET_KOLOM = [
-  { code: "1.3.53.01", nama: "Ibadah Perkunjungan Keluarga (Rutin Kolom)", prefix: "Persembahan Ibadah Kolom" },
-  { code: "1.3.53.02", nama: "Pria/Kaum Bapa (PKB) Kolom", prefix: "PKB Kolom" },
-  { code: "1.3.53.03", nama: "Wanita/Kaum Ibu (WKI) Kolom", prefix: "WKI Kolom" },
-  { code: "1.3.53.04", nama: "Pemuda Kolom", prefix: "Pemuda Kolom" },
-  { code: "1.3.53.05", nama: "Remaja Kolom", prefix: "Remaja Kolom" },
-  { code: "1.3.53.06", nama: "Anak Sekolah Minggu (ASM) Kolom", prefix: "ASM Kolom" },
-  { code: "1.3.53.07", nama: "Syukur HUT / Khusus Kolom", prefix: "Syukur HUT Kolom" },
-  { code: "1.3.57.01", nama: "Pembangunan dari Kolom", prefix: "Pembangunan Kolom" },
-  { code: "1.3.01.08", nama: "Lansia Rayon 1", prefix: "Lansia Rayon 1" },
-  { code: "1.3.01.08", nama: "Lansia Rayon 2", prefix: "Lansia Rayon 2" },
-  { code: "1.3.01.08", nama: "Lansia Rayon 3", prefix: "Lansia Rayon 3" },
-  { code: "1.3.01.08", nama: "Lansia Rayon 4", prefix: "Lansia Rayon 4" },
-  { code: "1.3.01.08", nama: "Lansia Rayon 5", prefix: "Lansia Rayon 5" },
-  { code: "1.3.01.08", nama: "Lansia Aras Jemaat", prefix: "Lansia Aras" },
-  { code: "1.3.01.02", nama: "WKI Martha Maria", prefix: "WKI Martha Maria" },
-  { code: "1.3.01.02", nama: "WKI Lidya", prefix: "WKI Lidya" },
-  { code: "1.3.01.02", nama: "WKI Ester Eunike", prefix: "WKI Ester Eunike" },
-  { code: "1.3.01.02", nama: "WKI Debora", prefix: "WKI Debora" },
-  { code: "1.3.01.02", nama: "WKI Sifra", prefix: "WKI Sifra" },
-  { code: "1.3.01.02", nama: "WKI Monika", prefix: "WKI Monika" },
-  { code: "1.3.01.02", nama: "WKI Aras Jemaat", prefix: "WKI Aras" },
-  { code: "1.3.01.01", nama: "PKB Musafir", prefix: "PKB Musafir" },
-  { code: "1.3.01.01", nama: "PKB Abraham", prefix: "PKB Abraham" },
-  { code: "1.3.01.01", nama: "PKB Aras Jemaat", prefix: "PKB ARAS" },
-  { code: "1.3.01.03", nama: "Pemuda Bethany", prefix: "Pemuda Bethany" },
-  { code: "1.3.01.03", nama: "Pemuda Imanuel", prefix: "Pemuda Imanuel" },
-  { code: "1.3.01.03", nama: "Pemuda Aras Jemaat", prefix: "Pemuda ARAS" },
-  { code: "1.3.01.04", nama: "Remaja Aras Jemaat", prefix: "Remaja ARAS" },
-  { code: "1.3.01.05", nama: "Anak Sekolah Minggu (ASM) Aras", prefix: "ASM ARAS" },
+const NAMA_PKB_ARAS = ["PKB Musafir", "PKB Abraham", "PKB ARAS"];
+const NAMA_WKI_ARAS = [
+  "WKI Martha Maria",
+  "WKI Lidya",
+  "WKI Ester Eunike",
+  "WKI Debora",
+  "WKI Sifra",
+  "WKI Monika",
+  "WKI Aras",
 ];
-
-const PRESET_SAMPUL = [
-  { code: "1.3.66.14", nama: "Sampul PBTK (Keluarga, Kolom & Bulan)", label: "Sampul PBTK" },
-  { code: "1.3.66.01", nama: "Sampul HUT Kelahiran", label: "Sampul HUT Kelahiran" },
-  { code: "1.3.66.02", nama: "Sampul HUT Pernikahan", label: "Sampul HUT Pernikahan" },
-  { code: "1.3.66.03", nama: "Sampul Pemberkatan/Pernikahan", label: "Sampul Pemberkatan Nikah" },
-  { code: "1.3.66.04", nama: "Sampul Baptisan Kudus", label: "Sampul Baptisan Kudus" },
-  { code: "1.3.66.05", nama: "Sampul Perjamuan Kudus", label: "Sampul Perjamuan Kudus" },
-  { code: "1.3.66.06", nama: "Sampul Peneguhan Sidi", label: "Sampul Peneguhan Sidi" },
-  { code: "1.3.66.07", nama: "Sampul Tahun Baru", label: "Sampul Tahun Baru" },
-  { code: "1.3.66.08", nama: "Sampul Paskah", label: "Sampul Paskah" },
-  { code: "1.3.66.11", nama: "Sampul Natal", label: "Sampul Natal" },
-  { code: "1.3.66.12", nama: "Sampul Pengucapan Syukur", label: "Sampul Pengucapan Syukur" },
-  { code: "1.3.66.13", nama: "Sampul Syukur Lainnya / Keluarga", label: "Sampul Syukur" },
-  { code: "1.3.66.15", nama: "Sampul Syukur Pelantikan", label: "Sampul Pelantikan" },
-  { code: "4.3.64.00", nama: "Sampul Pembangunan", label: "Sampul Pembangunan" },
-  { code: "1.3.50.06", nama: "Sampul Persembahan Persepuluhan", label: "Sampul Persepuluhan" },
+const NAMA_LANSIA_RAYON = [
+  "Lansia Rayon 1",
+  "Lansia Rayon 2",
+  "Lansia Rayon 3",
+  "Lansia Rayon 4",
+  "Lansia Rayon 5",
+  "Lansia Aras",
 ];
+const NAMA_PEMUDA_ARAS = ["Pemuda Bethany", "Pemuda Imanuel", "Pemuda ARAS"];
 
 export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran" }) {
   const { user, canManageFinance } = useSession();
@@ -110,23 +79,23 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [items, setItems] = useState([{ description: "", amount: "" }]);
 
-  // Asisten Pintar
-  const [asistenAktif, setAsistenAktif] = useState(false);
-  const [asistenTab, setAsistenTab] = useState("sampul");
+  // Asisten Pintar Terbuka Otomatis Sesuai Mata Anggaran
+  const [asistenAktif, setAsistenAktif] = useState(true);
 
-  // State Asisten Kolom & BIPRA
-  const [pilihPresetKolom, setPilihPresetKolom] = useState(PRESET_KOLOM[0]?.nama ?? "Ibadah Perkunjungan Keluarga (Rutin Kolom)");
+  // State Parameter Asisten
   const [pilihKolom, setPilihKolom] = useState("1");
   const [pilihBulan, setPilihBulan] = useState(() => String(new Date().getMonth()));
   const [rincianTanggal, setRincianTanggal] = useState("");
+  const [namaPkbTerpilih, setNamaPkbTerpilih] = useState(NAMA_PKB_ARAS[0]);
+  const [namaWkiTerpilih, setNamaWkiTerpilih] = useState(NAMA_WKI_ARAS[0]);
+  const [namaLansiaTerpilih, setNamaLansiaTerpilih] = useState(NAMA_LANSIA_RAYON[0]);
+  const [namaPemudaTerpilih, setNamaPemudaTerpilih] = useState(NAMA_PEMUDA_ARAS[0]);
 
-  // State Asisten Dana Duka
-  const [pilihKolomDuka, setPilihKolomDuka] = useState("1");
+  // State Dana Duka
   const [jumlahDuka, setJumlahDuka] = useState("1 Duka");
   const [ketDuka, setKetDuka] = useState("");
 
-  // State Asisten Sampul
-  const [pilihPresetSampul, setPilihPresetSampul] = useState("1.3.66.14");
+  // State Sampul
   const [jumlahSampul, setJumlahSampul] = useState("");
   const [pemberiSampul, setPemberiSampul] = useState("");
 
@@ -152,6 +121,54 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     () => [...options].sort((a, b) => a.code.localeCompare(b.code)),
     [options],
   );
+
+  // Deteksi Tipe Template yang Sesuai dengan Mata Anggaran Terpilih
+  const templateType = useMemo(() => {
+    if (!selected) return "none";
+    const code = selected.code;
+    const name = selected.name.toLowerCase();
+
+    // 1. PKB
+    if (code === "1.3.01.01") return "pkb_aras";
+    if (code === "1.3.53.02") return "pkb_kolom";
+
+    // 2. WKI
+    if (code === "1.3.01.02") return "wki_aras";
+    if (code === "1.3.53.03") return "wki_kolom";
+
+    // 3. Lansia
+    if (code === "1.3.01.08") return "lansia_rayon";
+
+    // 4. Pemuda
+    if (code === "1.3.01.03") return "pemuda_aras";
+    if (code === "1.3.53.04") return "pemuda_kolom";
+
+    // 5. Remaja
+    if (code === "1.3.01.04") return "remaja_aras";
+    if (code === "1.3.53.05") return "remaja_kolom";
+
+    // 6. ASM
+    if (code === "1.3.01.05") return "asm_aras";
+    if (code === "1.3.53.06") return "asm_kolom";
+
+    // 7. Kolom Rutin & Pembangunan Kolom
+    if (code === "1.3.53.01") return "kolom_rutin";
+    if (code === "1.3.57.01") return "kolom_pembangunan";
+    if (code === "1.3.53.07") return "kolom_syukur";
+
+    // 8. Dana Duka
+    if (code === "3.3.03.01" || code === "1.3.55.01" || name.includes("dana duka") || name.includes("duka"))
+      return "duka";
+
+    // 9. Sampul PBTK
+    if (code === "1.3.66.14") return "pbtk";
+
+    // 10. Sampul-Sampul Lainnya
+    if (code.startsWith("1.3.66.") || code === "4.3.64.00" || code === "1.3.50.06" || name.startsWith("sampul"))
+      return "sampul_lain";
+
+    return "umum";
+  }, [selected]);
 
   // Fungsi helper untuk menerapkan format ke baris keterangan yang kosong tanpa mengganti yang sudah ada
   const applyDescriptionToEmpty = (ket: string, targetBudgetId?: string) => {
@@ -188,63 +205,87 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     toast.success(`Keterangan terstandarisasi diterapkan: "${cleanKet}"`);
   };
 
-  // Terapkan Asisten Kolom & BIPRA
-  const terapkanKolom = () => {
-    const preset = PRESET_KOLOM.find((p) => p.nama === pilihPresetKolom) ?? PRESET_KOLOM[0]!;
-    const targetBudget = options.find((b) => b.code === preset.code);
+  // Handler Terapkan Template Berdasarkan Tipe Pos Anggaran
+  const terapkanTemplateTerpilih = (customPrefix?: string) => {
     const bulanNama = BULAN_PANJANG[Number(pilihBulan)] ?? "Januari";
     const tglPart = rincianTanggal.trim() ? ` (${rincianTanggal.trim()})` : "";
-    
-    let ket = "";
-    if (preset.code.startsWith("1.3.01")) {
-      // BIPRA Aras / Rayon / Kelompok
-      ket = `${preset.prefix}${tglPart} Bulan ${bulanNama}`;
-    } else {
-      // Setoran Kolom
-      ket = `${preset.prefix} ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
-    }
-
-    applyDescriptionToEmpty(ket, targetBudget?.id);
-  };
-
-  // Terapkan Asisten Dana Duka
-  const terapkanDuka = () => {
-    const targetBudget =
-      options.find((b) => b.code === "3.3.03.01" || b.code === "1.3.55.01") ||
-      options.find((b) => /dana duka/i.test(b.name));
-    const dukaCount = jumlahDuka.trim() ? ` (${jumlahDuka.trim()})` : "";
-    const extra = ketDuka.trim() ? ` - ${ketDuka.trim()}` : "";
-    const ket = `Dana Duka Kolom ${pilihKolomDuka}${dukaCount}${extra}`;
-
-    applyDescriptionToEmpty(ket, targetBudget?.id);
-  };
-
-  // Terapkan Asisten Sampul
-  const terapkanSampul = () => {
-    const preset = PRESET_SAMPUL.find((p) => p.code === pilihPresetSampul);
-    const targetBudget = options.find((b) => b.code === pilihPresetSampul);
 
     let ket = "";
-    if (pilihPresetSampul === "1.3.66.14") {
-      // Khusus PBTK
-      const namaKel = pbtkKeluarga.trim()
-        ? pbtkKeluarga.trim().toLowerCase().startsWith("kel")
-          ? pbtkKeluarga.trim()
-          : `Kel ${pbtkKeluarga.trim()}`
-        : "";
-      const kelPart = namaKel ? ` ${namaKel}` : "";
-      const blnPart = pbtkPeriodeTeks.trim()
-        ? ` (${pbtkPeriodeTeks.trim()})`
-        : ` Bulan ${BULAN_PANJANG[Number(pbtkBulan)]}`;
-      ket = `PBTK${kelPart} Kolom ${pbtkKolom}${blnPart}`;
-    } else {
-      // Sampul Lainnya
-      const jlhPart = jumlahSampul.trim() ? `${jumlahSampul.trim()} ` : "";
-      const namaPart = pemberiSampul.trim() ? ` (${pemberiSampul.trim()})` : "";
-      ket = `${jlhPart}${preset?.label || "Sampul"}${namaPart}`;
+
+    switch (templateType) {
+      case "pkb_aras":
+        ket = `${customPrefix || namaPkbTerpilih}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "pkb_kolom":
+        ket = `PKB Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "wki_aras":
+        ket = `${customPrefix || namaWkiTerpilih}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "wki_kolom":
+        ket = `WKI Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "lansia_rayon":
+        ket = `${customPrefix || namaLansiaTerpilih}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "pemuda_aras":
+        ket = `${customPrefix || namaPemudaTerpilih}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "pemuda_kolom":
+        ket = `Pemuda Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "remaja_aras":
+        ket = `Remaja ARAS${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "remaja_kolom":
+        ket = `Remaja Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "asm_aras":
+        ket = `ASM ARAS${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "asm_kolom":
+        ket = `ASM Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "kolom_rutin":
+        ket = `Persembahan Ibadah Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "kolom_pembangunan":
+        ket = `Pembangunan Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "kolom_syukur":
+        ket = `Syukur HUT Kolom ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+        break;
+      case "duka": {
+        const dukaCount = jumlahDuka.trim() ? ` (${jumlahDuka.trim()})` : "";
+        const extra = ketDuka.trim() ? ` - ${ketDuka.trim()}` : "";
+        ket = `Dana Duka Kolom ${pilihKolom}${dukaCount}${extra}`;
+        break;
+      }
+      case "pbtk": {
+        const namaKel = pbtkKeluarga.trim()
+          ? pbtkKeluarga.trim().toLowerCase().startsWith("kel")
+            ? pbtkKeluarga.trim()
+            : `Kel ${pbtkKeluarga.trim()}`
+          : "";
+        const kelPart = namaKel ? ` ${namaKel}` : "";
+        const blnPart = pbtkPeriodeTeks.trim()
+          ? ` (${pbtkPeriodeTeks.trim()})`
+          : ` Bulan ${BULAN_PANJANG[Number(pbtkBulan)]}`;
+        ket = `PBTK${kelPart} Kolom ${pbtkKolom}${blnPart}`;
+        break;
+      }
+      case "sampul_lain": {
+        const jlhPart = jumlahSampul.trim() ? `${jumlahSampul.trim()} ` : "";
+        const namaPart = pemberiSampul.trim() ? ` (${pemberiSampul.trim()})` : "";
+        ket = `${jlhPart}${selected?.name || "Sampul"}${namaPart}`;
+        break;
+      }
+      default:
+        ket = `${selected?.name || "Penerimaan"} Bulan ${bulanNama}`;
+        break;
     }
 
-    applyDescriptionToEmpty(ket, targetBudget?.id);
+    applyDescriptionToEmpty(ket, selected?.id);
   };
 
   const totalNominal =
@@ -260,7 +301,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
           : [{ description: form.description, amount: form.amount }];
       if (baris.length === 0) throw new Error("Minimal satu keterangan wajib diisi");
       const rows = baris.map((b) => {
-        // Otomatis standarisasi keterangan untuk meminimalisir typo
         const cleanDesc = standardizeDescription(b.description);
         const parsed = schema.parse({
           ...form,
@@ -297,7 +337,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       setOpen(false);
       setItems([{ description: "", amount: "" }]);
       setForm((f) => ({ ...f, amount: "", description: "", payee: "" }));
-      setAsistenAktif(false);
     },
     onError: (err) => {
       toast.error(
@@ -327,13 +366,13 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </DialogTitle>
             {kind === "penerimaan" && (
               <span className="text-[11px] text-success font-medium flex items-center gap-1 bg-success/10 px-2 py-0.5 rounded-full">
-                <ShieldCheck className="size-3" /> Auto-Standardisasi Aktif
+                <ShieldCheck className="size-3" /> Auto-Template Aktif
               </span>
             )}
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
             {kind === "penerimaan"
-              ? "Sistem secara otomatis menstandarkan penulisan Kolom, BIPRA, Rayon, dan Dana Duka agar selalu seragam."
+              ? "Pilih Mata Anggaran di bawah, template otomatis akan terbuka menyesuaikan pos yang Anda pilih."
               : "Nomor bukti dibuat otomatis oleh sistem setelah transaksi disimpan."}
           </DialogDescription>
         </DialogHeader>
@@ -384,7 +423,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                       value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
                     }
                   >
-                    <CommandInput placeholder="Cari kode, nama, atau grup mata anggaran…" />
+                    <CommandInput placeholder="Ketik kode, nama PKB/WKI/Lansia, atau pos…" />
                     <CommandList className="max-h-80 overflow-y-auto">
                       <CommandEmpty>Mata anggaran tidak ditemukan.</CommandEmpty>
                       <CommandGroup>
@@ -395,6 +434,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                             onSelect={() => {
                               setForm({ ...form, budget_line_id: b.id });
                               setBudgetOpen(false);
+                              setAsistenAktif(true);
                             }}
                             className="flex items-start py-2 cursor-pointer"
                           >
@@ -451,282 +491,572 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             </div>
           )}
 
-          {/* Toggle Asisten Pengisian Cepat */}
-          {kind === "penerimaan" && (
-            <div className="rounded-lg border bg-muted/20 p-2.5">
-              <div className="flex items-center justify-between">
+          {/* ========================================================================= */}
+          {/* ASISTEN TEMPLATE DINAMIS - TERBUKA OTOMATIS SESUAI MATA ANGGARAN TERPILIH */}
+          {/* ========================================================================= */}
+          {kind === "penerimaan" && selected && templateType !== "none" && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3 animate-in fade-in-50 duration-200">
+              <div className="flex items-center justify-between border-b border-primary/20 pb-2">
                 <div className="flex items-center gap-2">
                   <Sparkles className="size-4 text-primary" />
-                  <div>
-                    <span className="text-xs font-semibold block">Pilih Template Otomatis (Cegah Typo)</span>
-                    <span className="text-[11px] text-muted-foreground">Pilih pos kolom / BIPRA untuk mengisi keterangan tanpa salah ketik</span>
-                  </div>
+                  <span className="text-xs font-bold text-primary">
+                    Template Otomatis: {selected.name}
+                  </span>
                 </div>
-                <Button
-                  type="button"
-                  variant={asistenAktif ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAsistenAktif(!asistenAktif)}
-                  className="h-7 text-xs px-2.5 font-medium gap-1"
-                >
-                  {asistenAktif ? "Sembunyikan Asisten" : "⚡ Buka Asisten Template"}
-                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  Pilih & klik untuk mengisi baris keterangan
+                </span>
               </div>
 
-              {/* Panel Asisten yang Proporsional */}
-              {asistenAktif && (
-                <div className="mt-3 pt-3 border-t border-border/60">
-                  <Tabs value={asistenTab} onValueChange={setAsistenTab}>
-                    <TabsList className="grid grid-cols-3 h-8 bg-background border p-0.5">
-                      <TabsTrigger value="sampul" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                        <Mail className="size-3.5" /> Sampul & PBTK
-                      </TabsTrigger>
-                      <TabsTrigger value="duka" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                        <HeartHandshake className="size-3.5" /> Dana Duka
-                      </TabsTrigger>
-                      <TabsTrigger value="kolom" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                        <Users className="size-3.5" /> Kolom & BIPRA
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* ASISTEN 1: SAMPUL & PBTK */}
-                    <TabsContent value="sampul" className="space-y-3 pt-2.5">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium">Jenis Sampul</Label>
-                        <Select value={pilihPresetSampul} onValueChange={setPilihPresetSampul}>
-                          <SelectTrigger className="h-8 text-xs bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-64">
-                            {PRESET_SAMPUL.map((s) => (
-                              <SelectItem key={s.code} value={s.code} className="text-xs">
-                                <span className="font-mono text-[11px] mr-1 text-muted-foreground">{s.code}</span> {s.nama}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {pilihPresetSampul === "1.3.66.14" ? (
-                        <div className="rounded-md border bg-background p-3 space-y-2.5">
-                          <div className="text-xs font-bold text-primary flex items-center gap-1.5">
-                            <Mail className="size-3.5" /> Data Setoran Sampul PBTK
-                          </div>
-                          <div className="grid gap-2.5 sm:grid-cols-3">
-                            <div className="space-y-1 sm:col-span-3">
-                              <Label className="text-xs">Nama Keluarga / Penyetor</Label>
-                              <Input
-                                value={pbtkKeluarga}
-                                onChange={(e) => setPbtkKeluarga(e.target.value)}
-                                placeholder="Misal: Montori Kansil / Krisen Roeroe"
-                                className="h-8 text-xs font-medium"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <Label className="text-xs">Nomor Kolom</Label>
-                              <Select value={pbtkKolom} onValueChange={setPbtkKolom}>
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-64">
-                                  {DAFTAR_KOLOM.map((k) => (
-                                    <SelectItem key={k} value={String(k)} className="text-xs">
-                                      Kolom {k}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <Label className="text-xs">Bulan Setoran</Label>
-                              <Select value={pbtkBulan} onValueChange={setPbtkBulan}>
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-64">
-                                  {BULAN_PANJANG.map((b, i) => (
-                                    <SelectItem key={b} value={String(i)} className="text-xs">
-                                      {b}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <Label className="text-xs">Rentang Bulan (Opsional)</Label>
-                              <Input
-                                value={pbtkPeriodeTeks}
-                                onChange={(e) => setPbtkPeriodeTeks(e.target.value)}
-                                placeholder="Misal: Jan - Jun"
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid gap-2.5 sm:grid-cols-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Jumlah Lembar (Opsional)</Label>
-                            <Input
-                              value={jumlahSampul}
-                              onChange={(e) => setJumlahSampul(e.target.value)}
-                              placeholder="Misal: 5 Sampul"
-                              className="h-8 text-xs bg-background"
-                            />
-                          </div>
-
-                          <div className="space-y-1 sm:col-span-2">
-                            <Label className="text-xs">Keluarga / Kolom / Catatan (Opsional)</Label>
-                            <Input
-                              value={pemberiSampul}
-                              onChange={(e) => setPemberiSampul(e.target.value)}
-                              placeholder="Misal: Kel. Montori Kolom 4"
-                              className="h-8 text-xs bg-background"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex justify-end pt-1">
-                        <Button type="button" size="sm" variant="secondary" onClick={terapkanSampul} className="h-7 text-xs font-semibold">
-                          Terapkan Format Sampul
+              {/* 1. KHUSUS BIPRA PKB ARAS (1.3.01.01) */}
+              {templateType === "pkb_aras" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold mb-1.5 block">
+                      Pilih Nama Kelompok PKB (Klik untuk Memilih):
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {NAMA_PKB_ARAS.map((nama) => (
+                        <Button
+                          key={nama}
+                          type="button"
+                          size="sm"
+                          variant={namaPkbTerpilih === nama ? "default" : "outline"}
+                          className="h-7 text-xs font-medium"
+                          onClick={() => {
+                            setNamaPkbTerpilih(nama);
+                            terapkanTemplateTerpilih(nama);
+                          }}
+                        >
+                          {nama}
                         </Button>
-                      </div>
-                    </TabsContent>
+                      ))}
+                    </div>
+                  </div>
 
-                    {/* ASISTEN 2: DANA DUKA */}
-                    <TabsContent value="duka" className="space-y-3 pt-2.5">
-                      <div className="grid gap-2.5 sm:grid-cols-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Pilih Kolom</Label>
-                          <Select value={pilihKolomDuka} onValueChange={setPilihKolomDuka}>
-                            <SelectTrigger className="h-8 text-xs bg-background">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-64">
-                              {DAFTAR_KOLOM.map((k) => (
-                                <SelectItem key={k} value={String(k)} className="text-xs">
-                                  Kolom {k}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  <div className="grid gap-2.5 sm:grid-cols-2 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">Jumlah Duka</Label>
-                          <Select value={jumlahDuka} onValueChange={setJumlahDuka}>
-                            <SelectTrigger className="h-8 text-xs bg-background">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1 Duka" className="text-xs">1 Duka</SelectItem>
-                              <SelectItem value="2 Duka" className="text-xs">2 Duka</SelectItem>
-                              <SelectItem value="3 Duka" className="text-xs">3 Duka</SelectItem>
-                              <SelectItem value="4 Duka" className="text-xs">4 Duka</SelectItem>
-                              <SelectItem value="5 Duka" className="text-xs">5 Duka</SelectItem>
-                              <SelectItem value="Bulan Berjalan" className="text-xs">Bulan Berjalan</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tgl Ibadah (Opsional)</Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Misal: 1, 8, 15, 22"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">Nama Alm / Keterangan</Label>
-                          <Input
-                            value={ketDuka}
-                            onChange={(e) => setKetDuka(e.target.value)}
-                            placeholder="Opsional (mis. Kel. X)"
-                            className="h-8 text-xs bg-background"
-                          />
-                        </div>
-                      </div>
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format {namaPkbTerpilih}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-                      <div className="flex justify-end pt-1">
-                        <Button type="button" size="sm" variant="secondary" onClick={terapkanDuka} className="h-7 text-xs font-semibold">
-                          Terapkan Format Dana Duka
+              {/* 2. KHUSUS BIPRA WKI ARAS (1.3.01.02) */}
+              {templateType === "wki_aras" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold mb-1.5 block">
+                      Pilih Nama Kelompok WKI (Klik untuk Memilih):
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {NAMA_WKI_ARAS.map((nama) => (
+                        <Button
+                          key={nama}
+                          type="button"
+                          size="sm"
+                          variant={namaWkiTerpilih === nama ? "default" : "outline"}
+                          className="h-7 text-xs font-medium"
+                          onClick={() => {
+                            setNamaWkiTerpilih(nama);
+                            terapkanTemplateTerpilih(nama);
+                          }}
+                        >
+                          {nama}
                         </Button>
-                      </div>
-                    </TabsContent>
+                      ))}
+                    </div>
+                  </div>
 
-                    {/* ASISTEN 3: KOLOM & BIPRA */}
-                    <TabsContent value="kolom" className="space-y-3 pt-2.5">
-                      <div className="grid gap-2.5 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Jenis Setoran / Kompelka / Rayon</Label>
-                          <Select
-                            value={pilihPresetKolom}
-                            onValueChange={(val) => {
-                              setPilihPresetKolom(val);
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-xs bg-background">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-64">
-                              {PRESET_KOLOM.map((p) => (
-                                <SelectItem key={p.nama} value={p.nama} className="text-xs">
-                                  {p.nama}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  <div className="grid gap-2.5 sm:grid-cols-2 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                        {!PRESET_KOLOM.find((p) => p.nama === pilihPresetKolom)?.code.startsWith("1.3.01") && (
-                          <div className="space-y-1">
-                            <Label className="text-xs">Nomor Kolom</Label>
-                            <Select value={pilihKolom} onValueChange={setPilihKolom}>
-                              <SelectTrigger className="h-8 text-xs bg-background">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-64">
-                                {DAFTAR_KOLOM.map((k) => (
-                                  <SelectItem key={k} value={String(k)} className="text-xs">
-                                    Kolom {k}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tgl Ibadah (Opsional)</Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Misal: 7, 14, 21"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">Bulan Setoran</Label>
-                          <Select value={pilihBulan} onValueChange={setPilihBulan}>
-                            <SelectTrigger className="h-8 text-xs bg-background">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-64">
-                              {BULAN_PANJANG.map((b, i) => (
-                                <SelectItem key={b} value={String(i)} className="text-xs">
-                                  {b}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format {namaWkiTerpilih}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">Tgl Ibadah (mis. 12, 19, 26)</Label>
-                          <Input
-                            value={rincianTanggal}
-                            onChange={(e) => setRincianTanggal(e.target.value)}
-                            placeholder="Contoh: 12, 19, 26"
-                            className="h-8 text-xs bg-background"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end pt-1">
-                        <Button type="button" size="sm" variant="secondary" onClick={terapkanKolom} className="h-7 text-xs font-semibold">
-                          Terapkan Format Kolom / BIPRA
+              {/* 3. KHUSUS LANSIA RAYON / ARAS (1.3.01.08) */}
+              {templateType === "lansia_rayon" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold mb-1.5 block">
+                      Pilih Rayon Lansia (Klik untuk Memilih):
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {NAMA_LANSIA_RAYON.map((nama) => (
+                        <Button
+                          key={nama}
+                          type="button"
+                          size="sm"
+                          variant={namaLansiaTerpilih === nama ? "default" : "outline"}
+                          className="h-7 text-xs font-medium"
+                          onClick={() => {
+                            setNamaLansiaTerpilih(nama);
+                            terapkanTemplateTerpilih(nama);
+                          }}
+                        >
+                          {nama}
                         </Button>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2.5 sm:grid-cols-2 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tgl Ibadah (Opsional)</Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Misal: 12, 27"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format {namaLansiaTerpilih}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. KHUSUS PEMUDA ARAS (1.3.01.03) */}
+              {templateType === "pemuda_aras" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold mb-1.5 block">
+                      Pilih Kelompok Pemuda (Klik untuk Memilih):
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {NAMA_PEMUDA_ARAS.map((nama) => (
+                        <Button
+                          key={nama}
+                          type="button"
+                          size="sm"
+                          variant={namaPemudaTerpilih === nama ? "default" : "outline"}
+                          className="h-7 text-xs font-medium"
+                          onClick={() => {
+                            setNamaPemudaTerpilih(nama);
+                            terapkanTemplateTerpilih(nama);
+                          }}
+                        >
+                          {nama}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2.5 sm:grid-cols-2 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tgl Ibadah (Opsional)</Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Misal: 10, 20"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format {namaPemudaTerpilih}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. KHUSUS SETORAN KOLOM 1-29 (PKB Kolom, WKI Kolom, Pemuda Kolom, Remaja, ASM, Rutin, Pembangunan) */}
+              {[
+                "pkb_kolom",
+                "wki_kolom",
+                "pemuda_kolom",
+                "remaja_kolom",
+                "remaja_aras",
+                "asm_kolom",
+                "asm_aras",
+                "kolom_rutin",
+                "kolom_pembangunan",
+                "kolom_syukur",
+              ].includes(templateType) && (
+                <div className="space-y-3">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Pilih Kolom</Label>
+                      <Select value={pilihKolom} onValueChange={setPilihKolom}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {DAFTAR_KOLOM.map((k) => (
+                            <SelectItem key={k} value={String(k)} className="text-xs">
+                              Kolom {k}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tgl Ibadah (Opsional)</Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Misal: 4, 11, 18, 25"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format Kolom {pilihKolom}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 6. KHUSUS DANA DUKA (3.3.03.01 / 1.3.55.01) */}
+              {templateType === "duka" && (
+                <div className="space-y-3">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Pilih Kolom</Label>
+                      <Select value={pilihKolom} onValueChange={setPilihKolom}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {DAFTAR_KOLOM.map((k) => (
+                            <SelectItem key={k} value={String(k)} className="text-xs">
+                              Kolom {k}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Jumlah Duka</Label>
+                      <Select value={jumlahDuka} onValueChange={setJumlahDuka}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1 Duka" className="text-xs">1 Duka</SelectItem>
+                          <SelectItem value="2 Duka" className="text-xs">2 Duka</SelectItem>
+                          <SelectItem value="3 Duka" className="text-xs">3 Duka</SelectItem>
+                          <SelectItem value="4 Duka" className="text-xs">4 Duka</SelectItem>
+                          <SelectItem value="5 Duka" className="text-xs">5 Duka</SelectItem>
+                          <SelectItem value="Bulan Berjalan" className="text-xs">Bulan Berjalan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Nama Alm / Catatan</Label>
+                      <Input
+                        value={ketDuka}
+                        onChange={(e) => setKetDuka(e.target.value)}
+                        placeholder="Opsional"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format Dana Duka Kolom {pilihKolom} ({jumlahDuka})
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 7. KHUSUS SAMPUL PBTK (1.3.66.14) */}
+              {templateType === "pbtk" && (
+                <div className="space-y-2.5">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <div className="space-y-1 sm:col-span-3">
+                      <Label className="text-xs">Nama Keluarga / Penyetor</Label>
+                      <Input
+                        value={pbtkKeluarga}
+                        onChange={(e) => setPbtkKeluarga(e.target.value)}
+                        placeholder="Misal: Montori Kansil / Krisen Roeroe"
+                        className="h-8 text-xs font-medium bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Nomor Kolom</Label>
+                      <Select value={pbtkKolom} onValueChange={setPbtkKolom}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {DAFTAR_KOLOM.map((k) => (
+                            <SelectItem key={k} value={String(k)} className="text-xs">
+                              Kolom {k}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pbtkBulan} onValueChange={setPbtkBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Rentang Bulan (Opsional)</Label>
+                      <Input
+                        value={pbtkPeriodeTeks}
+                        onChange={(e) => setPbtkPeriodeTeks(e.target.value)}
+                        placeholder="Misal: Jan - Jun"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format Sampul PBTK
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 8. KHUSUS SAMPUL-SAMPUL LAINNYA */}
+              {templateType === "sampul_lain" && (
+                <div className="space-y-2.5">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Jumlah Lembar (Opsional)</Label>
+                      <Input
+                        value={jumlahSampul}
+                        onChange={(e) => setJumlahSampul(e.target.value)}
+                        placeholder="Misal: 5 Sampul"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-xs">Keluarga / Kolom / Catatan (Opsional)</Label>
+                      <Input
+                        value={pemberiSampul}
+                        onChange={(e) => setPemberiSampul(e.target.value)}
+                        placeholder="Misal: Kel. Montori Kolom 4"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format {selected.name}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 9. MATA ANGGARAN UMUM */}
+              {templateType === "umum" && (
+                <div className="space-y-2.5">
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bulan Setoran</Label>
+                      <Select value={pilihBulan} onValueChange={setPilihBulan}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-64">
+                          {BULAN_PANJANG.map((b, i) => (
+                            <SelectItem key={b} value={String(i)} className="text-xs">
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Keterangan Tambahan (Opsional)</Label>
+                      <Input
+                        value={rincianTanggal}
+                        onChange={(e) => setRincianTanggal(e.target.value)}
+                        placeholder="Catatan pos…"
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => terapkanTemplateTerpilih()}
+                      className="h-7 text-xs font-semibold"
+                    >
+                      + Terapkan Format Standar
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -764,7 +1094,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                         )
                       }
                       onBlur={(e) => {
-                        // Otomatis bersihkan dan standarisasi teks saat keluar dari input
                         const clean = standardizeDescription(e.target.value);
                         if (clean !== e.target.value) {
                           setItems(
@@ -776,7 +1105,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                       }}
                       placeholder={`Keterangan baris ${idx + 1}`}
                       maxLength={500}
-                      className="h-9 text-xs"
+                      className="h-9 text-xs font-medium"
                     />
                     <div className="relative">
                       <Input
