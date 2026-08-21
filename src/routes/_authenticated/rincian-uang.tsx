@@ -3,23 +3,30 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { transactionsQuery } from "@/lib/queries";
+import { transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
+import { normalizeDateInput } from "@/components/ui/date-input";
 import { exportAoa } from "@/lib/xlsx";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertTriangle,
   CheckCircle2,
   Save,
   RotateCcw,
   Download,
-  Printer,
   History,
-  FileSpreadsheet,
+  Info,
 } from "lucide-react";
+
+const plusDays = (isoDate: string, days: number) => {
+  const d = new Date(isoDate);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
 
 export const Route = createFileRoute("/_authenticated/rincian-uang")({
   head: () => ({
@@ -103,6 +110,14 @@ function RincianUangPage() {
   const [note, setNote] = useState("");
   const [savedDates, setSavedDates] = useState<string[]>([]);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [modeSaldo, setModeSaldo] = useState<"minggu" | "kumulatif" | "harian">("minggu");
+
+  // Cut-off warta terakhir (default 14 Agustus 2026)
+  const savedWartaCutoff = typeof window !== "undefined" ? localStorage.getItem("bumotik.tglTerakhirWarta") || "2026-08-14" : "2026-08-14";
+  const tglMulaiKasMinggu = useMemo(
+    () => plusDays(normalizeDateInput(savedWartaCutoff), 1) || "2026-08-15",
+    [savedWartaCutoff],
+  );
 
   // Muat data saat tanggal berubah
   useEffect(() => {
@@ -118,6 +133,7 @@ function RincianUangPage() {
         );
         setNote(typeof saved?.note === "string" ? saved.note : "");
         setLastSavedTime(saved?.savedAt ? new Date(saved.savedAt).toLocaleTimeString("id-ID") : "Tersimpan");
+        if (saved?.modeSaldo) setModeSaldo(saved.modeSaldo);
       } else {
         setCounts(DENOMS.map(() => 0));
         setNote("");
@@ -130,18 +146,54 @@ function RincianUangPage() {
     }
   }, [date]);
 
-  const all = trx.data ?? [];
-
-  const saldoKas = useMemo(
-    () =>
-      all
-        .filter((t) => t.trx_date <= date)
-        .reduce((a, t) => a + (t.kind === "penerimaan" ? Number(t.amount) : -Number(t.amount)), 0),
-    [all, date],
+  const all = useMemo(
+    () => (trx.data ?? []).filter((t) => t.status !== "rejected" && !isInternalCash(t)),
+    [trx.data],
   );
 
+  // 1. Saldo Kas Minggu Berjalan (15 Ags s/d date) -> Rp 8.446.000
+  const saldoKasMingguBerjalan = useMemo(() => {
+    const masuk = all
+      .filter((t) => t.kind === "penerimaan" && t.trx_date >= tglMulaiKasMinggu && t.trx_date <= date)
+      .reduce((a, t) => a + Number(t.amount || 0), 0);
+    const keluar = all
+      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && t.trx_date >= tglMulaiKasMinggu && t.trx_date <= date)
+      .reduce((a, t) => a + Number(t.amount || 0), 0);
+    return masuk - keluar;
+  }, [all, tglMulaiKasMinggu, date]);
+
+  // 2. Saldo Kas Kumulatif (Awal tahun s/d date) -> Rp 4.878.000
+  const saldoKasKumulatif = useMemo(() => {
+    const masuk = all
+      .filter((t) => t.kind === "penerimaan" && t.trx_date <= date)
+      .reduce((a, t) => a + Number(t.amount || 0), 0);
+    const keluar = all
+      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && t.trx_date <= date)
+      .reduce((a, t) => a + Number(t.amount || 0), 0);
+    return masuk - keluar;
+  }, [all, date]);
+
+  // 3. Saldo Kas Hari Ini (Khusus tanggal terpilih)
+  const saldoKasHarian = useMemo(() => {
+    const masuk = all
+      .filter((t) => t.kind === "penerimaan" && t.trx_date === date)
+      .reduce((a, t) => a + Number(t.amount || 0), 0);
+    const keluar = all
+      .filter((t) => t.kind === "pengeluaran" && t.status === "approved" && t.trx_date === date)
+      .reduce((a, t) => a + Number(t.amount || 0), 0);
+    return masuk - keluar;
+  }, [all, date]);
+
+  // Saldo acuan sistem yang dipilih
+  const saldoKasTarget =
+    modeSaldo === "minggu"
+      ? saldoKasMingguBerjalan
+      : modeSaldo === "kumulatif"
+        ? saldoKasKumulatif
+        : saldoKasHarian;
+
   const totalFisik = counts.reduce((a, c, i) => a + c * DENOMS[i]!.v, 0);
-  const selisih = totalFisik - saldoKas;
+  const selisih = totalFisik - saldoKasTarget;
   const cocok = selisih === 0;
   const totalLembar = counts.reduce((a, c) => a + c, 0);
 
@@ -153,7 +205,7 @@ function RincianUangPage() {
   function simpan() {
     try {
       const now = new Date().toISOString();
-      const payload = { counts, note, savedAt: now, date, totalFisik, saldoKas };
+      const payload = { counts, note, savedAt: now, date, totalFisik, saldoKas: saldoKasTarget, modeSaldo };
       localStorage.setItem(storageKey(date), JSON.stringify(payload));
       updateSavedIndex(date);
       setSavedDates(getSavedIndex());
@@ -175,11 +227,19 @@ function RincianUangPage() {
   }
 
   function downloadExcel() {
+    const labelMode =
+      modeSaldo === "minggu"
+        ? `Kas Minggu Berjalan (${tglMulaiKasMinggu} s/d ${date})`
+        : modeSaldo === "kumulatif"
+          ? `Kas Kumulatif Buku Kas Umum (s/d ${date})`
+          : `Kas Harian (${date})`;
+
     const rows = [
       ["BERITA ACARA RINCIAN FISIK UANG KAS"],
       ["BUMOTIK FINANCIAL - GMIM BUKIT MORIA TIKALA BARU"],
       [],
       ["Tanggal Perhitungan", tanggal(date)],
+      ["Basis Saldo Sistem", labelMode],
       ["Keterangan / Kasir", note || "-"],
       ["Waktu Export", new Date().toLocaleString("id-ID")],
       [],
@@ -193,7 +253,7 @@ function RincianUangPage() {
       ]),
       [],
       ["TOTAL UANG FISIK", "", "", totalLembar, totalFisik],
-      ["SALDO KAS SISTEM", "", "", "", saldoKas],
+      ["SALDO KAS SISTEM", "", "", "", saldoKasTarget],
       ["SELISIH", "", "", "", selisih],
       ["STATUS PENCATATAN", "", "", "", cocok ? "SESUAI (SEIMBANG)" : selisih > 0 ? "LEBIH" : "KURANG"],
     ];
@@ -224,6 +284,35 @@ function RincianUangPage() {
         </div>
       }
     >
+      {/* Pilihan Basis Saldo Kas yang Dicocokkan */}
+      <div className="panel mb-4 p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Info className="size-4 text-primary" />
+              Pilih Acuan Saldo Kas Sistem yang Dicocokkan:
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Pilih apakah uang fisik dicocokkan dengan saldo kas minggu berjalan atau saldo kas kumulatif.
+            </p>
+          </div>
+
+          <Tabs value={modeSaldo} onValueChange={(v) => setModeSaldo(v as any)}>
+            <TabsList className="h-8">
+              <TabsTrigger value="minggu" className="text-xs font-semibold px-3">
+                Kas Minggu Berjalan ({rupiah(saldoKasMingguBerjalan)})
+              </TabsTrigger>
+              <TabsTrigger value="kumulatif" className="text-xs font-semibold px-3">
+                Kas Kumulatif ({rupiah(saldoKasKumulatif)})
+              </TabsTrigger>
+              <TabsTrigger value="harian" className="text-xs font-semibold px-3">
+                Harian ({rupiah(saldoKasHarian)})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
       {/* Baris Filter Tanggal & Keterangan */}
       <div className="panel mb-5 p-4 space-y-3">
         <div className="flex flex-wrap items-end gap-4">
@@ -246,7 +335,7 @@ function RincianUangPage() {
             </Label>
             <Input
               id="note"
-              placeholder="Contoh: Penghitungan kas sore oleh Bendahara Jemaat"
+              placeholder="Contoh: Penghitungan kas fisik oleh Bendahara Jemaat"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="h-9 text-xs"
@@ -289,7 +378,16 @@ function RincianUangPage() {
 
       {/* Kartu Ringkasan Saldo & Uang Fisik */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Saldo Kas Sistem" value={rupiah(saldoKas)} />
+        <Stat
+          label={
+            modeSaldo === "minggu"
+              ? "Saldo Kas Minggu Berjalan"
+              : modeSaldo === "kumulatif"
+                ? "Saldo Kas Kumulatif"
+                : "Saldo Kas Hari Ini"
+          }
+          value={rupiah(saldoKasTarget)}
+        />
         <Stat label="Total Uang Fisik" value={rupiah(totalFisik)} />
         <Stat
           label="Selisih"
@@ -320,10 +418,10 @@ function RincianUangPage() {
                 : "⚠ Uang fisik KURANG dari saldo kas sistem"}
           </p>
           <p className="text-xs text-muted-foreground">
-            Saldo kas sistem {tanggal(date)} sebesar <strong>{rupiah(saldoKas)}</strong>, total uang fisik terhitung{" "}
+            Saldo kas acuan sistem ({modeSaldo === "minggu" ? "Minggu Berjalan" : modeSaldo === "kumulatif" ? "Kumulatif Buku Kas" : "Harian"}) per {tanggal(date)} sebesar <strong>{rupiah(saldoKasTarget)}</strong>, total uang fisik terhitung{" "}
             <strong>{rupiah(totalFisik)}</strong>
             {cocok
-              ? ". Data fisik dan buku kas telah seimbang sempurna."
+              ? ". Data fisik dan kas telah seimbang sempurna."
               : ` — terdapat selisih ${rupiah(Math.abs(selisih))}. Mohon periksa kembali kepingan uang atau transaksi yang belum tercatat.`}
           </p>
         </div>
