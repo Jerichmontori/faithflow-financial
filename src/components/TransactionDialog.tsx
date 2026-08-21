@@ -133,6 +133,16 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const options = useMemo(() => (budgets.data ?? []).filter((b) => b.kind === kind), [budgets.data, kind]);
   const selected = options.find((b) => b.id === form.budget_line_id);
 
+  const groupedOptions = useMemo(() => {
+    const map = new Map<string, typeof options>();
+    for (const b of options) {
+      const g = b.grup || "Lain-lain";
+      if (!map.has(g)) map.set(g, []);
+      map.get(g)!.push(b);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [options]);
+
   // Fungsi helper untuk menerapkan format ke baris keterangan yang kosong tanpa mengganti yang sudah ada
   const applyDescriptionToEmpty = (ket: string, targetBudgetId?: string) => {
     if (targetBudgetId) {
@@ -346,42 +356,80 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                     <ChevronsUpDown className="ml-2 size-3.5 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[340px] sm:w-[380px] p-0" align="end">
+                <PopoverContent className="w-[360px] sm:w-[460px] p-0" align="end">
                   <Command
                     filter={(value, search) =>
                       value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
                     }
                   >
-                    <CommandInput placeholder="Cari kode atau nama mata anggaran…" />
-                    <CommandList>
+                    <CommandInput placeholder="Cari kode, nama, atau grup mata anggaran…" />
+                    <CommandList className="max-h-80 overflow-y-auto">
                       <CommandEmpty>Mata anggaran tidak ditemukan.</CommandEmpty>
-                      <CommandGroup>
-                        {options.map((b) => (
-                          <CommandItem
-                            key={b.id}
-                            value={`${b.code} ${b.name}`}
-                            onSelect={() => {
-                              setForm({ ...form, budget_line_id: b.id });
-                              setBudgetOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 size-3.5",
-                                form.budget_line_id === b.id ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            <span className="font-mono text-xs font-semibold">{b.code}</span>
-                            <span className="truncate text-xs">{b.name}</span>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
+                      {groupedOptions.map(([grupName, list]) => (
+                        <CommandGroup key={grupName} heading={grupName}>
+                          {list.map((b) => (
+                            <CommandItem
+                              key={b.id}
+                              value={`${b.code} ${b.name} ${b.grup || ""}`}
+                              onSelect={() => {
+                                setForm({ ...form, budget_line_id: b.id });
+                                setBudgetOpen(false);
+                              }}
+                              className="flex items-start py-2 cursor-pointer"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 size-3.5 mt-0.5 shrink-0",
+                                  form.budget_line_id === b.id ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                              <div className="flex flex-col gap-0.5 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs font-bold text-primary">{b.code}</span>
+                                  <span className="text-xs font-medium text-foreground">{b.name}</span>
+                                </div>
+                                {b.grup && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Grup: {b.grup}
+                                  </span>
+                                )}
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      ))}
                     </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
             </div>
           </div>
+
+          {/* Rincian Keterangan Mata Anggaran Terpilih */}
+          {selected && (
+            <div className="rounded-md bg-muted/40 border px-3 py-2 text-xs flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-primary">{selected.code}</span>
+                  <span className="font-semibold text-foreground">{selected.name}</span>
+                </div>
+                {selected.grup && (
+                  <span className="text-[11px] text-muted-foreground block">
+                    Grup Kategori: <strong>{selected.grup}</strong>
+                  </span>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                onClick={() => setBudgetOpen(true)}
+              >
+                Ganti
+              </Button>
+            </div>
+          )}
 
           {/* Toggle Asisten Pengisian Cepat */}
           {kind === "penerimaan" && (
