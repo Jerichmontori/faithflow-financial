@@ -37,9 +37,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BULAN_PANJANG } from "@/lib/kolom";
+import { BULAN_PANJANG, standardizeDescription } from "@/lib/kolom";
 
 const schema = z.object({
   trx_date: z.string().min(1, "Tanggal wajib diisi"),
@@ -61,12 +61,27 @@ const PRESET_KOLOM = [
   { code: "1.3.53.06", nama: "Anak Sekolah Minggu (ASM) Kolom", prefix: "ASM Kolom" },
   { code: "1.3.53.07", nama: "Syukur HUT / Khusus Kolom", prefix: "Syukur HUT Kolom" },
   { code: "1.3.57.01", nama: "Pembangunan dari Kolom", prefix: "Pembangunan Kolom" },
-  { code: "1.3.01.01", nama: "BIPRA Aras: Pria/Kaum Bapa (PKB)", prefix: "PKB ARAS" },
-  { code: "1.3.01.02", nama: "BIPRA Aras: Wanita/Kaum Ibu (WKI)", prefix: "WKI ARAS" },
-  { code: "1.3.01.03", nama: "BIPRA Aras: Pemuda", prefix: "Pemuda ARAS" },
-  { code: "1.3.01.04", nama: "BIPRA Aras: Remaja", prefix: "Remaja ARAS" },
-  { code: "1.3.01.05", nama: "BIPRA Aras: Anak Sekolah Minggu (ASM)", prefix: "ASM ARAS" },
-  { code: "1.3.01.08", nama: "BIPRA Aras: Lansia", prefix: "Lansia ARAS" },
+  { code: "1.3.01.08", nama: "Lansia Rayon 1", prefix: "Lansia Rayon 1" },
+  { code: "1.3.01.08", nama: "Lansia Rayon 2", prefix: "Lansia Rayon 2" },
+  { code: "1.3.01.08", nama: "Lansia Rayon 3", prefix: "Lansia Rayon 3" },
+  { code: "1.3.01.08", nama: "Lansia Rayon 4", prefix: "Lansia Rayon 4" },
+  { code: "1.3.01.08", nama: "Lansia Rayon 5", prefix: "Lansia Rayon 5" },
+  { code: "1.3.01.08", nama: "Lansia Aras Jemaat", prefix: "Lansia Aras" },
+  { code: "1.3.01.02", nama: "WKI Martha Maria", prefix: "WKI Martha Maria" },
+  { code: "1.3.01.02", nama: "WKI Lidya", prefix: "WKI Lidya" },
+  { code: "1.3.01.02", nama: "WKI Ester Eunike", prefix: "WKI Ester Eunike" },
+  { code: "1.3.01.02", nama: "WKI Debora", prefix: "WKI Debora" },
+  { code: "1.3.01.02", nama: "WKI Sifra", prefix: "WKI Sifra" },
+  { code: "1.3.01.02", nama: "WKI Monika", prefix: "WKI Monika" },
+  { code: "1.3.01.02", nama: "WKI Aras Jemaat", prefix: "WKI Aras" },
+  { code: "1.3.01.01", nama: "PKB Musafir", prefix: "PKB Musafir" },
+  { code: "1.3.01.01", nama: "PKB Abraham", prefix: "PKB Abraham" },
+  { code: "1.3.01.01", nama: "PKB Aras Jemaat", prefix: "PKB ARAS" },
+  { code: "1.3.01.03", nama: "Pemuda Bethany", prefix: "Pemuda Bethany" },
+  { code: "1.3.01.03", nama: "Pemuda Imanuel", prefix: "Pemuda Imanuel" },
+  { code: "1.3.01.03", nama: "Pemuda Aras Jemaat", prefix: "Pemuda ARAS" },
+  { code: "1.3.01.04", nama: "Remaja Aras Jemaat", prefix: "Remaja ARAS" },
+  { code: "1.3.01.05", nama: "Anak Sekolah Minggu (ASM) Aras", prefix: "ASM ARAS" },
 ];
 
 const PRESET_SAMPUL = [
@@ -100,7 +115,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const [asistenTab, setAsistenTab] = useState("sampul");
 
   // State Asisten Kolom & BIPRA
-  const [pilihPresetKolom, setPilihPresetKolom] = useState("1.3.53.01");
+  const [pilihPresetKolom, setPilihPresetKolom] = useState(PRESET_KOLOM[0]?.nama ?? "Ibadah Perkunjungan Keluarga (Rutin Kolom)");
   const [pilihKolom, setPilihKolom] = useState("1");
   const [pilihBulan, setPilihBulan] = useState(() => String(new Date().getMonth()));
   const [rincianTanggal, setRincianTanggal] = useState("");
@@ -140,6 +155,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
 
   // Fungsi helper untuk menerapkan format ke baris keterangan yang kosong tanpa mengganti yang sudah ada
   const applyDescriptionToEmpty = (ket: string, targetBudgetId?: string) => {
+    const cleanKet = standardizeDescription(ket);
     if (targetBudgetId) {
       setForm((f) => ({ ...f, budget_line_id: targetBudgetId }));
     }
@@ -153,7 +169,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
         const targetRow = prev[emptyIndex]!;
         const updated = [...prev];
         updated[emptyIndex] = {
-          description: ket,
+          description: cleanKet,
           amount: targetRow.amount,
         };
         return updated;
@@ -161,7 +177,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
 
       // Jika semua baris yang ada sudah terisi dan masih kurang dari 5 baris, tambahkan baris baru
       if (prev.length < 5) {
-        return [...prev, { description: ket, amount: "" }];
+        return [...prev, { description: cleanKet, amount: "" }];
       }
 
       // Jika sudah mencapai 5 baris dan semuanya penuh
@@ -169,21 +185,23 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       return prev;
     });
 
-    toast.success(`Keterangan diterapkan: "${ket}"`);
+    toast.success(`Keterangan terstandarisasi diterapkan: "${cleanKet}"`);
   };
 
   // Terapkan Asisten Kolom & BIPRA
   const terapkanKolom = () => {
-    const preset = PRESET_KOLOM.find((p) => p.code === pilihPresetKolom);
-    const targetBudget = options.find((b) => b.code === pilihPresetKolom);
+    const preset = PRESET_KOLOM.find((p) => p.nama === pilihPresetKolom) ?? PRESET_KOLOM[0]!;
+    const targetBudget = options.find((b) => b.code === preset.code);
     const bulanNama = BULAN_PANJANG[Number(pilihBulan)] ?? "Januari";
     const tglPart = rincianTanggal.trim() ? ` (${rincianTanggal.trim()})` : "";
     
     let ket = "";
-    if (preset?.code.startsWith("1.3.01")) {
+    if (preset.code.startsWith("1.3.01")) {
+      // BIPRA Aras / Rayon / Kelompok
       ket = `${preset.prefix}${tglPart} Bulan ${bulanNama}`;
     } else {
-      ket = `${preset?.prefix || "Setoran"} ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
+      // Setoran Kolom
+      ket = `${preset.prefix} ${pilihKolom}${tglPart} Bulan ${bulanNama}`;
     }
 
     applyDescriptionToEmpty(ket, targetBudget?.id);
@@ -242,9 +260,11 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
           : [{ description: form.description, amount: form.amount }];
       if (baris.length === 0) throw new Error("Minimal satu keterangan wajib diisi");
       const rows = baris.map((b) => {
+        // Otomatis standarisasi keterangan untuk meminimalisir typo
+        const cleanDesc = standardizeDescription(b.description);
         const parsed = schema.parse({
           ...form,
-          description: b.description,
+          description: cleanDesc,
           amount: Number(b.amount),
           payee: form.payee || undefined,
         });
@@ -301,12 +321,19 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       </DialogTrigger>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader className="border-b pb-3">
-          <DialogTitle className="text-lg font-bold">
-            {kind === "penerimaan" ? "Catat Penerimaan Kas" : "Catat Pengeluaran Kas"}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-lg font-bold">
+              {kind === "penerimaan" ? "Catat Penerimaan Kas" : "Catat Pengeluaran Kas"}
+            </DialogTitle>
+            {kind === "penerimaan" && (
+              <span className="text-[11px] text-success font-medium flex items-center gap-1 bg-success/10 px-2 py-0.5 rounded-full">
+                <ShieldCheck className="size-3" /> Auto-Standardisasi Aktif
+              </span>
+            )}
+          </div>
           <DialogDescription className="text-xs text-muted-foreground">
             {kind === "penerimaan"
-              ? "Catat setoran ibadah kolom, BIPRA, sampul PBTK, sampul-sampul, atau penerimaan kas umum."
+              ? "Sistem secara otomatis menstandarkan penulisan Kolom, BIPRA, Rayon, dan Dana Duka agar selalu seragam."
               : "Nomor bukti dibuat otomatis oleh sistem setelah transaksi disimpan."}
           </DialogDescription>
         </DialogHeader>
@@ -430,7 +457,10 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="size-4 text-primary" />
-                  <span className="text-xs font-semibold">Bantuan Generator Format Standar</span>
+                  <div>
+                    <span className="text-xs font-semibold block">Pilih Template Otomatis (Cegah Typo)</span>
+                    <span className="text-[11px] text-muted-foreground">Pilih pos kolom / BIPRA untuk mengisi keterangan tanpa salah ketik</span>
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -439,7 +469,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                   onClick={() => setAsistenAktif(!asistenAktif)}
                   className="h-7 text-xs px-2.5 font-medium gap-1"
                 >
-                  {asistenAktif ? "Sembunyikan Asisten" : "Buka Asisten Pengisian"}
+                  {asistenAktif ? "Sembunyikan Asisten" : "⚡ Buka Asisten Template"}
                 </Button>
               </div>
 
@@ -625,14 +655,19 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                     <TabsContent value="kolom" className="space-y-3 pt-2.5">
                       <div className="grid gap-2.5 sm:grid-cols-2">
                         <div className="space-y-1">
-                          <Label className="text-xs">Jenis Setoran / Kompelka</Label>
-                          <Select value={pilihPresetKolom} onValueChange={setPilihPresetKolom}>
+                          <Label className="text-xs">Jenis Setoran / Kompelka / Rayon</Label>
+                          <Select
+                            value={pilihPresetKolom}
+                            onValueChange={(val) => {
+                              setPilihPresetKolom(val);
+                            }}
+                          >
                             <SelectTrigger className="h-8 text-xs bg-background">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-64">
                               {PRESET_KOLOM.map((p) => (
-                                <SelectItem key={p.code} value={p.code} className="text-xs">
+                                <SelectItem key={p.nama} value={p.nama} className="text-xs">
                                   {p.nama}
                                 </SelectItem>
                               ))}
@@ -640,7 +675,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                           </Select>
                         </div>
 
-                        {!pilihPresetKolom.startsWith("1.3.01") && (
+                        {!PRESET_KOLOM.find((p) => p.nama === pilihPresetKolom)?.code.startsWith("1.3.01") && (
                           <div className="space-y-1">
                             <Label className="text-xs">Nomor Kolom</Label>
                             <Select value={pilihKolom} onValueChange={setPilihKolom}>
@@ -687,7 +722,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
 
                       <div className="flex justify-end pt-1">
                         <Button type="button" size="sm" variant="secondary" onClick={terapkanKolom} className="h-7 text-xs font-semibold">
-                          Terapkan Format Kolom
+                          Terapkan Format Kolom / BIPRA
                         </Button>
                       </div>
                     </TabsContent>
@@ -728,6 +763,17 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                           ),
                         )
                       }
+                      onBlur={(e) => {
+                        // Otomatis bersihkan dan standarisasi teks saat keluar dari input
+                        const clean = standardizeDescription(e.target.value);
+                        if (clean !== e.target.value) {
+                          setItems(
+                            items.map((x, i) =>
+                              i === idx ? { ...x, description: clean } : x,
+                            ),
+                          );
+                        }
+                      }}
                       placeholder={`Keterangan baris ${idx + 1}`}
                       maxLength={500}
                       className="h-9 text-xs"

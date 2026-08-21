@@ -110,6 +110,60 @@ function normalisasiNama(nama: string): string {
 }
 
 /**
+ * Normalisasi dan standarisasi teks keterangan transaksi secara otomatis
+ * untuk meminimalisir kesalahan pengetikan manual (typo, casing, spasi tanda kurung, variasi ejaan).
+ */
+export function standardizeDescription(text: string): string {
+  if (!text) return "";
+  let clean = text.trim();
+
+  // 1. Perbaiki spasi di dalam dan sekitar tanda kurung: "( 3 Duka )" -> "(3 Duka)"
+  clean = clean.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+  clean = clean.replace(/\s{2,}/g, " ");
+
+  // 2. Standardisasi format kata Kolom: "kolom 04" / "KOlom 4" -> "Kolom 4"
+  clean = clean.replace(/\bkolom\s*0*(\d+)\b/gi, (_, num) => `Kolom ${Number(num)}`);
+
+  // 3. Standardisasi kata Bulan: "bulan februari" -> "Bulan Februari", "bulan" -> "Bulan"
+  clean = clean.replace(/\bbulan\s+([a-z]+)/gi, (_, bln) => {
+    const idx = parseBulan(bln);
+    if (idx !== null) return `Bulan ${BULAN_PANJANG[idx]}`;
+    return `Bulan ${bln.charAt(0).toUpperCase() + bln.slice(1)}`;
+  });
+
+  // 4. Standardisasi ejaan Lansia Rayon: "lansia rayon 2" -> "Lansia Rayon 2"
+  clean = clean.replace(/\blansia\s+rayon\s*0*(\d+)\b/gi, (_, r) => `Lansia Rayon ${Number(r)}`);
+  clean = clean.replace(/\blansia\s+aras\b/gi, "Lansia Aras");
+
+  // 5. Standardisasi ejaan BIPRA Kelompok
+  clean = clean.replace(/\bwki\s+(lidya|lydia)\b/gi, "WKI Lidya");
+  clean = clean.replace(/\bwki\s+(marta|martha)\s*(maria)?\b/gi, "WKI Martha Maria");
+  clean = clean.replace(/\bwki\s+(ester|easter)\s*(eunike)?\b/gi, "WKI Ester Eunike");
+  clean = clean.replace(/\bwki\s+(debora|deborah)\b/gi, "WKI Debora");
+  clean = clean.replace(/\bwki\s+(sifra|shifra)\b/gi, "WKI Sifra");
+  clean = clean.replace(/\bwki\s+(monika)\b/gi, "WKI Monika");
+  clean = clean.replace(/\bpkb\s+(musafir|muzafir)\b/gi, "PKB Musafir");
+  clean = clean.replace(/\bpkb\s+(abraham|ibrahim)\b/gi, "PKB Abraham");
+  clean = clean.replace(/\bpemuda\s+(imanuel|immanuel)\b/gi, "Pemuda Imanuel");
+  clean = clean.replace(/\bpemuda\s+(baithany|betania|bethany)\b/gi, "Pemuda Bethany");
+
+  // 6. Standardisasi Dana Duka
+  clean = clean.replace(/\bdana\s+duka\b/gi, "Dana Duka");
+  clean = clean.replace(/\((\d+)\)\s*duka\b/gi, "($1 Duka)");
+  clean = clean.replace(/\((\d+)\s*duka\)/gi, "($1 Duka)");
+
+  // 7. Standardisasi PBTK
+  clean = clean.replace(/\bpbtk\b/gi, "PBTK");
+
+  // 8. Standardisasi Acronyms WKI / PKB / ASM
+  clean = clean.replace(/\bwki\b/gi, "WKI");
+  clean = clean.replace(/\bpkb\b/gi, "PKB");
+  clean = clean.replace(/\basm\b/gi, "ASM");
+
+  return clean;
+}
+
+/**
  * Nama kolom dari keterangan:
  * - Ada tanda "(" -> ambil teks sebelum tanda kurung.
  *   "PKB Musafir (5,12,19,26) Bulan Juli" -> "PKB Musafir"
