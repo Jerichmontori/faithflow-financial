@@ -8,6 +8,7 @@ import { TransactionDialog } from "@/components/TransactionDialog";
 import { KoreksiDialog } from "@/components/KoreksiDialog";
 import { HapusTransaksiDialog } from "@/components/HapusTransaksiDialog";
 import { ImportMassalDialog } from "@/components/ImportMassalDialog";
+import { BackupDataDialog } from "@/components/BackupDataDialog";
 import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
@@ -229,6 +230,7 @@ function PengeluaranPage() {
         <div className="flex flex-wrap items-center gap-2">
           <TransactionDialog kind="pengeluaran" />
           <ImportMassalDialog kind="pengeluaran" />
+          <BackupDataDialog kind="pengeluaran" />
           <ResetTransaksiDialog kind="pengeluaran" jumlah={allFilteredRows.length} />
         </div>
       }
