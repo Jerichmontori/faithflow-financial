@@ -10,7 +10,7 @@ import { HapusTransaksiDialog } from "@/components/HapusTransaksiDialog";
 import { ImportMassalDialog } from "@/components/ImportMassalDialog";
 import { BackupDataDialog } from "@/components/BackupDataDialog";
 import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
-import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
+import { transactionsQuery, budgetLinesQuery, isBankPayment } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -451,7 +451,20 @@ function PengeluaranPage() {
               {rows.map((t) => (
                 <TableRow key={t.id} className="hover:bg-muted/10">
                   <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
-                  <TableCell className="font-mono text-xs font-semibold text-destructive">{t.voucher_no}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-mono text-xs font-semibold text-destructive">{t.voucher_no}</span>
+                      {isBankPayment(t) ? (
+                        <span className="inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded w-fit">
+                          🏦 Bank
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded w-fit">
+                          💵 Tunai
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs">{t.payee ?? "-"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
