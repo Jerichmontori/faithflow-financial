@@ -1,13 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { transactionsQuery } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
+import { exportAoa } from "@/lib/xlsx";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Save,
+  RotateCcw,
+  Download,
+  Printer,
+  History,
+  FileSpreadsheet,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rincian-uang")({
   head: () => ({
@@ -51,26 +63,70 @@ const todayStr = () => {
 };
 
 const storageKey = (date: string) => `bumotik.rincian-uang.${date}`;
+const indexKey = "bumotik.rincian-uang.index";
+
+function getSavedIndex(): string[] {
+  try {
+    const raw = localStorage.getItem(indexKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function updateSavedIndex(date: string) {
+  try {
+    const prev = getSavedIndex();
+    if (!prev.includes(date)) {
+      const next = [date, ...prev].sort().reverse();
+      localStorage.setItem(indexKey, JSON.stringify(next));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function removeFromIndex(date: string) {
+  try {
+    const prev = getSavedIndex();
+    const next = prev.filter((d) => d !== date);
+    localStorage.setItem(indexKey, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+}
 
 function RincianUangPage() {
   const trx = useQuery(transactionsQuery);
   const [date, setDate] = useState(todayStr);
   const [counts, setCounts] = useState<number[]>(() => DENOMS.map(() => 0));
   const [note, setNote] = useState("");
+  const [savedDates, setSavedDates] = useState<string[]>([]);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
 
+  // Muat data saat tanggal berubah
   useEffect(() => {
     try {
+      setSavedDates(getSavedIndex());
       const raw = localStorage.getItem(storageKey(date));
-      const saved = raw ? JSON.parse(raw) : null;
-      setCounts(
-        Array.isArray(saved?.counts) && saved.counts.length === DENOMS.length
-          ? saved.counts.map((n: unknown) => Number(n) || 0)
-          : DENOMS.map(() => 0),
-      );
-      setNote(typeof saved?.note === "string" ? saved.note : "");
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setCounts(
+          Array.isArray(saved?.counts) && saved.counts.length === DENOMS.length
+            ? saved.counts.map((n: unknown) => Number(n) || 0)
+            : DENOMS.map(() => 0),
+        );
+        setNote(typeof saved?.note === "string" ? saved.note : "");
+        setLastSavedTime(saved?.savedAt ? new Date(saved.savedAt).toLocaleTimeString("id-ID") : "Tersimpan");
+      } else {
+        setCounts(DENOMS.map(() => 0));
+        setNote("");
+        setLastSavedTime(null);
+      }
     } catch {
       setCounts(DENOMS.map(() => 0));
       setNote("");
+      setLastSavedTime(null);
     }
   }, [date]);
 
@@ -95,13 +151,56 @@ function RincianUangPage() {
   }
 
   function simpan() {
-    localStorage.setItem(storageKey(date), JSON.stringify({ counts, note }));
+    try {
+      const now = new Date().toISOString();
+      const payload = { counts, note, savedAt: now, date, totalFisik, saldoKas };
+      localStorage.setItem(storageKey(date), JSON.stringify(payload));
+      updateSavedIndex(date);
+      setSavedDates(getSavedIndex());
+      setLastSavedTime(new Date(now).toLocaleTimeString("id-ID"));
+      toast.success(`Rincian uang kas tanggal ${tanggal(date)} berhasil disimpan!`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan rincian uang kas");
+    }
   }
 
   function reset() {
     setCounts(DENOMS.map(() => 0));
     setNote("");
+    setLastSavedTime(null);
     localStorage.removeItem(storageKey(date));
+    removeFromIndex(date);
+    setSavedDates(getSavedIndex());
+    toast.info(`Rincian uang kas tanggal ${tanggal(date)} telah direset.`);
+  }
+
+  function downloadExcel() {
+    const rows = [
+      ["BERITA ACARA RINCIAN FISIK UANG KAS"],
+      ["BUMOTIK FINANCIAL - GMIM BUKIT MORIA TIKALA BARU"],
+      [],
+      ["Tanggal Perhitungan", tanggal(date)],
+      ["Keterangan / Kasir", note || "-"],
+      ["Waktu Export", new Date().toLocaleString("id-ID")],
+      [],
+      ["NO", "PECAHAN", "JENIS", "JUMLAH (LEMBAR/KEPING)", "SUBTOTAL (RP)"],
+      ...DENOMS.map((d, i) => [
+        i + 1,
+        d.label,
+        d.type,
+        counts[i] || 0,
+        (counts[i] || 0) * d.v,
+      ]),
+      [],
+      ["TOTAL UANG FISIK", "", "", totalLembar, totalFisik],
+      ["SALDO KAS SISTEM", "", "", "", saldoKas],
+      ["SELISIH", "", "", "", selisih],
+      ["STATUS PENCATATAN", "", "", "", cocok ? "SESUAI (SEIMBANG)" : selisih > 0 ? "LEBIH" : "KURANG"],
+    ];
+
+    const filename = `Rincian_Uang_Kas_${date}.xlsx`;
+    exportAoa(rows, filename, "Rincian Kas", [6, 20, 15, 25, 20]);
+    toast.success(`Rincian uang berhasil diekspor ke Excel: ${filename}`);
   }
 
   return (
@@ -109,30 +208,86 @@ function RincianUangPage() {
       title="Rincian Uang Kas"
       subtitle="Hitung fisik uang per pecahan dan cocokkan dengan saldo kas pada tanggal terpilih"
       actions={
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={reset}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={downloadExcel} className="gap-1.5 text-xs">
+            <Download className="size-3.5 text-success" />
+            Download Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={reset} className="gap-1.5 text-xs text-destructive hover:text-destructive">
+            <RotateCcw className="size-3.5" />
             Reset
           </Button>
-          <Button onClick={simpan}>Simpan</Button>
+          <Button size="sm" onClick={simpan} className="gap-1.5 text-xs font-semibold">
+            <Save className="size-3.5" />
+            Simpan Rincian
+          </Button>
         </div>
       }
     >
-      <div className="panel mb-5 flex flex-wrap items-end gap-4 p-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="date">Tanggal</Label>
-          <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      {/* Baris Filter Tanggal & Keterangan */}
+      <div className="panel mb-5 p-4 space-y-3">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="date" className="text-xs font-semibold">
+              Tanggal Perhitungan
+            </Label>
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="min-w-[260px] flex-1 space-y-1.5">
+            <Label htmlFor="note" className="text-xs font-semibold">
+              Keterangan / Nama Petugas Kasir
+            </Label>
+            <Input
+              id="note"
+              placeholder="Contoh: Penghitungan kas sore oleh Bendahara Jemaat"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {lastSavedTime ? (
+              <Badge variant="outline" className="h-8 gap-1 font-medium bg-emerald-50 text-emerald-700 border-emerald-300">
+                <CheckCircle2 className="size-3.5 text-emerald-600" /> Tersimpan ({lastSavedTime})
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="h-8 text-muted-foreground">
+                Belum Disimpan
+              </Badge>
+            )}
+          </div>
         </div>
-        <div className="min-w-[260px] flex-1 space-y-1.5">
-          <Label htmlFor="note">Keterangan Kasir</Label>
-          <Input
-            id="note"
-            placeholder="Catatan penghitungan kas"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </div>
+
+        {/* Daftar Arsip Tanggal yang Pernah Disimpan */}
+        {savedDates.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t text-xs text-muted-foreground">
+            <History className="size-3.5 text-primary" />
+            <span className="font-medium">Arsip Tersimpan:</span>
+            {savedDates.slice(0, 8).map((d) => (
+              <Button
+                key={d}
+                type="button"
+                variant={date === d ? "secondary" : "ghost"}
+                size="sm"
+                className="h-6 text-[11px] px-2"
+                onClick={() => setDate(d)}
+              >
+                {tanggal(d)}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Kartu Ringkasan Saldo & Uang Fisik */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Saldo Kas Sistem" value={rupiah(saldoKas)} />
         <Stat label="Total Uang Fisik" value={rupiah(totalFisik)} />
@@ -141,75 +296,104 @@ function RincianUangPage() {
           value={rupiah(selisih)}
           tone={cocok ? "ok" : "bad"}
         />
-        <Stat label="Jumlah Lembar / Keping" value={String(totalLembar)} />
+        <Stat label="Jumlah Lembar / Keping" value={`${totalLembar} keping/lembar`} />
       </div>
 
+      {/* Banner Notifikasi Status Kecocokan Kas */}
       <div
         className={
           "panel mt-5 flex items-start gap-3 p-4 " +
-          (cocok ? "border-emerald-500/40" : "border-destructive/50")
+          (cocok ? "border-emerald-500/40 bg-emerald-50/20" : "border-destructive/50 bg-destructive/5")
         }
       >
         {cocok ? (
-          <CheckCircle2 className="mt-0.5 size-5 text-emerald-600" />
+          <CheckCircle2 className="mt-0.5 size-5 text-emerald-600 shrink-0" />
         ) : (
-          <AlertTriangle className="mt-0.5 size-5 text-destructive" />
+          <AlertTriangle className="mt-0.5 size-5 text-destructive shrink-0" />
         )}
-        <div>
-          <p className={"font-semibold " + (cocok ? "text-emerald-600" : "text-destructive")}>
+        <div className="space-y-0.5">
+          <p className={"font-semibold text-sm " + (cocok ? "text-emerald-700" : "text-destructive")}>
             {cocok
-              ? "Rincian uang SESUAI dengan saldo kas"
+              ? "✓ Rincian uang kas SESUAI & COCOK dengan saldo sistem"
               : selisih > 0
-                ? "Uang fisik LEBIH dari saldo kas"
-                : "Uang fisik KURANG dari saldo kas"}
+                ? "⚠ Uang fisik LEBIH dari saldo kas sistem"
+                : "⚠ Uang fisik KURANG dari saldo kas sistem"}
           </p>
-          <p className="text-sm text-muted-foreground">
-            Saldo kas {tanggal(date)} sebesar {rupiah(saldoKas)}, uang fisik terhitung{" "}
-            {rupiah(totalFisik)}
-            {cocok ? "." : ` — selisih ${rupiah(Math.abs(selisih))}. Mohon periksa kembali perhitungan atau pencatatan transaksi.`}
+          <p className="text-xs text-muted-foreground">
+            Saldo kas sistem {tanggal(date)} sebesar <strong>{rupiah(saldoKas)}</strong>, total uang fisik terhitung{" "}
+            <strong>{rupiah(totalFisik)}</strong>
+            {cocok
+              ? ". Data fisik dan buku kas telah seimbang sempurna."
+              : ` — terdapat selisih ${rupiah(Math.abs(selisih))}. Mohon periksa kembali kepingan uang atau transaksi yang belum tercatat.`}
           </p>
         </div>
       </div>
 
+      {/* Tabel Rincian Pecahan Uang */}
       <section className="panel mt-5 overflow-x-auto p-5">
-        <h2 className="text-base font-semibold">Rincian Pecahan</h2>
-        <table className="mt-4 w-full min-w-[560px] text-sm">
+        <div className="flex items-center justify-between border-b pb-3 mb-3">
+          <div>
+            <h2 className="text-base font-bold text-foreground">Rincian Lembaran & Kepingan Pecahan</h2>
+            <p className="text-xs text-muted-foreground">Ketik jumlah lembar atau keping pada setiap kolom pecahan</p>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-muted-foreground block">Total Fisik:</span>
+            <span className="text-lg font-bold font-mono text-primary">{rupiah(totalFisik)}</span>
+          </div>
+        </div>
+
+        <table className="w-full min-w-[560px] text-sm">
           <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="py-2 pr-3">Pecahan</th>
-              <th className="py-2 pr-3">Jenis</th>
-              <th className="py-2 pr-3 w-40">Jumlah</th>
-              <th className="py-2 text-right">Subtotal</th>
+            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground bg-muted/20">
+              <th className="py-2.5 px-3">Pecahan</th>
+              <th className="py-2.5 px-3">Jenis</th>
+              <th className="py-2.5 px-3 w-48 text-center">Jumlah Lembar / Keping</th>
+              <th className="py-2.5 px-3 text-right">Subtotal (Rp)</th>
             </tr>
           </thead>
           <tbody>
             {DENOMS.map((d, i) => (
-              <tr key={d.label} className="border-b last:border-0">
-                <td className="py-2 pr-3 font-medium">{d.label}</td>
-                <td className="py-2 pr-3 text-muted-foreground">{d.type}</td>
-                <td className="py-2 pr-3">
+              <tr key={d.label} className="border-b last:border-0 hover:bg-muted/10">
+                <td className="py-2.5 px-3 font-semibold text-foreground">{d.label}</td>
+                <td className="py-2.5 px-3 text-xs text-muted-foreground">
+                  <Badge variant="outline" className="text-[10px] py-0">
+                    {d.type}
+                  </Badge>
+                </td>
+                <td className="py-2.5 px-3 text-center">
                   <Input
                     inputMode="numeric"
                     value={counts[i] === 0 ? "" : String(counts[i])}
                     placeholder="0"
                     onChange={(e) => setCount(i, e.target.value)}
-                    className="h-9"
+                    className="h-9 text-center font-mono font-bold max-w-[140px] mx-auto"
                   />
                 </td>
-                <td className="py-2 text-right font-medium">{rupiah(counts[i]! * d.v)}</td>
+                <td className="py-2.5 px-3 text-right font-mono font-semibold text-primary">
+                  {rupiah(counts[i]! * d.v)}
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t bg-muted/40">
-              <td className="py-2 pr-3 font-semibold" colSpan={2}>
-                Total Uang Fisik
+            <tr className="border-t bg-muted/40 font-bold">
+              <td className="py-3 px-3" colSpan={2}>
+                Total Uang Fisik Kas
               </td>
-              <td className="py-2 pr-3 text-right font-semibold">{totalLembar}</td>
-              <td className="py-2 text-right font-semibold">{rupiah(totalFisik)}</td>
+              <td className="py-3 px-3 text-center font-mono text-sm">{totalLembar} lembar/keping</td>
+              <td className="py-3 px-3 text-right font-mono text-base text-primary">{rupiah(totalFisik)}</td>
             </tr>
           </tfoot>
         </table>
+
+        <div className="flex items-center justify-between pt-4 mt-2 border-t">
+          <div className="text-xs text-muted-foreground">
+            Klik tombol <strong>Simpan Rincian</strong> untuk menyimpan rekapan kas tanggal ini.
+          </div>
+          <Button size="sm" onClick={simpan} className="gap-1.5 font-semibold text-xs">
+            <Save className="size-3.5" /> Simpan Rincian Uang Kas
+          </Button>
+        </div>
       </section>
     </AppShell>
   );
@@ -217,12 +401,12 @@ function RincianUangPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "bad" }) {
   return (
-    <div className="panel p-4">
+    <div className="panel p-4 space-y-1">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p
         className={
-          "mt-1 text-xl font-semibold " +
-          (tone === "ok" ? "text-emerald-600" : tone === "bad" ? "text-destructive" : "")
+          "text-xl font-bold font-mono " +
+          (tone === "ok" ? "text-emerald-600" : tone === "bad" ? "text-destructive" : "text-foreground")
         }
       >
         {value}
