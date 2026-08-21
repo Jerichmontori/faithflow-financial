@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X, FileDown, Printer, BookOpen } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { budgetLinesQuery, transactionsQuery } from "@/lib/queries";
+import { budgetLinesQuery, transactionsQuery, isInternalCash, isReklas } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { parseKolom, labelKolom } from "@/lib/kolom";
+import { exportAoa, type Cell } from "@/lib/xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,58 +41,39 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/buku-pembantu")({
   head: () => ({
     meta: [
-      { title: "Buku Pembantu — BUMOTIK FINANCIAL" },
+      { title: "Buku Pembantu & Laporan Transaksi — BUMOTIK FINANCIAL" },
       {
         name: "description",
         content:
-          "Telusuri rincian transaksi kas gereja dengan filter jenis transaksi, mata anggaran, periode, dan kata kunci.",
+          "Telusuri rincian transaksi kas gereja dengan format transaksi Debit/Kredit, mata anggaran, periode, dan kata kunci.",
       },
-      { property: "og:title", content: "Buku Pembantu — BUMOTIK FINANCIAL" },
+      { property: "og:title", content: "Buku Pembantu & Laporan Transaksi — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Rincian mutasi kas per mata anggaran lengkap dengan saldo berjalan.",
+        content: "Rincian mutasi kas Debit (Pemasukan) dan Kredit (Pengeluaran) lengkap dengan saldo berjalan.",
       },
     ],
   }),
   component: BukuPembantuPage,
 });
 
-type KindFilter = "semua" | "penerimaan" | "pengeluaran";
-
 function BukuPembantuPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
 
-  const [kind, setKind] = useState<KindFilter>("semua");
-  const [grup, setGrup] = useState<string>("semua");
   const [budgetId, setBudgetId] = useState<string>("semua");
   const [kolom, setKolom] = useState<string>("semua");
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [q, setQ] = useState("");
   const [openBudget, setOpenBudget] = useState(false);
-
-  const grupOptions = useMemo(
-    () =>
-      [
-        ...new Set(
-          (budgets.data ?? [])
-            .filter((b) => kind === "semua" || b.kind === kind)
-            .map((b) => b.grup || "Tanpa Grup"),
-        ),
-      ].sort((a, b) => a.localeCompare(b)),
-    [budgets.data, kind],
-  );
+  const [tampilkanSemua, setTampilkanSemua] = useState(false);
 
   const budgetOptions = useMemo(
-    () =>
-      (budgets.data ?? [])
-        .filter((b) => kind === "semua" || b.kind === kind)
-        .filter((b) => grup === "semua" || (b.grup || "Tanpa Grup") === grup),
-    [budgets.data, kind, grup],
+    () => (budgets.data ?? []).slice().sort((a, b) => a.code.localeCompare(b.code)),
+    [budgets.data],
   );
   const selectedBudget = budgetOptions.find((b) => b.id === budgetId);
-  const grupBudgetIds = useMemo(() => new Set(budgetOptions.map((b) => b.id)), [budgetOptions]);
 
   const kolomOptions = useMemo(() => {
     const set = new Set<number>();
@@ -106,12 +89,20 @@ function BukuPembantuPage() {
     };
   }, [trx.data]);
 
-  const rows = useMemo(() => {
+  const adaFilter =
+    budgetId !== "semua" ||
+    kolom !== "semua" ||
+    dari !== "" ||
+    sampai !== "" ||
+    q.trim() !== "";
+
+  // Tampilkan rincian hanya jika ada filter atau pengguna meminta menampilkan
+  const harusTampilkan = adaFilter || tampilkanSemua;
+
+  const allFilteredRows = useMemo(() => {
     const keyword = q.trim().toLowerCase();
     return (trx.data ?? [])
       .filter((t) => t.status !== "rejected")
-      .filter((t) => kind === "semua" || t.kind === kind)
-      .filter((t) => grup === "semua" || grupBudgetIds.has(t.budget_line_id))
       .filter((t) => budgetId === "semua" || t.budget_line_id === budgetId)
       .filter((t) => {
         if (kolom === "semua") return true;
@@ -122,7 +113,14 @@ function BukuPembantuPage() {
       .filter((t) => (sampai ? t.trx_date <= sampai : true))
       .filter((t) =>
         keyword
-          ? [t.voucher_no, t.description, t.category, t.payee ?? "", t.budget_lines?.code ?? "", t.budget_lines?.name ?? ""]
+          ? [
+              t.voucher_no,
+              t.description,
+              t.category,
+              t.payee ?? "",
+              t.budget_lines?.code ?? "",
+              t.budget_lines?.name ?? "",
+            ]
               .join(" ")
               .toLowerCase()
               .includes(keyword)
@@ -134,7 +132,9 @@ function BukuPembantuPage() {
           ? a.created_at.localeCompare(b.created_at)
           : a.trx_date.localeCompare(b.trx_date),
       );
-  }, [trx.data, kind, grup, grupBudgetIds, budgetId, kolom, dari, sampai, q]);
+  }, [trx.data, budgetId, kolom, dari, sampai, q]);
+
+  const rows = harusTampilkan ? allFilteredRows : [];
 
   const totalMasuk = rows
     .filter((t) => t.kind === "penerimaan")
@@ -144,89 +144,91 @@ function BukuPembantuPage() {
     .reduce((a, t) => a + Number(t.amount), 0);
 
   let running = 0;
-  const withSaldo = rows.map((t) => {
-    running += t.kind === "penerimaan" ? Number(t.amount) : -Number(t.amount);
-    return { t, saldo: running };
+  const withSaldo = rows.map((t, i) => {
+    const nilai = Number(t.amount);
+    running += t.kind === "penerimaan" ? nilai : -nilai;
+    return {
+      t,
+      no: i + 1,
+      debit: t.kind === "penerimaan" ? nilai : 0,
+      kredit: t.kind === "pengeluaran" ? nilai : 0,
+      saldo: running,
+    };
   });
 
-  const adaFilter =
-    kind !== "semua" ||
-    grup !== "semua" ||
-    budgetId !== "semua" ||
-    kolom !== "semua" ||
-    dari !== "" ||
-    sampai !== "" ||
-    q !== "";
-
   function reset() {
-    setKind("semua");
-    setGrup("semua");
     setBudgetId("semua");
     setKolom("semua");
     setDari("");
     setSampai("");
     setQ("");
+    setTampilkanSemua(false);
   }
+
+  function exportExcel() {
+    if (withSaldo.length === 0) return;
+    const data: Cell[][] = [
+      ["NO", "Tanggal", "Mata Anggaran", "Nama Mata Anggaran", "Keterangan ", "Debit", "Kredit"],
+      ...withSaldo.map((b) => [
+        b.no,
+        b.t.trx_date,
+        b.t.budget_lines?.code ?? (isReklas(b.t) ? "REKLAS" : isInternalCash(b.t) ? "KAS/BANK" : ""),
+        b.t.budget_lines?.name ??
+          (isReklas(b.t)
+            ? "Pengembalian / Reklas"
+            : isInternalCash(b.t)
+              ? "Mutasi Kas Bank"
+              : b.t.category || "Lain-lain"),
+        b.t.koreksi_catatan
+          ? `${b.t.description || b.t.payee || ""} [${b.t.koreksi_catatan}]`
+          : b.t.description || b.t.payee || "",
+        b.debit || "",
+        b.kredit || "",
+      ]),
+      ["TOTAL", "", "", "", "", totalMasuk, totalKeluar],
+    ];
+
+    exportAoa(
+      data,
+      `Laporan-Transaksi-${dari || "awal"}-sd-${sampai || "akhir"}.xlsx`,
+      "Transaksi",
+      [8, 14, 18, 40, 48, 18, 18],
+    );
+  }
+
+  const totalTransaksiTersedia = (trx.data ?? []).filter((t) => t.status !== "rejected").length;
 
   return (
     <AppShell
-      title="Buku Pembantu"
-      subtitle={`${rows.length} rincian transaksi · masuk ${rupiah(totalMasuk)} · keluar ${rupiah(totalKeluar)}`}
+      title="Buku Pembantu / Laporan Transaksi"
+      subtitle={
+        harusTampilkan
+          ? `${rows.length} transaksi ditampilkan · Debit ${rupiah(totalMasuk)} · Kredit ${rupiah(totalKeluar)}`
+          : `Pilih filter untuk menampilkan rincian transaksi (Tersedia ${totalTransaksiTersedia} transaksi)`
+      }
       actions={
-        adaFilter ? (
-          <Button variant="outline" size="sm" onClick={reset}>
-            <X className="size-4" /> Reset filter
-          </Button>
-        ) : null
+        <div className="no-print flex flex-wrap gap-2">
+          {harusTampilkan && rows.length > 0 && (
+            <Button variant="outline" onClick={exportExcel}>
+              <FileDown className="mr-2 size-4" /> Export Excel (Transaksi)
+            </Button>
+          )}
+          {harusTampilkan && rows.length > 0 && (
+            <Button onClick={() => window.print()}>
+              <Printer className="mr-2 size-4" /> Cetak
+            </Button>
+          )}
+          {adaFilter && (
+            <Button variant="ghost" size="sm" onClick={reset}>
+              <X className="mr-1.5 size-4" /> Reset filter
+            </Button>
+          )}
+        </div>
       }
     >
       <section className="panel p-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1.5">
-            <Label>Jenis Transaksi</Label>
-            <Select
-              value={kind}
-              onValueChange={(v) => {
-                setKind(v as KindFilter);
-                setGrup("semua");
-                setBudgetId("semua");
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="semua">Semua Jenis</SelectItem>
-                <SelectItem value="penerimaan">Penerimaan</SelectItem>
-                <SelectItem value="pengeluaran">Pengeluaran</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Grup Anggaran</Label>
-            <Select
-              value={grup}
-              onValueChange={(v) => {
-                setGrup(v);
-                setBudgetId("semua");
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="semua">Semua Grup</SelectItem>
-                {grupOptions.map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {g}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5 xl:col-span-2">
             <Label>Mata Anggaran</Label>
             <Popover open={openBudget} onOpenChange={setOpenBudget}>
               <PopoverTrigger asChild>
@@ -315,34 +317,68 @@ function BukuPembantuPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="dari">Dari Tanggal</Label>
-            <Input id="dari" type="date" value={dari} onChange={(e) => setDari(e.target.value)} />
+            <DateInput id="dari" value={dari} onChange={setDari} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sampai">Sampai Tanggal</Label>
-            <Input
-              id="sampai"
-              type="date"
-              value={sampai}
-              onChange={(e) => setSampai(e.target.value)}
-            />
+            <DateInput id="sampai" value={sampai} onChange={setSampai} />
           </div>
-          <div className="space-y-1.5 md:col-span-2 xl:col-span-6">
-            <Label htmlFor="q">Kata Kunci</Label>
+          <div className="space-y-1.5 md:col-span-2 xl:col-span-4">
+            <Label htmlFor="q">Kata Kunci Pencarian</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="q"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Cari no. bukti, keterangan, penerima…"
+                placeholder="Cari no. bukti (KM/KK), kode pos, keterangan transaksi, penerima…"
                 className="pl-9"
               />
             </div>
           </div>
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {adaFilter ? (
+              <Badge variant="default" className="text-[11px]">
+                Filter Aktif ({rows.length} transaksi cocok)
+              </Badge>
+            ) : harusTampilkan ? (
+              <Badge variant="secondary" className="text-[11px]">
+                Menampilkan Semua Transaksi ({rows.length})
+              </Badge>
+            ) : (
+              <span className="italic text-muted-foreground">
+                Tampilan awal kosong. Pilih filter di atas atau klik tombol tampilkan.
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!harusTampilkan ? (
+              <Button
+                size="sm"
+                onClick={() => setTampilkanSemua(true)}
+                className="gap-1.5"
+              >
+                <BookOpen className="size-4" /> Tampilkan Rincian Transaksi ({totalTransaksiTersedia})
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={reset}
+                className="gap-1.5"
+              >
+                <X className="size-4" /> Kosongkan / Sembunyikan Rincian
+              </Button>
+            )}
+          </div>
+        </div>
       </section>
 
-      {selectedBudget && (
+      {selectedBudget && harusTampilkan && (
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="panel p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Pagu Anggaran</p>
@@ -361,49 +397,103 @@ function BukuPembantuPage() {
         </div>
       )}
 
-      <div className="panel mt-4 overflow-x-auto">
-        <Table>
+      <div className="panel mt-4 overflow-x-auto warta-area p-4">
+        <Table className="warta-table w-full">
           <TableHeader>
-            <TableRow>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>No. Bukti</TableHead>
-              <TableHead>Jenis</TableHead>
-              <TableHead>Mata Anggaran</TableHead>
+            <TableRow className="bg-muted/40 font-bold">
+              <TableHead className="w-12 text-center">NO</TableHead>
+              <TableHead className="w-28">Tanggal</TableHead>
+              <TableHead className="w-28">Mata Anggaran</TableHead>
+              <TableHead>Nama Mata Anggaran</TableHead>
               <TableHead>Keterangan</TableHead>
-              <TableHead className="text-right">Masuk</TableHead>
-              <TableHead className="text-right">Keluar</TableHead>
-              <TableHead className="text-right">Saldo</TableHead>
+              <TableHead className="text-right w-36">Debit (Pemasukan)</TableHead>
+              <TableHead className="text-right w-36">Kredit (Pengeluaran)</TableHead>
+              <TableHead className="text-right w-36">Saldo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {withSaldo.map(({ t, saldo }) => (
-              <TableRow key={t.id}>
-                <TableCell className="whitespace-nowrap">{tanggal(t.trx_date)}</TableCell>
-                <TableCell className="font-mono text-xs">{t.voucher_no}</TableCell>
-                <TableCell>
-                  <Badge variant={t.kind === "penerimaan" ? "secondary" : "outline"}>
-                    {t.kind === "penerimaan" ? "Penerimaan" : "Pengeluaran"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
-                </TableCell>
-                <TableCell className="max-w-64 truncate text-sm">
-                  {t.description || t.category}
-                </TableCell>
-                <TableCell className="text-right font-medium text-success">
-                  {t.kind === "penerimaan" ? rupiah(t.amount) : "—"}
-                </TableCell>
-                <TableCell className="text-right font-medium text-destructive">
-                  {t.kind === "pengeluaran" ? rupiah(t.amount) : "—"}
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs">{rupiah(saldo)}</TableCell>
-              </TableRow>
-            ))}
-            {withSaldo.length === 0 && (
+            {harusTampilkan ? (
+              <>
+                {withSaldo.map(({ t, no, debit, kredit, saldo }) => (
+                  <TableRow key={t.id} className="hover:bg-muted/10">
+                    <TableCell className="text-center font-mono text-xs">{no}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">{tanggal(t.trx_date)}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold text-primary">
+                      {t.budget_lines?.code ??
+                        (isReklas(t) ? "REKLAS" : isInternalCash(t) ? "KAS/BANK" : "-")}
+                    </TableCell>
+                    <TableCell className="text-xs font-medium">
+                      {t.budget_lines?.name ??
+                        (isReklas(t)
+                          ? "Pengembalian / Reklas"
+                          : isInternalCash(t)
+                            ? "Mutasi Kas Bank"
+                            : t.category || "-")}
+                    </TableCell>
+                    <TableCell className="text-xs max-w-72 truncate">
+                      {t.description || t.payee || "-"}
+                      {t.koreksi_catatan && (
+                        <span className="ml-1 text-[11px] italic text-muted-foreground">
+                          [{t.koreksi_catatan}]
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-xs font-mono text-success">
+                      {debit ? rupiah(debit) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-xs font-mono text-destructive">
+                      {kredit ? rupiah(kredit) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs font-semibold">
+                      {rupiah(saldo)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {withSaldo.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                      {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi yang sesuai dengan kriteria filter."}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {withSaldo.length > 0 && (
+                  <TableRow className="bg-muted/40 font-bold border-t-2">
+                    <TableCell colSpan={5} className="text-center font-bold">
+                      TOTAL
+                    </TableCell>
+                    <TableCell className="text-right text-success font-bold font-mono">
+                      {rupiah(totalMasuk)}
+                    </TableCell>
+                    <TableCell className="text-right text-destructive font-bold font-mono">
+                      {rupiah(totalKeluar)}
+                    </TableCell>
+                    <TableCell className="text-right text-primary font-bold font-mono">
+                      {rupiah(running)}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </>
+            ) : (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                  {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi sesuai filter."}
+                <TableCell colSpan={8} className="py-14 text-center">
+                  <div className="mx-auto flex max-w-md flex-col items-center justify-center text-center space-y-2">
+                    <div className="rounded-full bg-primary/10 p-3 text-primary">
+                      <Search className="size-6" />
+                    </div>
+                    <p className="font-semibold text-foreground text-sm">
+                      Rincian Buku Pembantu Siap Ditampilkan
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Silakan pilih Mata Anggaran, Kolom, rentang Tanggal, masukkan Kata Kunci di atas, atau klik tombol di bawah untuk menampilkan rincian data transaksi.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => setTampilkanSemua(true)}
+                      className="mt-2 gap-1.5"
+                    >
+                      <BookOpen className="size-4" /> Tampilkan Semua Transaksi ({totalTransaksiTersedia})
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

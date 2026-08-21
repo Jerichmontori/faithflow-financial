@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { ReklasDialog } from "@/components/ReklasDialog";
 import { transactionsQuery, isReklas } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ function ReklasPage() {
             (!start || t.trx_date >= start) &&
             (!end || t.trx_date <= end) &&
             (!q ||
-              `${t.voucher_no} ${t.description} ${t.payee ?? ""}`
+              `${t.voucher_no} ${t.description} ${t.koreksi_dari ?? ""} ${t.payee ?? ""}`
                 .toLowerCase()
                 .includes(q.toLowerCase())),
         )
@@ -55,11 +56,12 @@ function ReklasPage() {
   const total = rows.reduce((a, t) => a + Number(t.amount), 0);
 
   function exportCsv() {
-    const head = ["Tanggal", "No Bukti", "Mata Anggaran", "Keterangan", "Nominal"];
+    const head = ["Tanggal", "No Bukti", "Mata Anggaran Wajib", "Reklas Dari", "Keterangan", "Nominal"];
     const body = rows.map((t) => [
       t.trx_date,
       t.voucher_no,
       `${t.budget_lines?.code ?? ""} ${t.budget_lines?.name ?? ""}`,
+      (t.koreksi_dari ?? "").replace(/"/g, "'"),
       (t.description ?? "").replace(/"/g, "'"),
       t.amount,
     ]);
@@ -76,6 +78,11 @@ function ReklasPage() {
     <AppShell
       title="Transaksi Pengembalian / Reklas"
       subtitle="Transaksi reklasifikasi & pengembalian dana — tidak dihitung sebagai mutasi bank"
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <ReklasDialog />
+        </div>
+      }
     >
       <div className="panel mb-5 flex flex-wrap items-end gap-4 p-4">
         <div className="space-y-1.5">
@@ -90,7 +97,7 @@ function ReklasPage() {
           <Label htmlFor="q">Cari</Label>
           <Input
             id="q"
-            placeholder="No. bukti atau keterangan"
+            placeholder="No. bukti, keterangan, atau reklas asal…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -116,7 +123,8 @@ function ReklasPage() {
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="py-2 pr-3">Tanggal</th>
               <th className="py-2 pr-3">No. Bukti</th>
-              <th className="py-2 pr-3">Mata Anggaran</th>
+              <th className="py-2 pr-3">Mata Anggaran (Wajib)</th>
+              <th className="py-2 pr-3">Reklas Dari / Asal</th>
               <th className="py-2 pr-3">Keterangan</th>
               <th className="py-2 text-right">Nominal</th>
             </tr>
@@ -131,13 +139,22 @@ function ReklasPage() {
                     {t.budget_lines?.code} — {t.budget_lines?.name}
                   </Badge>
                 </td>
-                <td className="py-2 pr-3 max-w-[320px] truncate">{t.description}</td>
+                <td className="py-2 pr-3 text-xs">
+                  {t.koreksi_dari ? (
+                    <Badge variant="secondary" className="font-normal">
+                      {t.koreksi_dari}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </td>
+                <td className="py-2 pr-3 max-w-[300px] truncate">{t.description}</td>
                 <td className="py-2 text-right font-medium">{rupiah(Number(t.amount))}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                <td colSpan={6} className="py-6 text-center text-muted-foreground">
                   Tidak ada transaksi reklas pada filter ini.
                 </td>
               </tr>
@@ -146,7 +163,7 @@ function ReklasPage() {
           {rows.length > 0 && (
             <tfoot>
               <tr className="border-t bg-muted/40">
-                <td className="py-2 pr-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={4}>
+                <td className="py-2 pr-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={5}>
                   Total
                 </td>
                 <td className="py-2 text-right font-semibold">{rupiah(total)}</td>

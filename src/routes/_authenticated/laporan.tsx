@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Download, FileDown, RotateCcw } from "lucide-react";
+import { Check, ChevronsUpDown, Download, FileDown, RotateCcw, AlertCircle, CheckCircle2, Filter } from "lucide-react";
 import html2pdf from "html2pdf.js";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
@@ -14,6 +14,7 @@ import {
   parseKolom,
   parseNamaKolom,
 } from "@/lib/kolom";
+import { exportAoa, type Cell } from "@/lib/xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/laporan")({
       { property: "og:title", content: "Laporan Penerimaan per Kolom — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Matriks penerimaan kolom × bulan beserta rincian per mata anggaran.",
+        content: "Matriks penerimaan kolom × bulan beserta monitoring setoran belum setor.",
       },
     ],
   }),
@@ -65,6 +66,7 @@ export const Route = createFileRoute("/_authenticated/laporan")({
 });
 
 const MONTH_KEYS = [...BULAN_PANJANG.map((_, i) => i), null] as Array<number | null>;
+const DAFTAR_29_KOLOM = Array.from({ length: 29 }, (_, i) => i + 1);
 
 /** Grup penerimaan yang ditampilkan pada laporan kolom */
 const GRUP_LAPORAN = [
@@ -74,6 +76,20 @@ const GRUP_LAPORAN = [
   "PERSEMBAHAN IBADAH MENYAMBUT NATAL",
   "SAMPUL - SAMPUL",
   "PERSEMBAHAN IBADAH KHUSUS",
+  "Diakonia Dana Duka",
+  "HASIL PENGGALANGAN DANA PEMBANGUNAN DARI KOLOM",
+];
+
+const KATEGORI_MONITORING = [
+  { id: "semua", label: "Semua Pos Setoran Kolom" },
+  { id: "1.3.53.01", label: "Ibadah Perkunjungan Rutin Kolom" },
+  { id: "1.3.53.02", label: "Pria/Kaum Bapa (PKB) Kolom" },
+  { id: "1.3.53.03", label: "Wanita/Kaum Ibu (WKI) Kolom" },
+  { id: "1.3.53.04", label: "Pemuda Kolom" },
+  { id: "1.3.53.05", label: "Remaja Kolom" },
+  { id: "1.3.53.06", label: "Anak Sekolah Minggu (ASM) Kolom" },
+  { id: "1.3.55.01", label: "Diakonia Dana Duka Kolom" },
+  { id: "1.3.57.01", label: "Pembangunan dari Kolom" },
 ];
 
 /** Nama kolom hasil ekstraksi keterangan hanya berlaku untuk grup ini */
@@ -92,6 +108,11 @@ function LaporanPage() {
   const [tab, setTab] = useState("matriks");
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
+
+  // Filter khusus Monitoring Setoran
+  const [monitoringBulan, setMonitoringBulan] = useState(() => String(new Date().getMonth()));
+  const [monitoringKat, setMonitoringKat] = useState("semua");
+  const [monitoringStatusFilter, setMonitoringStatusFilter] = useState<"semua" | "belum" | "sudah">("semua");
 
   /** Semua penerimaan (kecuali mutasi kas internal) dengan kolom & bulan hasil parsing keterangan */
   const parsed = useMemo(
@@ -140,7 +161,6 @@ function LaporanPage() {
     });
     setIsGeneratingPdf(false);
   }
-
 
   const rows = useMemo(
     () =>
@@ -253,6 +273,98 @@ function LaporanPage() {
     [columnTotals],
   );
 
+  // DATA MONITORING SETORAN KOLOM 1 - 29 PADA BULAN TERPILIH
+  const monitoringData = useMemo(() => {
+    const targetBulanIdx = Number(monitoringBulan);
+    const targetKatCode = monitoringKat;
+
+    return DAFTAR_29_KOLOM.map((k) => {
+      // Cari transaksi yang cocok untuk kolom k pada bulan targetBulanIdx
+      const matches = parsed.filter((t) => {
+        if (t.kolom !== k) return false;
+        // Cek bulan dari keterangan atau trx_date
+        const trxMonth = t.bulan !== null ? t.bulan : new Date(t.trx_date).getMonth();
+        if (trxMonth !== targetBulanIdx) return false;
+
+        // Cek kategori anggaran jika difilter
+        if (targetKatCode !== "semua") {
+          const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
+          if (b?.code !== targetKatCode) return false;
+        }
+        return true;
+      });
+
+      const sudahSetor = matches.length > 0;
+      const totalSetoran = matches.reduce((acc, m) => acc + Number(m.amount), 0);
+      const transaksiTerakhir = matches[matches.length - 1];
+
+      return {
+        kolom: k,
+        sudahSetor,
+        totalSetoran,
+        transaksiCount: matches.length,
+        transaksiTerakhir,
+        matches,
+      };
+    });
+  }, [parsed, monitoringBulan, monitoringKat, budgets.data]);
+
+  const monitoringFiltered = useMemo(() => {
+    if (monitoringStatusFilter === "belum") return monitoringData.filter((d) => !d.sudahSetor);
+    if (monitoringStatusFilter === "sudah") return monitoringData.filter((d) => d.sudahSetor);
+    return monitoringData;
+  }, [monitoringData, monitoringStatusFilter]);
+
+  const totalSudahSetor = monitoringData.filter((d) => d.sudahSetor).length;
+  const totalBelumSetor = monitoringData.filter((d) => !d.sudahSetor).length;
+  const totalNominalMonitoring = monitoringData.reduce((acc, d) => acc + d.totalSetoran, 0);
+
+  function exportMonitoringExcel() {
+    const bulanNama = BULAN_PANJANG[Number(monitoringBulan)];
+    const katLabel = KATEGORI_MONITORING.find((k) => k.id === monitoringKat)?.label || "Semua Pos";
+
+    const rowsAoa: Cell[][] = [
+      ["MONITORING SETORAN KOLOM GEREJA", null, null, null, null, null, null],
+      [`Bulan: ${bulanNama} · Pos: ${katLabel}`, null, null, null, null, null, null],
+      [`Diekspor: ${new Date().toLocaleString("id-ID")}`, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null],
+      [
+        "Kolom",
+        "Status Setoran",
+        "Total Nominal (Rp)",
+        "Jumlah Transaksi",
+        "Tanggal Setor",
+        "No. Bukti",
+        "Keterangan Transaksi",
+      ],
+    ];
+
+    for (const d of monitoringFiltered) {
+      rowsAoa.push([
+        `Kolom ${d.kolom}`,
+        d.sudahSetor ? "SUDAH SETOR" : "BELUM MENYETOR",
+        d.totalSetoran,
+        d.transaksiCount,
+        d.transaksiTerakhir ? tanggal(d.transaksiTerakhir.trx_date) : "-",
+        d.transaksiTerakhir?.voucher_no ?? "-",
+        d.transaksiTerakhir?.description ?? "-",
+      ]);
+    }
+
+    rowsAoa.push([null, null, null, null, null, null, null]);
+    rowsAoa.push([
+      "TOTAL",
+      `${totalSudahSetor} Sudah Setor · ${totalBelumSetor} Belum Setor`,
+      totalNominalMonitoring,
+      null,
+      null,
+      null,
+      null,
+    ]);
+
+    exportAoa(rowsAoa, `Monitoring_Setoran_Kolom_${bulanNama}.xlsx`, "Monitoring", [12, 18, 20, 16, 16, 20, 40]);
+  }
+
   function exportCsv() {
     const header = ["Kolom", ...activeMonths.map((m) => labelBulan(m)), "Total"];
     const body = matrix.map((r) => [
@@ -275,10 +387,10 @@ function LaporanPage() {
 
   return (
     <AppShell
-      title="Laporan Penerimaan per Kolom"
+      title="Laporan Penerimaan per Kolom & BIPRA"
       subtitle={`${rows.length} transaksi · total ${rupiah(grandTotal)}`}
       actions={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={resetFilter}>
             <RotateCcw className="size-4" /> Reset filter
           </Button>
@@ -412,7 +524,7 @@ function LaporanPage() {
 
       <div ref={pdfRef}>
         <div className={cn("mb-4 border-b border-black pb-3", isGeneratingPdf ? "block" : "hidden")}>
-          <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom</h2>
+          <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom & BIPRA</h2>
           <p className="text-sm">BUMOTIK FINANCIAL</p>
           <p className="text-sm">
             {rows.length} transaksi · total {rupiah(grandTotal)}
@@ -420,12 +532,16 @@ function LaporanPage() {
           </p>
         </div>
         <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="no-print">
-          <TabsTrigger value="matriks">Kolom × Bulan</TabsTrigger>
+        <TabsList className="no-print mb-4">
+          <TabsTrigger value="matriks">Matriks Kolom × Bulan</TabsTrigger>
+          <TabsTrigger value="monitoring" className="font-semibold text-primary">
+            🔍 Monitoring Setoran (Belum Setor)
+          </TabsTrigger>
           <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
-          <TabsTrigger value="rincian">Rincian Transaksi</TabsTrigger>
+          <TabsTrigger value="rincian">Rincian Transaksi ({rows.length})</TabsTrigger>
         </TabsList>
 
+        {/* TAB 1: MATRIKS KOLOM X BULAN */}
         <TabsContent value="matriks">
           <div className="panel overflow-x-auto">
             <Table>
@@ -437,20 +553,20 @@ function LaporanPage() {
                       {labelBulan(m)}
                     </TableHead>
                   ))}
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right font-bold">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {matrix.map((r) => (
                   <TableRow
                     key={String(r.kolom)}
-                    className="cursor-pointer"
+                    className="cursor-pointer hover:bg-muted/20"
                     onClick={() => {
                       setKolomFilter(r.kolom === null ? "tanpa" : String(r.kolom));
                       setTab("rincian");
                     }}
                   >
-                    <TableCell className="sticky left-0 bg-card font-medium">
+                    <TableCell className="sticky left-0 bg-card font-semibold">
                       {labelKolom(r.kolom)}
                     </TableCell>
                     {activeMonths.map((m) => {
@@ -459,31 +575,31 @@ function LaporanPage() {
                         <TableCell
                           key={String(m)}
                           className={cn(
-                            "text-right text-sm whitespace-nowrap",
-                            v === 0 && "text-muted-foreground/50",
+                            "text-right text-sm whitespace-nowrap font-mono",
+                            v === 0 && "text-muted-foreground/40",
                           )}
                         >
                           {v === 0 ? "—" : rupiah(v)}
                         </TableCell>
                       );
                     })}
-                    <TableCell className="text-right font-semibold whitespace-nowrap text-success">
+                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success">
                       {rupiah(r.total)}
                     </TableCell>
                   </TableRow>
                 ))}
                 {matrix.length > 0 && (
                   <TableRow className="bg-muted/40">
-                    <TableCell className="sticky left-0 bg-muted/40 font-semibold">Total</TableCell>
+                    <TableCell className="sticky left-0 bg-muted/40 font-bold">Total</TableCell>
                     {activeMonths.map((m) => (
                       <TableCell
                         key={String(m)}
-                        className="text-right font-semibold whitespace-nowrap"
+                        className="text-right font-bold font-mono whitespace-nowrap text-primary"
                       >
                         {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right font-bold whitespace-nowrap">
+                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success text-base">
                       {rupiah(grandTotal)}
                     </TableCell>
                   </TableRow>
@@ -500,6 +616,174 @@ function LaporanPage() {
           </div>
         </TabsContent>
 
+        {/* TAB 2: MONITORING SETORAN & KOLOM YANG BELUM MENYETOR */}
+        <TabsContent value="monitoring">
+          <div className="space-y-4">
+            {/* Filter Bar Monitoring */}
+            <div className="panel p-4 bg-muted/20 border">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label>Bulan Yang Dimonitor</Label>
+                  <Select value={monitoringBulan} onValueChange={setMonitoringBulan}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {BULAN_PANJANG.map((b, i) => (
+                        <SelectItem key={b} value={String(i)}>
+                          {b}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Pos Setoran / Kompelka</Label>
+                  <Select value={monitoringKat} onValueChange={setMonitoringKat}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {KATEGORI_MONITORING.map((k) => (
+                        <SelectItem key={k.id} value={k.id}>
+                          {k.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Status Kolom</Label>
+                  <Select
+                    value={monitoringStatusFilter}
+                    onValueChange={(v: any) => setMonitoringStatusFilter(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="semua">Semua Status (29 Kolom)</SelectItem>
+                      <SelectItem value="belum">🔴 Hanya Yang Belum Setor ({totalBelumSetor})</SelectItem>
+                      <SelectItem value="sudah">🟢 Hanya Yang Sudah Setor ({totalSudahSetor})</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button variant="outline" onClick={exportMonitoringExcel} className="w-full gap-1.5">
+                    <Download className="size-4" /> Ekspor Status Excel
+                  </Button>
+                </div>
+              </div>
+
+              {/* Stat Card Ringkasan Monitoring */}
+              <div className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
+                <div className="panel p-3 bg-background border">
+                  <span className="text-xs text-muted-foreground block">Total Kolom Terdaftar</span>
+                  <span className="text-xl font-bold font-mono">29 Kolom</span>
+                </div>
+                <div className="panel p-3 bg-success/10 border border-success/20">
+                  <span className="text-xs text-success font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="size-3.5" /> Sudah Menyetor
+                  </span>
+                  <span className="text-xl font-bold font-mono text-success">
+                    {totalSudahSetor} Kolom ({((totalSudahSetor / 29) * 100).toFixed(0)}%)
+                  </span>
+                </div>
+                <div className="panel p-3 bg-destructive/10 border border-destructive/20">
+                  <span className="text-xs text-destructive font-semibold flex items-center gap-1">
+                    <AlertCircle className="size-3.5" /> Belum Menyetor
+                  </span>
+                  <span className="text-xl font-bold font-mono text-destructive">
+                    {totalBelumSetor} Kolom
+                  </span>
+                </div>
+                <div className="panel p-3 bg-primary/10 border border-primary/20">
+                  <span className="text-xs text-primary font-semibold block">Total Setoran Terkumpul</span>
+                  <span className="text-xl font-bold font-mono text-primary">
+                    {rupiah(totalNominalMonitoring)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabel Daftar Status Kolom */}
+            <div className="panel overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="w-28 font-bold">Kolom</TableHead>
+                    <TableHead className="w-44 font-bold">Status Setoran</TableHead>
+                    <TableHead className="w-40 text-right font-bold">Total Setoran</TableHead>
+                    <TableHead className="w-32 font-bold">Tgl Transaksi</TableHead>
+                    <TableHead className="w-36 font-bold">No. Bukti</TableHead>
+                    <TableHead className="font-bold">Keterangan Transaksi</TableHead>
+                    <TableHead className="w-24 text-right font-bold">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monitoringFiltered.map((d) => (
+                    <TableRow
+                      key={d.kolom}
+                      className={cn("hover:bg-muted/20", !d.sudahSetor && "bg-destructive/5")}
+                    >
+                      <TableCell className="font-bold">Kolom {d.kolom}</TableCell>
+                      <TableCell>
+                        {d.sudahSetor ? (
+                          <Badge variant="default" className="bg-success text-white hover:bg-success/90 gap-1 text-[11px]">
+                            <CheckCircle2 className="size-3" /> Sudah Setor ({d.transaksiCount}x)
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="gap-1 text-[11px]">
+                            <AlertCircle className="size-3" /> BELUM SETOR
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-sm">
+                        {d.sudahSetor ? (
+                          <span className="text-success">{rupiah(d.totalSetoran)}</span>
+                        ) : (
+                          <span className="text-muted-foreground font-normal">Rp 0</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {d.transaksiTerakhir ? tanggal(d.transaksiTerakhir.trx_date) : "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-primary font-semibold">
+                        {d.transaksiTerakhir?.voucher_no ?? "—"}
+                      </TableCell>
+                      <TableCell className="max-w-72 truncate text-xs text-muted-foreground">
+                        {d.transaksiTerakhir?.description ?? "Belum ada transaksi setoran pada bulan ini."}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {d.sudahSetor ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setKolomFilter(String(d.kolom));
+                              setBulanFilter(monitoringBulan);
+                              setTab("rincian");
+                            }}
+                          >
+                            Rincian
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-destructive font-medium italic">Tunggakan</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* TAB 3: MATA ANGGARAN X BULAN */}
         <TabsContent value="anggaran">
           <div className="panel overflow-x-auto">
             <Table>
@@ -511,20 +795,20 @@ function LaporanPage() {
                       {labelBulan(m)}
                     </TableHead>
                   ))}
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right font-bold">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {perAnggaran.map((r) => (
                   <TableRow
                     key={r.label}
-                    className="cursor-pointer"
+                    className="cursor-pointer hover:bg-muted/20"
                     onClick={() => {
                       if (r.id) setBudgetId(r.id);
                       setTab("rincian");
                     }}
                   >
-                    <TableCell className="sticky left-0 bg-card min-w-72 text-sm">
+                    <TableCell className="sticky left-0 bg-card min-w-72 text-sm font-medium">
                       {r.label}
                     </TableCell>
                     {activeMonths.map((m) => {
@@ -533,15 +817,15 @@ function LaporanPage() {
                         <TableCell
                           key={String(m)}
                           className={cn(
-                            "text-right text-sm whitespace-nowrap",
-                            v === 0 && "text-muted-foreground/50",
+                            "text-right text-sm whitespace-nowrap font-mono",
+                            v === 0 && "text-muted-foreground/40",
                           )}
                         >
                           {v === 0 ? "—" : rupiah(v)}
                         </TableCell>
                       );
                     })}
-                    <TableCell className="text-right font-semibold whitespace-nowrap text-success">
+                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success">
                       {rupiah(r.total)}
                     </TableCell>
                   </TableRow>
@@ -555,16 +839,16 @@ function LaporanPage() {
                 )}
                 {perAnggaran.length > 0 && (
                   <TableRow className="bg-muted/40">
-                    <TableCell className="sticky left-0 bg-muted/40 font-semibold">Total</TableCell>
+                    <TableCell className="sticky left-0 bg-muted/40 font-bold">Total</TableCell>
                     {activeMonths.map((m) => (
                       <TableCell
                         key={String(m)}
-                        className="text-right font-semibold whitespace-nowrap"
+                        className="text-right font-bold font-mono whitespace-nowrap text-primary"
                       >
                         {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right font-bold whitespace-nowrap">
+                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success text-base">
                       {rupiah(grandTotal)}
                     </TableCell>
                   </TableRow>
@@ -574,6 +858,7 @@ function LaporanPage() {
           </div>
         </TabsContent>
 
+        {/* TAB 4: RINCIAN TRANSAKSI */}
         <TabsContent value="rincian">
           <div className="panel overflow-x-auto">
             {budgetId !== "semua" && (
@@ -590,23 +875,23 @@ function LaporanPage() {
             )}
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>No. Bukti</TableHead>
-                  <TableHead>Kolom</TableHead>
-                  <TableHead>Bulan</TableHead>
-                  <TableHead>Mata Anggaran</TableHead>
-                  <TableHead>Keterangan</TableHead>
-                  <TableHead className="text-right">Nominal</TableHead>
+                <TableRow className="bg-muted/30">
+                  <TableHead className="font-bold">Tanggal</TableHead>
+                  <TableHead className="font-bold">No. Bukti</TableHead>
+                  <TableHead className="font-bold">Kolom</TableHead>
+                  <TableHead className="font-bold">Bulan</TableHead>
+                  <TableHead className="font-bold">Mata Anggaran</TableHead>
+                  <TableHead className="font-bold">Keterangan</TableHead>
+                  <TableHead className="text-right font-bold">Nominal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.slice(0, 500).map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="whitespace-nowrap">{tanggal(t.trx_date)}</TableCell>
-                    <TableCell className="font-mono text-xs">{t.voucher_no}</TableCell>
+                  <TableRow key={t.id} className="hover:bg-muted/10">
+                    <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold text-primary">{t.voucher_no}</TableCell>
                     <TableCell>
-                      <Badge variant={t.kolom === null ? "outline" : "secondary"}>
+                      <Badge variant={t.kolom === null ? "outline" : "secondary"} className="font-mono text-xs">
                         {labelKolom(t.kolom)}
                       </Badge>
                     </TableCell>
@@ -624,17 +909,17 @@ function LaporanPage() {
                       )}
                     </TableCell>
                     <TableCell className="max-w-72 truncate text-sm">{t.description}</TableCell>
-                    <TableCell className="text-right font-medium text-success whitespace-nowrap">
+                    <TableCell className="text-right font-mono font-medium text-success whitespace-nowrap">
                       {rupiah(t.amount)}
                     </TableCell>
                   </TableRow>
                 ))}
                 {rows.length > 0 && (
-                  <TableRow className="bg-muted/40">
-                    <TableCell colSpan={6} className="text-right font-semibold">
+                  <TableRow className="bg-muted/40 font-bold">
+                    <TableCell colSpan={6} className="text-right font-bold">
                       Total
                     </TableCell>
-                    <TableCell className="text-right font-bold whitespace-nowrap text-success">
+                    <TableCell className="text-right font-mono font-bold whitespace-nowrap text-success text-base">
                       {rupiah(grandTotal)}
                     </TableCell>
                   </TableRow>

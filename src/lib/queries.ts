@@ -44,7 +44,11 @@ export const REKLAS_VOUCHERS = [
   "KM-2026-2577",
 ];
 
-export const isReklas = (t: Transaction) => REKLAS_VOUCHERS.includes(t.voucher_no);
+export const isReklas = (t: Transaction) =>
+  Boolean(t.category?.toLowerCase().startsWith("reklas")) ||
+  Boolean(t.category?.toLowerCase() === "pengembalian") ||
+  Boolean(t.koreksi_dari?.toLowerCase().includes("reklas")) ||
+  REKLAS_VOUCHERS.includes(t.voucher_no);
 
 export const budgetLinesQuery = queryOptions({
   queryKey: ["budget_lines"],

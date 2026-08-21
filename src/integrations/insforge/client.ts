@@ -1,0 +1,16 @@
+import { createClient } from "@insforge/sdk";
+
+const INSFORGE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env["VITE_INSFORGE_URL"]) ||
+  (typeof process !== "undefined" && process.env["INSFORGE_URL"]) ||
+  "https://p3xb6izj.ap-southeast.insforge.app";
+
+const INSFORGE_ANON_KEY =
+  (typeof import.meta !== "undefined" && import.meta.env["VITE_INSFORGE_ANON_KEY"]) ||
+  (typeof process !== "undefined" && process.env["INSFORGE_ANON_KEY"]) ||
+  "ik_04d91bd8acfa41e22df2bbe955dc981a";
+
+export const insforge = createClient({
+  baseUrl: INSFORGE_URL,
+  anonKey: INSFORGE_ANON_KEY,
+});

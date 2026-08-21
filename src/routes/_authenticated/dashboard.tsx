@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useEffect } from "react";
 import {
   Area,
   AreaChart,
@@ -12,12 +13,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDownCircle, ArrowUpCircle, Landmark, CalendarRange } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Landmark, CalendarRange, Info, Calendar } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
 import { rupiah, rupiahShort, namaBulan, tanggal } from "@/lib/format";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { DateInput, normalizeDateInput } from "@/components/ui/date-input";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -25,12 +28,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "Dashboard Keuangan — BUMOTIK FINANCIAL" },
       {
         name: "description",
-        content: "Pantau saldo kas, kas masuk/keluar harian, dan realisasi anggaran gereja.",
+        content: "Pantau saldo kas minggu berjalan, kas masuk/keluar harian, dan realisasi anggaran gereja.",
       },
       { property: "og:title", content: "Dashboard Keuangan — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Ringkasan kas dan realisasi anggaran gereja secara realtime.",
+        content: "Ringkasan kas minggu berjalan dan realisasi anggaran gereja secara realtime.",
       },
     ],
   }),
@@ -59,25 +62,67 @@ function StatCard({
         <Icon className={`size-4 ${toneClass}`} />
       </div>
       <p className="mt-3 text-2xl font-semibold">{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{hint}</p>}
     </div>
   );
 }
+
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const plusDays = (isoStr: string, n: number) => {
+  if (!isoStr) return "";
+  const d = new Date(`${isoStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+};
+
+const getDefaultWartaCutoff = () => {
+  const saved = typeof window !== "undefined" ? localStorage.getItem("bumotik.tglTerakhirWarta") : null;
+  if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+  // Default: 2026-08-14 (tanggal penutupan warta jemaat terakhir)
+  return "2026-08-14";
+};
 
 function DashboardPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
 
+  const [tglTerakhirWarta, setTglTerakhirWarta] = useState(getDefaultWartaCutoff);
+
+  useEffect(() => {
+    if (tglTerakhirWarta) {
+      localStorage.setItem("bumotik.tglTerakhirWarta", tglTerakhirWarta);
+    }
+  }, [tglTerakhirWarta]);
+
   const rows = (trx.data ?? []).filter((t) => t.status !== "rejected" && !isInternalCash(t));
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
 
+  // Tanggal mulai kas fisik minggu berjalan = 1 hari setelah penutupan warta terakhir (misal: 15 Agustus)
+  const tglMulaiKasBerjalan = useMemo(
+    () => plusDays(normalizeDateInput(tglTerakhirWarta), 1) || "2026-08-15",
+    [tglTerakhirWarta],
+  );
+
   const sum = (list: typeof rows) => list.reduce((a, t) => a + Number(t.amount), 0);
   const masuk = rows.filter((t) => t.kind === "penerimaan");
   const keluar = rows.filter((t) => t.kind === "pengeluaran" && t.status === "approved");
-  const saldo = sum(masuk) - sum(keluar);
+
+  // SALDO KAS FISIK MINGGU BERJALAN:
+  // Transaksi dari tanggal setelah warta terakhir (misal: 15 Agustus) sampai hari ini
+  const masukMingguBerjalan = sum(
+    masuk.filter((t) => t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
+  );
+  const keluarMingguBerjalan = sum(
+    keluar.filter((t) => t.trx_date >= tglMulaiKasBerjalan && t.trx_date <= today),
+  );
+  const saldoKasFisikBerjalan = masukMingguBerjalan - keluarMingguBerjalan;
+
   const masukHariIni = sum(masuk.filter((t) => t.trx_date === today));
   const keluarHariIni = sum(keluar.filter((t) => t.trx_date === today));
+
   const bulanIni = (t: (typeof rows)[number]) => {
     const d = new Date(t.trx_date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -125,8 +170,8 @@ function DashboardPage() {
 
   return (
     <AppShell
-      title="Dashboard"
-      subtitle={`Ringkasan keuangan per ${tanggal(today)}`}
+      title="Dashboard Keuangan"
+      subtitle={`Posisi keuangan kas fisik minggu berjalan per ${tanggal(today)}`}
       actions={
         pending.length > 0 ? (
           <Badge variant="outline" className="border-warning text-warning-foreground">
@@ -135,8 +180,39 @@ function DashboardPage() {
         ) : null
       }
     >
+      {/* Pengaturan Tanggal Warta Terakhir */}
+      <div className="panel mb-4 p-3 bg-muted/20 border flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs">
+          <Calendar className="size-4 text-primary shrink-0" />
+          <div>
+            <span className="font-semibold text-foreground">Penetapan Warta Jemaat Terakhir: </span>
+            <span className="text-muted-foreground">
+              Kas fisik dihitung dari <strong>{tanggal(tglMulaiKasBerjalan)}</strong> sampai hari ini ({tanggal(today)}).
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="tglWarta" className="text-xs text-muted-foreground whitespace-nowrap">
+            Tgl Warta Terakhir:
+          </Label>
+          <div className="w-36">
+            <DateInput
+              id="tglWarta"
+              value={tglTerakhirWarta}
+              onChange={setTglTerakhirWarta}
+              placeholder="YYYY-MM-DD"
+              className="h-8 text-xs"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Saldo Kas" value={rupiah(saldo)} icon={Landmark} />
+        <StatCard
+          label="Saldo Kas Minggu Berjalan"
+          value={rupiah(saldoKasFisikBerjalan)}
+          icon={Landmark}
+        />
         <StatCard
           label="Kas Masuk Hari Ini"
           value={rupiah(masukHariIni)}
@@ -152,7 +228,6 @@ function DashboardPage() {
         <StatCard
           label="Total Kas Bulan Ini"
           value={rupiah(totalBulan)}
-          hint="Penerimaan dikurangi pengeluaran disetujui"
           icon={CalendarRange}
         />
       </div>
@@ -208,84 +283,78 @@ function DashboardPage() {
                   width={70}
                 />
                 <Tooltip formatter={(v) => rupiah(Number(v))} />
-                <Bar dataKey="pengeluaran" fill="var(--color-chart-2)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="pengeluaran"
+                  fill="var(--color-destructive)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </section>
       </div>
 
-      <section className="panel mt-5 p-5">
-        <h2 className="text-base font-semibold">Persembahan Ibadah Subuh, Pagi & Malam</h2>
-        <p className="text-xs text-muted-foreground">Penerimaan per bulan tahun berjalan</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {ibadahTotal.map((item) => (
-            <div key={item.code} className="rounded-lg border p-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Persembahan {item.label}
-                </p>
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="panel p-5">
+          <h2 className="text-base font-semibold">Serapan Anggaran Tertinggi</h2>
+          <p className="text-xs text-muted-foreground">Realisasi terhadap pagu anggaran</p>
+          <div className="mt-4 space-y-4">
+            {serapan.map((item) => (
+              <div key={item.id} className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium truncate max-w-72">
+                    {item.code} — {item.name}
+                  </span>
+                  <span className="font-mono font-semibold">{item.persen.toFixed(1)}%</span>
+                </div>
+                <Progress value={Math.min(item.persen, 100)} />
+                <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+                  <span>Realisasi: {rupiah(item.realisasi)}</span>
+                  <span>Pagu: {rupiah(item.planned_amount)}</span>
+                </div>
               </div>
-              <p className="mt-1 text-lg font-semibold">{rupiah(item.total)}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ibadahChart}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="bulan" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis
-                tickFormatter={(v) => rupiahShort(Number(v))}
-                tickLine={false}
-                axisLine={false}
-                fontSize={11}
-                width={70}
-              />
-              <Tooltip formatter={(v) => rupiah(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              {IBADAH.map((item) => (
-                <Bar
-                  key={item.code}
-                  dataKey={item.label}
-                  fill={item.color}
-                  radius={[4, 4, 0, 0]}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
 
-      <section className="panel mt-5 p-5">
-        <h2 className="text-base font-semibold">Anggaran vs Realisasi</h2>
-        <p className="text-xs text-muted-foreground">Enam mata anggaran dengan serapan tertinggi</p>
-        <div className="mt-5 space-y-4">
-          {serapan.map((b) => (
-            <div key={b.id}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                <span className="font-medium">
-                  <span className="text-muted-foreground">{b.code}</span> · {b.name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {rupiah(b.realisasi)} dari {rupiah(b.planned_amount)}
-                </span>
+        <section className="panel p-5">
+          <h2 className="text-base font-semibold">Persembahan Ibadah Utama</h2>
+          <p className="text-xs text-muted-foreground">Subuh, Pagi, dan Malam per bulan</p>
+          <div className="mt-4 h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={ibadahChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="bulan" tickLine={false} axisLine={false} fontSize={12} />
+                <YAxis
+                  tickFormatter={(v) => rupiahShort(Number(v))}
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  width={70}
+                />
+                <Tooltip formatter={(v) => rupiah(Number(v))} />
+                <Legend />
+                {IBADAH.map((item) => (
+                  <Bar
+                    key={item.code}
+                    dataKey={item.label}
+                    fill={item.color}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 border-t pt-3 text-center">
+            {ibadahTotal.map((item) => (
+              <div key={item.code} className="space-y-0.5">
+                <p className="text-[11px] text-muted-foreground">{item.label}</p>
+                <p className="text-xs font-bold font-mono text-foreground">{rupiah(item.total)}</p>
               </div>
-              <div className="mt-2 flex items-center gap-3">
-                <Progress value={Math.min(b.persen, 100)} className="h-2" />
-                <span className="w-12 text-right text-xs font-medium">{b.persen.toFixed(0)}%</span>
-              </div>
-            </div>
-          ))}
-          {serapan.length === 0 && (
-            <p className="text-sm text-muted-foreground">Belum ada mata anggaran.</p>
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </div>
     </AppShell>
   );
 }

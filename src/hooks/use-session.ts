@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+
+export type AuthUser = {
+  id: string;
+  email?: string;
+  [key: string]: any;
+};
 
 export type AppRole =
   | "super_admin"
@@ -13,7 +18,7 @@ export type AppRole =
   | "viewer";
 
 export function useSession() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +41,7 @@ export function useSession() {
         .select("role")
         .eq("user_id", user!.id);
       if (error) throw error;
-      return (data ?? []).map((r) => r.role as AppRole);
+      return (data ?? []).map((r: any) => r.role as AppRole);
     },
   });
 

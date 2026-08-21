@@ -77,9 +77,11 @@ export function AppShell({
         )}
       >
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
-          <span className="flex size-9 items-center justify-center rounded-md bg-gradient-gold text-sidebar-primary-foreground">
-            <Church className="size-5" />
-          </span>
+          <img
+            src="/favicon.png"
+            alt="BUMOTIK Logo"
+            className="size-9 rounded-md object-contain bg-white/10 p-0.5 shadow-xs"
+          />
           <div className="leading-tight">
             <p className="font-display text-sm font-semibold tracking-wide text-sidebar-accent-foreground">
               BUMOTIK
