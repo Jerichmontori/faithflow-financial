@@ -21,6 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -29,7 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Clock, RotateCcw } from "lucide-react";
+import { Calendar, Clock, RotateCcw, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/penerimaan")({
   head: () => ({
@@ -77,6 +87,7 @@ function PenerimaanPage() {
   const [tahun, setTahun] = useState("all");
   const [bulan, setBulan] = useState("all");
   const [budget, setBudget] = useState("all");
+  const [openBudget, setOpenBudget] = useState(false);
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [viewMode, setViewMode] = useState<"today" | "latest" | "all">("today");
@@ -91,8 +102,13 @@ function PenerimaanPage() {
   const deferredSampai = useDeferredValue(sampai);
 
   const budgetOptions = useMemo(
-    () => (budgets.data ?? []).filter((b) => b.kind === "penerimaan"),
+    () => (budgets.data ?? []).filter((b) => b.kind === "penerimaan").sort((a, b) => a.code.localeCompare(b.code)),
     [budgets.data],
+  );
+
+  const selectedBudget = useMemo(
+    () => budgetOptions.find((b) => b.id === budget),
+    [budgetOptions, budget],
   );
 
   // Pre-sort transactions only once when raw data changes
@@ -241,21 +257,85 @@ function PenerimaanPage() {
             </Select>
           </div>
 
+          {/* Filter Mata Anggaran (Bisa Diketik / Searchable Combobox) */}
           <div className="space-y-1.5 xl:col-span-2">
-            <Label>Mata Anggaran</Label>
-            <Select value={budget} onValueChange={setBudget}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">Semua mata anggaran</SelectItem>
-                {budgetOptions.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.code} — {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Mata Anggaran (Ketik / Cari)</Label>
+            <Popover open={openBudget} onOpenChange={setOpenBudget}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openBudget}
+                  className="w-full justify-between font-normal h-9 text-xs"
+                >
+                  <span className="truncate">
+                    {selectedBudget
+                      ? `${selectedBudget.code} — ${selectedBudget.name}`
+                      : "Semua mata anggaran"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 size-3.5 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[340px] sm:w-[460px] p-0" align="start">
+                <Command
+                  filter={(value, search) =>
+                    value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                  }
+                >
+                  <CommandInput placeholder="Ketik kode, nama, atau pos anggaran…" />
+                  <CommandList className="max-h-72 overflow-y-auto">
+                    <CommandEmpty>Mata anggaran tidak ditemukan.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="semua all"
+                        onSelect={() => {
+                          setBudget("all");
+                          setOpenBudget(false);
+                        }}
+                        className="cursor-pointer font-medium"
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 size-3.5",
+                            budget === "all" ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        <span>Semua mata anggaran</span>
+                      </CommandItem>
+                      {budgetOptions.map((b) => (
+                        <CommandItem
+                          key={b.id}
+                          value={`${b.code} ${b.name} ${b.grup || ""}`}
+                          onSelect={() => {
+                            setBudget(b.id);
+                            setOpenBudget(false);
+                          }}
+                          className="flex items-start py-2 cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 size-3.5 mt-0.5 shrink-0",
+                              budget === b.id ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-primary">{b.code}</span>
+                              <span className="text-xs font-medium text-foreground">{b.name}</span>
+                            </div>
+                            {b.grup && (
+                              <span className="text-[11px] text-muted-foreground">
+                                {b.grup}
+                              </span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
