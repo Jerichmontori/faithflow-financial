@@ -416,23 +416,25 @@ export function CetakBuktiTransaksiDialog({
               </td>
             </tr>
             <tr>
-              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>Mata Anggaran</td>
-              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
-              <td style={{ fontWeight: "600", padding: "2px 0", verticalAlign: "top" }}>
+              <td style={{ fontWeight: "bold", padding: "1.5px 0", verticalAlign: "top", fontSize: "9.5px", color: "#555" }}>Mata Anggaran</td>
+              <td style={{ textAlign: "center", padding: "1.5px 0", verticalAlign: "top", fontSize: "9.5px", color: "#555" }}>:</td>
+              <td style={{ fontWeight: "500", padding: "1.5px 0", verticalAlign: "top", fontSize: "9.5px", color: "#444" }}>
                 {info.budget_line_code ? `${info.budget_line_code} — ${info.budget_line_name}` : "Operasional Kas Jemaat"}
               </td>
             </tr>
             <tr>
-              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>
+              <td style={{ fontWeight: "bold", padding: "3px 0", verticalAlign: "top", fontSize: "11.5px", color: "#000" }}>
                 {isPenerimaan ? "Untuk Penyetoran" : "Untuk Pembayaran"}
               </td>
-              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
-              <td style={{ padding: "2px 0", verticalAlign: "top" }}>{info.description || "-"}</td>
+              <td style={{ textAlign: "center", padding: "3px 0", verticalAlign: "top", fontSize: "11.5px", fontWeight: "bold" }}>:</td>
+              <td style={{ padding: "3px 0", verticalAlign: "top", fontSize: "12px", fontWeight: "bold", color: "#000" }}>
+                {info.description || "-"}
+              </td>
             </tr>
             <tr>
-              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>Metode Pembayaran</td>
-              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
-              <td style={{ fontWeight: "600", padding: "2px 0", verticalAlign: "top" }}>
+              <td style={{ fontWeight: "bold", padding: "1.5px 0", verticalAlign: "top", fontSize: "9.5px", color: "#555" }}>Metode Pembayaran</td>
+              <td style={{ textAlign: "center", padding: "1.5px 0", verticalAlign: "top", fontSize: "9.5px", color: "#555" }}>:</td>
+              <td style={{ fontWeight: "600", padding: "1.5px 0", verticalAlign: "top", fontSize: "9.5px", color: "#333" }}>
                 {isTransfer ? "🏦 Bank / Transfer Non-Tunai" : "💵 Kas Fisik (Tunai / Kasir)"}
               </td>
             </tr>
@@ -471,32 +473,32 @@ export function CetakBuktiTransaksiDialog({
           </table>
         )}
 
-        {/* KOTAK JUMLAH UANG & TERBILANG */}
+        {/* KOTAK JUMLAH UANG & TERBILANG (DIPERBESAR & LEBIH JELAS) */}
         <table
           style={{
             width: "100%",
-            border: "1.5px solid #000",
-            backgroundColor: "#fcfcfc",
+            border: "1.8px solid #000",
+            backgroundColor: "#fafafa",
             margin: "6px 0",
-            padding: "5px 8px",
+            padding: "6px 10px",
             borderCollapse: "collapse",
           }}
         >
           <tbody>
             <tr>
-              <td style={{ padding: "5px 8px", verticalAlign: "middle", width: "40%" }}>
-                <div style={{ fontSize: "8.5px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
+              <td style={{ padding: "6px 10px", verticalAlign: "middle", width: "42%" }}>
+                <div style={{ fontSize: "9.5px", textTransform: "uppercase", fontWeight: "900", color: "#333", letterSpacing: "0.3px" }}>
                   JUMLAH UANG:
                 </div>
-                <div style={{ fontSize: "13.5px", fontWeight: "900", fontFamily: "'Courier New', monospace", color: "#000" }}>
+                <div style={{ fontSize: "16px", fontWeight: "900", fontFamily: "'Courier New', monospace", color: "#000", marginTop: "1px" }}>
                   {rupiah(info.amount)}
                 </div>
               </td>
-              <td style={{ padding: "5px 8px", verticalAlign: "middle", textAlign: "right", width: "60%" }}>
-                <div style={{ fontSize: "8.5px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
+              <td style={{ padding: "6px 10px", verticalAlign: "middle", textAlign: "right", width: "58%" }}>
+                <div style={{ fontSize: "9.5px", textTransform: "uppercase", fontWeight: "900", color: "#333", letterSpacing: "0.3px" }}>
                   TERBILANG:
                 </div>
-                <div style={{ fontSize: "10px", fontWeight: "bold", fontStyle: "italic", color: "#000", lineHeight: "1.2" }}>
+                <div style={{ fontSize: "12px", fontWeight: "bold", fontStyle: "italic", color: "#000", lineHeight: "1.3", marginTop: "1px" }}>
                   "{terbilang(info.amount)}"
                 </div>
               </td>
