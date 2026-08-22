@@ -3,6 +3,7 @@ import { Printer, Download, Scissors, Check, Copy } from "lucide-react";
 import html2pdf from "html2pdf.js";
 import { toast } from "sonner";
 import { rupiah, tanggalPanjang, terbilang } from "@/lib/format";
+import { useAppSettings } from "@/lib/settings";
 import type { Transaction } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import {
@@ -295,6 +296,8 @@ export function CetakBuktiTransaksiDialog({
       .catch(() => toast.error("Gagal membuat PDF"));
   };
 
+  const { settings } = useAppSettings();
+
   // Render a single slip
   const renderSlip = (lembarKe: 1 | 2, labelLembar: string) => {
     const isTransfer = (info.payment_method?.toLowerCase() || "") === "transfer";
@@ -305,14 +308,14 @@ export function CetakBuktiTransaksiDialog({
         {/* Kop Surat Gereja */}
         <div className="border-b-2 border-black pb-2 mb-2 flex items-center justify-between text-center">
           <div className="w-full text-center">
-            <h2 className="text-[13px] font-black uppercase tracking-wide">
-              Gereja Masehi Injili di Minahasa (GMIM)
+            <h2 className="text-[13px] font-black uppercase tracking-wide leading-tight">
+              {settings.namaGereja || "Gereja Masehi Injili di Minahasa (GMIM)"}
             </h2>
-            <h3 className="text-[11.5px] font-extrabold uppercase mt-0.5">
-              Jemaat Bukit Moria Tikala Baru — Wilayah Manado Wawonasa Kombos
+            <h3 className="text-[11px] font-extrabold uppercase mt-0.5 text-gray-900">
+              {settings.wilayah || "Jemaat Bukit Moria Tikala Baru — Wilayah Manado Wawonasa Kombos"}
             </h3>
             <p className="text-[9px] text-gray-700 mt-0.5">
-              Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara
+              {settings.alamatGereja || "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"}
             </p>
           </div>
         </div>
@@ -425,7 +428,7 @@ export function CetakBuktiTransaksiDialog({
           <tbody>
             <tr>
               <td className="w-1/3">
-                <span>{isPenerimaan ? "Penyetor / Yang Menyerahkan," : "Penerima Kas,"}</span>
+                <span>{isPenerimaan ? (settings.labelPenyetor || "Penyetor / Yang Menyerahkan") : (settings.labelPenerima || "Penerima Kas")},</span>
                 <div className="h-10"></div>
                 <span className="font-bold underline block">
                   ( {info.payee || "......................................."} )
@@ -433,15 +436,19 @@ export function CetakBuktiTransaksiDialog({
               </td>
               <td className="w-1/3">
                 <span>Mengetahui,</span>
-                <span className="block text-[9px] text-gray-600">Ketua BPMJ / Pendeta</span>
+                <span className="block text-[9px] text-gray-600">{settings.jabatanKetuaBpmj || "Ketua BPMJ"}</span>
                 <div className="h-8"></div>
-                <span className="font-bold underline block">( ....................................... )</span>
+                <span className="font-bold underline block">
+                  ( {settings.namaKetuaBpmj || "......................................."} )
+                </span>
               </td>
               <td className="w-1/3">
-                <span>Manado, {tanggalPanjang(info.trx_date)}</span>
-                <span className="block font-medium">Yang Menerima / Bendahara Jemaat,</span>
+                <span>{settings.kotaSurat || "Manado"}, {tanggalPanjang(info.trx_date)}</span>
+                <span className="block font-medium">{settings.jabatanBendahara || "Bendahara Jemaat"},</span>
                 <div className="h-8"></div>
-                <span className="font-bold underline block">( ....................................... )</span>
+                <span className="font-bold underline block">
+                  ( {settings.namaBendahara || "......................................."} )
+                </span>
               </td>
             </tr>
           </tbody>

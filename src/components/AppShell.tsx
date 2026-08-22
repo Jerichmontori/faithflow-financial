@@ -19,10 +19,12 @@ import {
   LogOut,
   Church,
   Menu,
+  Settings,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { useAppSettings } from "@/lib/settings";
 import { ROLE_LABEL } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,6 +44,7 @@ const NAV = [
   { to: "/reklas", label: "Pengembalian / Reklas", icon: Undo2 },
   { to: "/koreksi", label: "Koreksi Transaksi", icon: Pencil },
   { to: "/anggaran", label: "Mata Anggaran", icon: Wallet },
+  { to: "/pengaturan", label: "Pengaturan Awal", icon: Settings },
   { to: "/pengguna", label: "Manajemen Pengguna", icon: UserCog },
 ] as const;
 
@@ -57,6 +60,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const { user, primaryRole } = useSession();
+  const { settings } = useAppSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -76,20 +80,25 @@ export function AppShell({
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
+        <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
           <img
-            src="/favicon.png"
-            alt="BUMOTIK Logo"
+            src={settings.logoUrl || "/favicon.png"}
+            alt="Logo"
             className="size-9 rounded-md object-contain bg-white/10 p-0.5 shadow-xs"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/favicon.png";
+            }}
           />
-          <div className="leading-tight">
-            <p className="font-display text-sm font-semibold tracking-wide text-sidebar-accent-foreground">
-              BUMOTIK
+          <div className="leading-tight overflow-hidden">
+            <p className="font-display text-sm font-bold tracking-wide text-sidebar-accent-foreground truncate">
+              {settings.namaAplikasi || "BUMOTIK"}
             </p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-sidebar-primary">Financial</p>
+            <p className="text-[10px] uppercase tracking-[0.15em] text-sidebar-primary truncate">
+              {settings.subtitleAplikasi || "Financial"}
+            </p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {NAV.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
