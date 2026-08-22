@@ -88,16 +88,22 @@ export function CetakBuktiTransaksiDialog({
       return;
     }
 
+    // Grab all current document stylesheets
+    const styles = Array.from(document.querySelectorAll("link[rel='stylesheet'], style"))
+      .map((s) => s.outerHTML)
+      .join("\n");
+
     doc.open();
     doc.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <title>${judul} - ${info.voucher_no || "BUMOTIK"}</title>
+          ${styles}
           <style>
             @page {
               size: 215mm 330mm portrait; /* Kertas F4 / Folio */
-              margin: 6mm 10mm;
+              margin: 8mm 12mm;
             }
             * {
               box-sizing: border-box;
@@ -111,164 +117,12 @@ export function CetakBuktiTransaksiDialog({
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
-            .slip {
-              border: 1.5px solid #000;
-              padding: 10px 14px;
-              margin-bottom: 6px;
-              background: #fff;
-              page-break-inside: avoid;
-            }
-            .kop {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              border-bottom: 2.5px double #000;
-              padding-bottom: 6px;
-              margin-bottom: 6px;
-              text-align: center;
-              position: relative;
-            }
-            .kop-logo {
-              position: absolute;
-              left: 6px;
-              top: 2px;
-              width: 44px;
-              height: 44px;
-              object-fit: contain;
-            }
-            .kop-text h2 {
-              margin: 0;
-              font-size: 13px;
-              font-weight: 900;
-              text-transform: uppercase;
-              letter-spacing: 0.3px;
-            }
-            .kop-text h3 {
-              margin: 2px 0 0 0;
-              font-size: 11px;
-              font-weight: 800;
-              text-transform: uppercase;
-            }
-            .kop-text p {
-              margin: 1px 0 0 0;
-              font-size: 8.5px;
-              color: #333;
-            }
-            .doc-header {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              margin: 4px 0 6px 0;
-            }
-            .badge-rangkap {
-              font-size: 8.5px;
-              font-weight: bold;
-              border: 1px solid #000;
-              padding: 2px 6px;
-              background-color: #f2f2f2;
-              text-transform: uppercase;
-            }
-            .doc-title {
-              text-align: center;
-            }
-            .doc-title h4 {
-              margin: 0;
-              font-size: 12px;
-              font-weight: 900;
-              text-decoration: underline;
-              text-transform: uppercase;
-            }
-            .doc-title span {
-              font-size: 8.5px;
-              font-weight: bold;
-              text-transform: uppercase;
-              color: #333;
-            }
-            .badge-voucher {
-              font-size: 9.5px;
-              font-family: 'Courier New', monospace;
-              font-weight: bold;
-              background: #000;
-              color: #fff;
-              padding: 2px 6px;
-            }
-            .meta-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 4px 0;
-              font-size: 10px;
-            }
-            .meta-table td {
-              padding: 2px 0;
-              vertical-align: top;
-            }
-            .amount-box {
-              border: 1.5px solid #000;
-              padding: 5px 10px;
-              margin: 6px 0;
-              background-color: #fafafa;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-            }
-            .amount-num {
-              font-size: 13.5px;
-              font-weight: 900;
-              font-family: 'Courier New', monospace;
-            }
-            .amount-words {
-              font-style: italic;
-              font-size: 9.5px;
-              font-weight: bold;
-              text-align: right;
-              max-width: 65%;
-            }
-            .items-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 4px 0;
-              font-size: 9px;
-            }
-            .items-table th, .items-table td {
-              border: 1px solid #666;
-              padding: 2px 5px;
-            }
-            .items-table th {
-              background: #eee;
-              text-align: left;
-            }
-            .ttd-table {
-              width: 100%;
-              margin-top: 8px;
-              border-collapse: collapse;
-              text-align: center;
-              font-size: 9.5px;
-            }
-            .ttd-table td {
-              vertical-align: top;
-              padding: 0 4px;
-            }
-            .ttd-space {
-              height: 38px;
-            }
-            .cutting-line {
-              text-align: center;
-              border-top: 1.5px dashed #666;
-              margin: 8px 0;
-              padding-top: 2px;
-              font-size: 9px;
-              color: #555;
-              font-weight: bold;
-              letter-spacing: 0.5px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-            }
           </style>
         </head>
         <body>
-          ${printContent}
+          <div style="width: 100%; max-width: 210mm; margin: 0 auto;">
+            ${printContent}
+          </div>
         </body>
       </html>
     `);
@@ -278,9 +132,11 @@ export function CetakBuktiTransaksiDialog({
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
       setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-    }, 300);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1500);
+    }, 400);
   };
 
   const handleDownloadPdf = async () => {
@@ -289,7 +145,6 @@ export function CetakBuktiTransaksiDialog({
     toast.info("Sedang menyiapkan file PDF (Kertas F4)...");
 
     try {
-      // Dynamically load html2pdf safely
       const html2pdfModule = await import("html2pdf.js");
       const html2pdfFunc =
         typeof html2pdfModule.default === "function"
@@ -298,7 +153,7 @@ export function CetakBuktiTransaksiDialog({
 
       const element = printAreaRef.current;
       const opt = {
-        margin: [5, 8, 5, 8] as [number, number, number, number],
+        margin: [6, 10, 6, 10] as [number, number, number, number],
         filename: `${info.voucher_no || "BUKTI"}_${info.trx_date}.pdf`,
         image: { type: "jpeg" as const, quality: 0.98 },
         html2canvas: {
@@ -318,120 +173,189 @@ export function CetakBuktiTransaksiDialog({
       toast.success("PDF berhasil diunduh!");
     } catch (err) {
       console.error("PDF generation error:", err);
-      toast.error("Tidak dapat membuat PDF otomatis. Mengalihkan ke menu Cetak/Save as PDF...");
+      toast.error("Tidak dapat mengunduh PDF secara langsung. Mengalihkan ke menu Cetak...");
       handlePrint();
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  // Render a single slip with clean styles
+  // Render a single slip with 100% robust inline styling
   const renderSlip = (lembarKe: 1 | 2, labelLembar: string) => {
     const isTransfer = (info.payment_method?.toLowerCase() || "") === "transfer";
     const multiItems = (info.items ?? []).filter((i) => i.amount > 0 || i.description.trim() !== "");
 
     return (
-      <div className="slip border border-black p-3 mb-2 bg-white text-black text-[10px] leading-snug rounded-none shadow-none">
-        {/* Kop Surat Gereja */}
-        <div className="border-b-[2.5px] border-double border-black pb-2 mb-1.5 flex items-center justify-between text-center relative">
-          <img
-            src={settings.logoUrl || "/favicon.png"}
-            alt="Logo"
-            className="size-10 object-contain absolute left-1 top-0"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
-          <div className="w-full text-center pl-8 pr-2">
-            <h2 className="text-[12.5px] font-black uppercase tracking-wide leading-tight">
-              {settings.namaGereja || "Gereja Masehi Injili di Minahasa (GMIM)"}
-            </h2>
-            <h3 className="text-[10.5px] font-extrabold uppercase mt-0.5 text-gray-900">
-              {settings.wilayah || "Jemaat Bukit Moria Tikala Baru — Wilayah Manado Wawonasa Kombos"}
-            </h3>
-            <p className="text-[8.5px] text-gray-700 mt-0.5">
-              {settings.alamatGereja || "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"}
-            </p>
-          </div>
-        </div>
-
-        {/* Judul Dokumen & Lembar */}
-        <div className="flex items-center justify-between mb-1.5 pt-0.5">
-          <div>
-            <span className="inline-block text-[8px] font-bold border border-black px-1.5 py-0.5 uppercase bg-gray-100">
-              {labelLembar}
-            </span>
-          </div>
-          <div className="text-center">
-            <h4 className="text-[12px] font-black uppercase underline tracking-wide leading-tight">
-              {judul}
-            </h4>
-            <span className="text-[8.5px] font-bold text-gray-700 block uppercase">
-              ({subJudul})
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="text-[9px] font-mono font-bold bg-black text-white px-2 py-0.5 rounded-xs">
-              {info.voucher_no || "NO. BUKTI: -"}
-            </span>
-          </div>
-        </div>
-
-        {/* Tabel Metadata Transaksi */}
-        <table className="w-full border-collapse my-1 text-[10px]">
+      <div
+        style={{
+          border: "1.5px solid #000",
+          padding: "12px 16px",
+          marginBottom: "6px",
+          backgroundColor: "#fff",
+          color: "#000",
+          fontSize: "11px",
+          lineHeight: "1.35",
+          fontFamily: "Arial, Helvetica, sans-serif",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* KOP SURAT RESMI */}
+        <table
+          style={{
+            width: "100%",
+            borderBottom: "2.5px double #000",
+            paddingBottom: "8px",
+            marginBottom: "8px",
+            borderCollapse: "collapse",
+          }}
+        >
           <tbody>
             <tr>
-              <td className="w-32 font-bold text-gray-900 py-0.5">Tanggal Transaksi</td>
-              <td className="w-3 text-center py-0.5">:</td>
-              <td className="font-medium py-0.5">{tanggalPanjang(info.trx_date)}</td>
+              <td style={{ width: "55px", verticalAlign: "middle", textAlign: "left" }}>
+                <img
+                  src={settings.logoUrl || "/favicon.png"}
+                  alt="Logo GMIM"
+                  style={{ width: "48px", height: "48px", objectFit: "contain", display: "block" }}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/favicon.png";
+                  }}
+                />
+              </td>
+              <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                <div style={{ fontSize: "13px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {settings.namaGereja || "GEREJA MASEHI INJILI DI MINAHASA (GMIM)"}
+                </div>
+                <div style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", marginTop: "2px" }}>
+                  {settings.wilayah || "JEMAAT BUKIT MORIA TIKALA BARU — WILAYAH MANADO WAWONASA KOMBOS"}
+                </div>
+                <div style={{ fontSize: "9px", color: "#333", marginTop: "2px" }}>
+                  {settings.alamatGereja || "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"}
+                </div>
+              </td>
+              <td style={{ width: "55px" }}></td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* BARIS JUDUL & NOMOR BUKTI */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "8px" }}>
+          <tbody>
+            <tr>
+              <td style={{ width: "32%", verticalAlign: "top", textAlign: "left" }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    fontSize: "9px",
+                    fontWeight: "bold",
+                    border: "1px solid #000",
+                    padding: "2px 8px",
+                    backgroundColor: "#f2f2f2",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {labelLembar}
+                </span>
+              </td>
+              <td style={{ width: "36%", verticalAlign: "top", textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "12.5px",
+                    fontWeight: "900",
+                    textDecoration: "underline",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {judul}
+                </div>
+                <div style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", color: "#333", marginTop: "1px" }}>
+                  ({subJudul})
+                </div>
+              </td>
+              <td style={{ width: "32%", verticalAlign: "top", textAlign: "right" }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    fontSize: "10px",
+                    fontFamily: "'Courier New', monospace",
+                    fontWeight: "bold",
+                    backgroundColor: "#000",
+                    color: "#fff",
+                    padding: "2px 8px",
+                  }}
+                >
+                  {info.voucher_no || "NO. BUKTI: -"}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* TABEL DATA TRANSAKSI */}
+        <table style={{ width: "100%", borderCollapse: "collapse", margin: "6px 0", fontSize: "11px" }}>
+          <tbody>
+            <tr>
+              <td style={{ width: "140px", fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>
+                Tanggal Transaksi
+              </td>
+              <td style={{ width: "12px", textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
+              <td style={{ padding: "2px 0", verticalAlign: "top" }}>{tanggalPanjang(info.trx_date)}</td>
             </tr>
             <tr>
-              <td className="font-bold text-gray-900 py-0.5">
+              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>
                 {isPenerimaan ? "Telah Terima Dari" : "Dibayarkan Kepada"}
               </td>
-              <td className="text-center py-0.5">:</td>
-              <td className="font-extrabold uppercase py-0.5 text-black">
-                {info.payee || (isPenerimaan ? "Jemaat / Donatur / Kolom" : "Penerima / Vendor")}
+              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
+              <td style={{ fontWeight: "900", textTransform: "uppercase", padding: "2px 0", verticalAlign: "top" }}>
+                {info.payee || (isPenerimaan ? "JEMAAT / DONATUR / KOLOM" : "PENERIMA / VENDOR")}
               </td>
             </tr>
             <tr>
-              <td className="font-bold text-gray-900 py-0.5">Mata Anggaran</td>
-              <td className="text-center py-0.5">:</td>
-              <td className="font-semibold py-0.5">
+              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>Mata Anggaran</td>
+              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
+              <td style={{ fontWeight: "600", padding: "2px 0", verticalAlign: "top" }}>
                 {info.budget_line_code ? `${info.budget_line_code} — ${info.budget_line_name}` : "Operasional Kas Jemaat"}
               </td>
             </tr>
             <tr>
-              <td className="font-bold text-gray-900 py-0.5">Untuk Pembayaran</td>
-              <td className="text-center py-0.5">:</td>
-              <td className="py-0.5">{info.description || "-"}</td>
+              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>Untuk Pembayaran</td>
+              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
+              <td style={{ padding: "2px 0", verticalAlign: "top" }}>{info.description || "-"}</td>
             </tr>
             <tr>
-              <td className="font-bold text-gray-900 py-0.5">Metode Pembayaran</td>
-              <td className="text-center py-0.5">:</td>
-              <td className="font-semibold py-0.5">
+              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>Metode Pembayaran</td>
+              <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
+              <td style={{ fontWeight: "600", padding: "2px 0", verticalAlign: "top" }}>
                 {isTransfer ? "🏦 Bank / Transfer Non-Tunai" : "💵 Kas Fisik (Tunai / Kasir)"}
               </td>
             </tr>
           </tbody>
         </table>
 
-        {/* Jika ada multi items rincian */}
+        {/* MULTI ITEMS TABLE IF ANY */}
         {multiItems.length > 1 && (
-          <table className="w-full border-collapse border border-gray-400 my-1.5 text-[9px]">
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              margin: "6px 0",
+              fontSize: "10px",
+              border: "1px solid #777",
+            }}
+          >
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-400 p-0.5 text-center w-6">No</th>
-                <th className="border border-gray-400 p-0.5 text-left">Rincian Pos / Keterangan</th>
-                <th className="border border-gray-400 p-0.5 text-right w-24">Nominal</th>
+              <tr style={{ backgroundColor: "#f0f0f0" }}>
+                <th style={{ border: "1px solid #777", padding: "3px 6px", textAlign: "center", width: "30px" }}>No</th>
+                <th style={{ border: "1px solid #777", padding: "3px 6px", textAlign: "left" }}>Rincian Pos / Keterangan</th>
+                <th style={{ border: "1px solid #777", padding: "3px 6px", textAlign: "right", width: "120px" }}>Nominal</th>
               </tr>
             </thead>
             <tbody>
               {multiItems.map((it, idx) => (
                 <tr key={idx}>
-                  <td className="border border-gray-400 p-0.5 text-center">{idx + 1}</td>
-                  <td className="border border-gray-400 p-0.5">{it.description}</td>
-                  <td className="border border-gray-400 p-0.5 text-right font-mono font-semibold">
+                  <td style={{ border: "1px solid #777", padding: "2px 6px", textAlign: "center" }}>{idx + 1}</td>
+                  <td style={{ border: "1px solid #777", padding: "2px 6px" }}>{it.description}</td>
+                  <td style={{ border: "1px solid #777", padding: "2px 6px", textAlign: "right", fontFamily: "'Courier New', monospace", fontWeight: "bold" }}>
                     {rupiah(it.amount)}
                   </td>
                 </tr>
@@ -440,48 +364,73 @@ export function CetakBuktiTransaksiDialog({
           </table>
         )}
 
-        {/* Kotak Nominal & Terbilang */}
-        <div className="border border-black p-1.5 my-1.5 bg-gray-50 flex items-center justify-between">
-          <div>
-            <span className="text-[8px] uppercase font-bold text-gray-600 block">Jumlah Uang:</span>
-            <span className="text-[13px] font-black font-mono tracking-tight text-black">
-              {rupiah(info.amount)}
-            </span>
-          </div>
-          <div className="text-right max-w-[65%]">
-            <span className="text-[8px] uppercase font-bold text-gray-600 block">Terbilang:</span>
-            <span className="text-[9.5px] font-bold italic text-black leading-tight block">
-              "{terbilang(info.amount)}"
-            </span>
-          </div>
-        </div>
-
-        {/* Tanda Tangan */}
-        <table className="w-full mt-2 text-center text-[9.5px] border-collapse">
+        {/* KOTAK JUMLAH UANG & TERBILANG */}
+        <table
+          style={{
+            width: "100%",
+            border: "1.5px solid #000",
+            backgroundColor: "#fcfcfc",
+            margin: "8px 0",
+            padding: "6px 10px",
+            borderCollapse: "collapse",
+          }}
+        >
           <tbody>
             <tr>
-              <td className="w-1/3">
-                <span>{isPenerimaan ? (settings.labelPenyetor || "Penyetor / Yang Menyerahkan") : (settings.labelPenerima || "Penerima Kas")},</span>
-                <div className="h-9"></div>
-                <span className="font-bold underline block">
+              <td style={{ padding: "6px 10px", verticalAlign: "middle", width: "40%" }}>
+                <div style={{ fontSize: "9px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
+                  JUMLAH UANG:
+                </div>
+                <div style={{ fontSize: "14px", fontWeight: "900", fontFamily: "'Courier New', monospace", color: "#000" }}>
+                  {rupiah(info.amount)}
+                </div>
+              </td>
+              <td style={{ padding: "6px 10px", verticalAlign: "middle", textAlign: "right", width: "60%" }}>
+                <div style={{ fontSize: "9px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
+                  TERBILANG:
+                </div>
+                <div style={{ fontSize: "10.5px", fontWeight: "bold", fontStyle: "italic", color: "#000", lineHeight: "1.25" }}>
+                  "{terbilang(info.amount)}"
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* TABEL TANDA TANGAN (3 KOLOM) */}
+        <table
+          style={{
+            width: "100%",
+            marginTop: "10px",
+            borderCollapse: "collapse",
+            textAlign: "center",
+            fontSize: "10.5px",
+          }}
+        >
+          <tbody>
+            <tr>
+              <td style={{ width: "33.33%", verticalAlign: "top" }}>
+                <div>{isPenerimaan ? (settings.labelPenyetor || "Penyetor / Yang Menyerahkan") : (settings.labelPenerima || "Penerima Kas")},</div>
+                <div style={{ height: "42px" }}></div>
+                <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
                   ( {info.payee || "......................................."} )
-                </span>
+                </div>
               </td>
-              <td className="w-1/3">
-                <span>Mengetahui,</span>
-                <span className="block text-[8.5px] text-gray-600">{settings.jabatanKetuaBpmj || "Ketua BPMJ"}</span>
-                <div className="h-7"></div>
-                <span className="font-bold underline block">
+              <td style={{ width: "33.33%", verticalAlign: "top" }}>
+                <div>Mengetahui,</div>
+                <div style={{ fontSize: "9.5px", color: "#444" }}>{settings.jabatanKetuaBpmj || "Ketua BPMJ"}</div>
+                <div style={{ height: "30px" }}></div>
+                <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
                   ( {settings.namaKetuaBpmj || "......................................."} )
-                </span>
+                </div>
               </td>
-              <td className="w-1/3">
-                <span>{settings.kotaSurat || "Manado"}, {tanggalPanjang(info.trx_date)}</span>
-                <span className="block font-medium">{settings.jabatanBendahara || "Bendahara Jemaat"},</span>
-                <div className="h-7"></div>
-                <span className="font-bold underline block">
+              <td style={{ width: "33.33%", verticalAlign: "top" }}>
+                <div>{settings.kotaSurat || "Manado"}, {tanggalPanjang(info.trx_date)}</div>
+                <div style={{ fontSize: "9.5px", color: "#444" }}>{settings.jabatanBendahara || "Bendahara Jemaat"},</div>
+                <div style={{ height: "30px" }}></div>
+                <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
                   ( {settings.namaBendahara || "......................................."} )
-                </span>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -492,9 +441,7 @@ export function CetakBuktiTransaksiDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {trigger ? (
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-      ) : null}
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
 
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader className="border-b pb-3">
@@ -535,21 +482,47 @@ export function CetakBuktiTransaksiDialog({
 
           <div
             ref={printAreaRef}
-            className="bg-white text-black p-4 mx-auto border shadow-sm max-w-[210mm]"
-            style={{ fontFamily: "Arial, sans-serif" }}
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#000000",
+              padding: "16px",
+              margin: "0 auto",
+              border: "1px solid #ddd",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              maxWidth: "210mm",
+              boxSizing: "border-box",
+            }}
           >
             {/* RANGKAP 1 */}
             {renderSlip(1, "LEMBAR 1: UNTUK ARSIP GEREJA / BENDAHARA")}
 
             {/* GARIS POTONG DENGAN GUNTING */}
-            <div className="my-2 text-center border-t-2 border-dashed border-gray-400 relative pt-1 flex items-center justify-center gap-2 text-gray-600 text-[9px] font-bold">
-              <Scissors className="size-3.5 text-gray-500" />
+            <div
+              style={{
+                textAlign: "center",
+                borderTop: "1.5px dashed #666",
+                margin: "10px 0",
+                paddingTop: "4px",
+                fontSize: "9.5px",
+                color: "#555",
+                fontWeight: "bold",
+                letterSpacing: "0.5px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              <Scissors style={{ width: "14px", height: "14px", color: "#666" }} />
               <span>GUNTING / POTONG DI SINI (PEMISAH LEMBAR ARSIP & PENYETOR)</span>
-              <Scissors className="size-3.5 text-gray-500 scale-x-[-1]" />
+              <Scissors style={{ width: "14px", height: "14px", color: "#666", transform: "scaleX(-1)" }} />
             </div>
 
             {/* RANGKAP 2 */}
-            {renderSlip(2, isPenerimaan ? "LEMBAR 2: UNTUK PENYETOR (TANDA TERIMA SAH)" : "LEMBAR 2: UNTUK PENERIMA (TANDA TERIMA SAH)")}
+            {renderSlip(
+              2,
+              isPenerimaan ? "LEMBAR 2: UNTUK PENYETOR (TANDA TERIMA SAH)" : "LEMBAR 2: UNTUK PENERIMA (TANDA TERIMA SAH)"
+            )}
           </div>
         </div>
 
