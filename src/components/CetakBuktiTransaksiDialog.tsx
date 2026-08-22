@@ -35,6 +35,97 @@ interface CetakBuktiTransaksiDialogProps {
   trigger?: React.ReactNode;
 }
 
+/** Helper cerdas untuk mengekstrak nama penyetor (Kolom, BIPRA, atau Nama Jemaat) dari mata anggaran/keterangan */
+export function extractPenyetorName(info: CetakData): string {
+  if (info.payee && info.payee.trim() !== "" && !info.payee.toLowerCase().includes("jemaat / donatur")) {
+    return info.payee.trim().toUpperCase();
+  }
+
+  const desc = (info.description || "").trim();
+  const code = (info.budget_line_code || "").trim();
+  const name = (info.budget_line_name || "").trim();
+  const fullText = `${desc} ${name}`.toLowerCase();
+
+  // 1. Deteksi Kolom spesifik (contoh: "Kolom 1", "Kolom 15", "Klm 5", "Kolom-12")
+  const matchKolom = desc.match(/(?:kolom|klm)\s*[-:]?\s*(\d{1,2})/i) || name.match(/(?:kolom|klm)\s*[-:]?\s*(\d{1,2})/i);
+  if (matchKolom) {
+    return `KOLOM ${matchKolom[1]}`;
+  }
+
+  // 2. PKB (Pria/Kaum Bapa)
+  if (code === "1.3.01.01" || fullText.includes("pkb aras") || fullText.includes("kompelsus pkb")) {
+    const matchPkb = desc.match(/PKB\s+([^,;\n]+)/i);
+    return matchPkb ? matchPkb[0].trim().toUpperCase() : "PKB ARAS JEMAAT";
+  }
+  if (code === "1.3.53.02" || fullText.includes("pkb kolom")) {
+    return "KOMPELSUS PKB";
+  }
+
+  // 3. W/KI (Wanita/Kaum Ibu)
+  if (code === "1.3.01.02" || fullText.includes("wki aras") || fullText.includes("w/ki aras") || fullText.includes("kompelsus w/ki") || fullText.includes("kompelsus wki")) {
+    const matchWki = desc.match(/(?:W\/KI|WKI)\s+([^,;\n]+)/i);
+    return matchWki ? matchWki[0].trim().toUpperCase() : "W/KI ARAS JEMAAT";
+  }
+  if (code === "1.3.53.03" || fullText.includes("wki kolom") || fullText.includes("w/ki kolom")) {
+    return "KOMPELSUS W/KI";
+  }
+
+  // 4. Lansia
+  if (code === "1.3.01.08" || fullText.includes("lansia") || fullText.includes("kelompok lansia")) {
+    const matchLansia = desc.match(/Lansia\s+([^,;\n]+)/i);
+    return matchLansia ? matchLansia[0].trim().toUpperCase() : "LANSIA RAYON";
+  }
+
+  // 5. Pemuda
+  if (code === "1.3.01.03" || fullText.includes("pemuda aras") || fullText.includes("kompelsus pemuda")) {
+    const matchPemuda = desc.match(/Pemuda\s+([^,;\n]+)/i);
+    return matchPemuda ? matchPemuda[0].trim().toUpperCase() : "KOMPELSUS PEMUDA";
+  }
+  if (code === "1.3.53.04" || fullText.includes("pemuda kolom")) {
+    return "PEMUDA KOLOM";
+  }
+
+  // 6. Remaja
+  if (code === "1.3.01.04" || fullText.includes("remaja aras") || fullText.includes("kompelsus remaja")) {
+    const matchRemaja = desc.match(/Remaja\s+([^,;\n]+)/i);
+    return matchRemaja ? matchRemaja[0].trim().toUpperCase() : "KOMPELSUS REMAJA";
+  }
+  if (code === "1.3.53.05" || fullText.includes("remaja kolom")) {
+    return "REMAJA KOLOM";
+  }
+
+  // 7. ASM (Anak Sekolah Minggu)
+  if (code === "1.3.01.05" || fullText.includes("asm aras") || fullText.includes("anak sekolah minggu") || fullText.includes("kompelsus anak")) {
+    return "KOMPELSUS ANAK (ASM)";
+  }
+  if (code === "1.3.53.06" || fullText.includes("asm kolom")) {
+    return "ASM KOLOM";
+  }
+
+  // 8. Dana Duka
+  if (code === "3.3.03.01" || code === "1.3.55.01" || fullText.includes("dana duka")) {
+    const matchKeluarga = desc.match(/(?:kel|keluarga|alm|almh|alm\.)\s+([^,;\n]+)/i);
+    return matchKeluarga?.[1] ? `KELUARGA ${matchKeluarga[1].trim().toUpperCase()}` : "DANA DUKA JEMAAT";
+  }
+
+  // 9. PBTK
+  if (code === "1.3.66.14" || fullText.includes("pbtk")) {
+    const matchKel = desc.match(/(?:kel|keluarga)\s+([^,;\n]+)/i);
+    return matchKel?.[1] ? `KELUARGA ${matchKel[1].trim().toUpperCase()}` : "PBTK JEMAAT";
+  }
+
+  // 10. Sekolah (TK Bumotik / SD GMIM)
+  if (fullText.includes("tk bumotik")) return "TK BUMOTIK";
+  if (fullText.includes("sd gmim")) return "SD GMIM 20 MANADO";
+
+  // Fallback ke nama pos anggaran atau jemaat
+  if (name) {
+    return name.toUpperCase();
+  }
+
+  return "JEMAAT / KOLOM";
+}
+
 export function CetakBuktiTransaksiDialog({
   trx,
   data,
@@ -68,6 +159,8 @@ export function CetakBuktiTransaksiDialog({
   const isPenerimaan = info.kind === "penerimaan";
   const judul = isPenerimaan ? "BUKTI PENERIMAAN KAS" : "BUKTI PENGELUARAN KAS";
   const subJudul = isPenerimaan ? "TANDA TERIMA SETORAN" : "KUITANSI PENGELUARAN KAS";
+
+  const namaPenyetorResolved = isPenerimaan ? extractPenyetorName(info) : (info.payee || "PENERIMA / VENDOR");
 
   const handlePrint = () => {
     if (!printAreaRef.current) return;
@@ -318,8 +411,8 @@ export function CetakBuktiTransaksiDialog({
                 {isPenerimaan ? "Telah Terima Dari" : "Dibayarkan Kepada"}
               </td>
               <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
-              <td style={{ fontWeight: "900", textTransform: "uppercase", padding: "2px 0", verticalAlign: "top" }}>
-                {info.payee || (isPenerimaan ? "JEMAAT / DONATUR / KOLOM" : "PENERIMA / VENDOR")}
+              <td style={{ fontWeight: "900", textTransform: "uppercase", padding: "2px 0", verticalAlign: "top", color: "#000" }}>
+                {namaPenyetorResolved}
               </td>
             </tr>
             <tr>
@@ -330,7 +423,9 @@ export function CetakBuktiTransaksiDialog({
               </td>
             </tr>
             <tr>
-              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>Untuk Pembayaran</td>
+              <td style={{ fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>
+                {isPenerimaan ? "Untuk Penyetoran" : "Untuk Pembayaran"}
+              </td>
               <td style={{ textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
               <td style={{ padding: "2px 0", verticalAlign: "top" }}>{info.description || "-"}</td>
             </tr>
@@ -425,7 +520,7 @@ export function CetakBuktiTransaksiDialog({
                 <div>{isPenerimaan ? (settings.labelPenyetor || "Penyetor / Yang Menyerahkan") : (settings.labelPenerima || "Penerima Kas")},</div>
                 <div style={{ height: "36px" }}></div>
                 <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
-                  ( {info.payee || "......................................."} )
+                  ( {namaPenyetorResolved} )
                 </div>
               </td>
               <td style={{ width: "33.33%", verticalAlign: "top" }}>
