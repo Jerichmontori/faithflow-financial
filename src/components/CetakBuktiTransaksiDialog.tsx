@@ -102,25 +102,31 @@ export function CetakBuktiTransaksiDialog({
           ${styles}
           <style>
             @page {
-              size: 215mm 330mm portrait; /* Kertas F4 / Folio */
-              margin: 8mm 12mm;
+              size: portrait; /* Kunci tegas orientasi Portrait */
+              margin: 5mm 8mm;
             }
             * {
               box-sizing: border-box;
             }
-            body {
+            html, body {
               margin: 0;
               padding: 0;
-              font-family: Arial, Helvetica, sans-serif;
-              color: #000;
+              width: 100%;
               background: #fff;
+              color: #000;
+              font-family: Arial, Helvetica, sans-serif;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+            }
+            .print-page-wrapper {
+              width: 100%;
+              max-width: 100%;
+              margin: 0 auto;
             }
           </style>
         </head>
         <body>
-          <div style="width: 100%; max-width: 210mm; margin: 0 auto;">
+          <div class="print-page-wrapper">
             ${printContent}
           </div>
         </body>
@@ -142,7 +148,7 @@ export function CetakBuktiTransaksiDialog({
   const handleDownloadPdf = async () => {
     if (!printAreaRef.current) return;
     setIsGeneratingPdf(true);
-    toast.info("Sedang menyiapkan file PDF (Kertas F4)...");
+    toast.info("Sedang menyiapkan file PDF Portrait...");
 
     try {
       const html2pdfModule = await import("html2pdf.js");
@@ -153,7 +159,7 @@ export function CetakBuktiTransaksiDialog({
 
       const element = printAreaRef.current;
       const opt = {
-        margin: [6, 10, 6, 10] as [number, number, number, number],
+        margin: [5, 8, 5, 8] as [number, number, number, number],
         filename: `${info.voucher_no || "BUKTI"}_${info.trx_date}.pdf`,
         image: { type: "jpeg" as const, quality: 0.98 },
         html2canvas: {
@@ -164,7 +170,7 @@ export function CetakBuktiTransaksiDialog({
         },
         jsPDF: {
           unit: "mm",
-          format: [215, 330] as [number, number], // F4 dimensions
+          format: "a4",
           orientation: "portrait" as const,
         },
       };
@@ -189,14 +195,17 @@ export function CetakBuktiTransaksiDialog({
       <div
         style={{
           border: "1.5px solid #000",
-          padding: "12px 16px",
-          marginBottom: "6px",
-          backgroundColor: "#fff",
-          color: "#000",
-          fontSize: "11px",
-          lineHeight: "1.35",
+          padding: "10px 14px",
+          marginBottom: "4px",
+          backgroundColor: "#ffffff",
+          color: "#000000",
+          fontSize: "10.5px",
+          lineHeight: "1.3",
           fontFamily: "Arial, Helvetica, sans-serif",
           boxSizing: "border-box",
+          pageBreakInside: "avoid",
+          breakInside: "avoid",
+          width: "100%",
         }}
       >
         {/* KOP SURAT RESMI */}
@@ -204,54 +213,54 @@ export function CetakBuktiTransaksiDialog({
           style={{
             width: "100%",
             borderBottom: "2.5px double #000",
-            paddingBottom: "8px",
-            marginBottom: "8px",
+            paddingBottom: "6px",
+            marginBottom: "6px",
             borderCollapse: "collapse",
           }}
         >
           <tbody>
             <tr>
-              <td style={{ width: "55px", verticalAlign: "middle", textAlign: "left" }}>
+              <td style={{ width: "50px", verticalAlign: "middle", textAlign: "left" }}>
                 <img
                   src={settings.logoUrl || "/favicon.png"}
                   alt="Logo GMIM"
-                  style={{ width: "48px", height: "48px", objectFit: "contain", display: "block" }}
+                  style={{ width: "44px", height: "44px", objectFit: "contain", display: "block" }}
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/favicon.png";
                   }}
                 />
               </td>
               <td style={{ textAlign: "center", verticalAlign: "middle" }}>
-                <div style={{ fontSize: "13px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: "1.2" }}>
+                <div style={{ fontSize: "12.5px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.4px", lineHeight: "1.2" }}>
                   {settings.namaGereja || "GEREJA MASEHI INJILI DI MINAHASA (GMIM)"}
                 </div>
-                <div style={{ fontSize: "12px", fontWeight: "900", textTransform: "uppercase", marginTop: "2px", letterSpacing: "0.3px" }}>
+                <div style={{ fontSize: "11.5px", fontWeight: "900", textTransform: "uppercase", marginTop: "2px", letterSpacing: "0.2px" }}>
                   {settings.namaJemaat || "JEMAAT BUKIT MORIA TIKALA BARU"}
                 </div>
-                <div style={{ fontSize: "10.5px", fontWeight: "800", textTransform: "uppercase", marginTop: "1px", color: "#222" }}>
+                <div style={{ fontSize: "10px", fontWeight: "800", textTransform: "uppercase", marginTop: "1px", color: "#222" }}>
                   {settings.wilayah || "WILAYAH MANADO WAWONASA KOMBOS"}
                 </div>
-                <div style={{ fontSize: "8.5px", color: "#444", marginTop: "2px" }}>
+                <div style={{ fontSize: "8.5px", color: "#444", marginTop: "1px" }}>
                   {settings.alamatGereja || "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"}
                 </div>
               </td>
-              <td style={{ width: "55px" }}></td>
+              <td style={{ width: "50px" }}></td>
             </tr>
           </tbody>
         </table>
 
         {/* BARIS JUDUL & NOMOR BUKTI */}
-        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "8px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "6px" }}>
           <tbody>
             <tr>
               <td style={{ width: "32%", verticalAlign: "top", textAlign: "left" }}>
                 <span
                   style={{
                     display: "inline-block",
-                    fontSize: "9px",
+                    fontSize: "8.5px",
                     fontWeight: "bold",
                     border: "1px solid #000",
-                    padding: "2px 8px",
+                    padding: "2px 6px",
                     backgroundColor: "#f2f2f2",
                     textTransform: "uppercase",
                   }}
@@ -262,7 +271,7 @@ export function CetakBuktiTransaksiDialog({
               <td style={{ width: "36%", verticalAlign: "top", textAlign: "center" }}>
                 <div
                   style={{
-                    fontSize: "12.5px",
+                    fontSize: "12px",
                     fontWeight: "900",
                     textDecoration: "underline",
                     textTransform: "uppercase",
@@ -271,7 +280,7 @@ export function CetakBuktiTransaksiDialog({
                 >
                   {judul}
                 </div>
-                <div style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", color: "#333", marginTop: "1px" }}>
+                <div style={{ fontSize: "8.5px", fontWeight: "bold", textTransform: "uppercase", color: "#333", marginTop: "1px" }}>
                   ({subJudul})
                 </div>
               </td>
@@ -279,7 +288,7 @@ export function CetakBuktiTransaksiDialog({
                 <span
                   style={{
                     display: "inline-block",
-                    fontSize: "10px",
+                    fontSize: "9.5px",
                     fontFamily: "'Courier New', monospace",
                     fontWeight: "bold",
                     backgroundColor: "#000",
@@ -295,10 +304,10 @@ export function CetakBuktiTransaksiDialog({
         </table>
 
         {/* TABEL DATA TRANSAKSI */}
-        <table style={{ width: "100%", borderCollapse: "collapse", margin: "6px 0", fontSize: "11px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", margin: "4px 0", fontSize: "10.5px" }}>
           <tbody>
             <tr>
-              <td style={{ width: "140px", fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>
+              <td style={{ width: "135px", fontWeight: "bold", padding: "2px 0", verticalAlign: "top" }}>
                 Tanggal Transaksi
               </td>
               <td style={{ width: "12px", textAlign: "center", padding: "2px 0", verticalAlign: "top" }}>:</td>
@@ -341,24 +350,24 @@ export function CetakBuktiTransaksiDialog({
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              margin: "6px 0",
-              fontSize: "10px",
+              margin: "4px 0",
+              fontSize: "9.5px",
               border: "1px solid #777",
             }}
           >
             <thead>
               <tr style={{ backgroundColor: "#f0f0f0" }}>
-                <th style={{ border: "1px solid #777", padding: "3px 6px", textAlign: "center", width: "30px" }}>No</th>
-                <th style={{ border: "1px solid #777", padding: "3px 6px", textAlign: "left" }}>Rincian Pos / Keterangan</th>
-                <th style={{ border: "1px solid #777", padding: "3px 6px", textAlign: "right", width: "120px" }}>Nominal</th>
+                <th style={{ border: "1px solid #777", padding: "2px 5px", textAlign: "center", width: "28px" }}>No</th>
+                <th style={{ border: "1px solid #777", padding: "2px 5px", textAlign: "left" }}>Rincian Pos / Keterangan</th>
+                <th style={{ border: "1px solid #777", padding: "2px 5px", textAlign: "right", width: "110px" }}>Nominal</th>
               </tr>
             </thead>
             <tbody>
               {multiItems.map((it, idx) => (
                 <tr key={idx}>
-                  <td style={{ border: "1px solid #777", padding: "2px 6px", textAlign: "center" }}>{idx + 1}</td>
-                  <td style={{ border: "1px solid #777", padding: "2px 6px" }}>{it.description}</td>
-                  <td style={{ border: "1px solid #777", padding: "2px 6px", textAlign: "right", fontFamily: "'Courier New', monospace", fontWeight: "bold" }}>
+                  <td style={{ border: "1px solid #777", padding: "2px 5px", textAlign: "center" }}>{idx + 1}</td>
+                  <td style={{ border: "1px solid #777", padding: "2px 5px" }}>{it.description}</td>
+                  <td style={{ border: "1px solid #777", padding: "2px 5px", textAlign: "right", fontFamily: "'Courier New', monospace", fontWeight: "bold" }}>
                     {rupiah(it.amount)}
                   </td>
                 </tr>
@@ -373,26 +382,26 @@ export function CetakBuktiTransaksiDialog({
             width: "100%",
             border: "1.5px solid #000",
             backgroundColor: "#fcfcfc",
-            margin: "8px 0",
-            padding: "6px 10px",
+            margin: "6px 0",
+            padding: "5px 8px",
             borderCollapse: "collapse",
           }}
         >
           <tbody>
             <tr>
-              <td style={{ padding: "6px 10px", verticalAlign: "middle", width: "40%" }}>
-                <div style={{ fontSize: "9px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
+              <td style={{ padding: "5px 8px", verticalAlign: "middle", width: "40%" }}>
+                <div style={{ fontSize: "8.5px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
                   JUMLAH UANG:
                 </div>
-                <div style={{ fontSize: "14px", fontWeight: "900", fontFamily: "'Courier New', monospace", color: "#000" }}>
+                <div style={{ fontSize: "13.5px", fontWeight: "900", fontFamily: "'Courier New', monospace", color: "#000" }}>
                   {rupiah(info.amount)}
                 </div>
               </td>
-              <td style={{ padding: "6px 10px", verticalAlign: "middle", textAlign: "right", width: "60%" }}>
-                <div style={{ fontSize: "9px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
+              <td style={{ padding: "5px 8px", verticalAlign: "middle", textAlign: "right", width: "60%" }}>
+                <div style={{ fontSize: "8.5px", textTransform: "uppercase", fontWeight: "bold", color: "#555" }}>
                   TERBILANG:
                 </div>
-                <div style={{ fontSize: "10.5px", fontWeight: "bold", fontStyle: "italic", color: "#000", lineHeight: "1.25" }}>
+                <div style={{ fontSize: "10px", fontWeight: "bold", fontStyle: "italic", color: "#000", lineHeight: "1.2" }}>
                   "{terbilang(info.amount)}"
                 </div>
               </td>
@@ -404,33 +413,33 @@ export function CetakBuktiTransaksiDialog({
         <table
           style={{
             width: "100%",
-            marginTop: "10px",
+            marginTop: "8px",
             borderCollapse: "collapse",
             textAlign: "center",
-            fontSize: "10.5px",
+            fontSize: "10px",
           }}
         >
           <tbody>
             <tr>
               <td style={{ width: "33.33%", verticalAlign: "top" }}>
                 <div>{isPenerimaan ? (settings.labelPenyetor || "Penyetor / Yang Menyerahkan") : (settings.labelPenerima || "Penerima Kas")},</div>
-                <div style={{ height: "42px" }}></div>
+                <div style={{ height: "36px" }}></div>
                 <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
                   ( {info.payee || "......................................."} )
                 </div>
               </td>
               <td style={{ width: "33.33%", verticalAlign: "top" }}>
                 <div>Mengetahui,</div>
-                <div style={{ fontSize: "9.5px", color: "#444" }}>{settings.jabatanKetuaBpmj || "Ketua BPMJ"}</div>
-                <div style={{ height: "30px" }}></div>
+                <div style={{ fontSize: "9px", color: "#444" }}>{settings.jabatanKetuaBpmj || "Ketua BPMJ"}</div>
+                <div style={{ height: "26px" }}></div>
                 <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
                   ( {settings.namaKetuaBpmj || "......................................."} )
                 </div>
               </td>
               <td style={{ width: "33.33%", verticalAlign: "top" }}>
                 <div>{settings.kotaSurat || "Manado"}, {tanggalPanjang(info.trx_date)}</div>
-                <div style={{ fontSize: "9.5px", color: "#444" }}>{settings.jabatanBendahara || "Bendahara Jemaat"},</div>
-                <div style={{ height: "30px" }}></div>
+                <div style={{ fontSize: "9px", color: "#444" }}>{settings.jabatanBendahara || "Bendahara Jemaat"},</div>
+                <div style={{ height: "26px" }}></div>
                 <div style={{ fontWeight: "bold", textDecoration: "underline" }}>
                   ( {settings.namaBendahara || "......................................."} )
                 </div>
@@ -452,10 +461,10 @@ export function CetakBuktiTransaksiDialog({
             <div>
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <Printer className="size-4 text-primary" />
-                Cetak {judul} (Format Kertas F4 - 2 Rangkap)
+                Cetak {judul} (Format Portrait - 2 Rangkap)
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Dokumen otomatis dibagi menjadi 2 rangkap dalam 1 lembar F4: <strong>Lembar 1 (Arsip Gereja)</strong> dan <strong>Lembar 2 (Tanda Terima Penyetor/Penerima)</strong>.
+                Dokumen otomatis disusun memanjang ke bawah (Portrait): <strong>Lembar 1 di bagian Atas (Arsip)</strong> dan <strong>Lembar 2 di bagian Bawah (Penyetor/Penerima)</strong>.
               </DialogDescription>
             </div>
 
@@ -467,7 +476,7 @@ export function CetakBuktiTransaksiDialog({
                 disabled={isGeneratingPdf}
                 className="gap-1.5 text-xs h-8"
               >
-                <Download className="size-3.5" /> {isGeneratingPdf ? "Menyiapkan..." : "PDF (F4)"}
+                <Download className="size-3.5" /> {isGeneratingPdf ? "Menyiapkan..." : "PDF (Portrait)"}
               </Button>
               <Button size="sm" onClick={handlePrint} className="gap-1.5 text-xs h-8 font-semibold">
                 <Printer className="size-3.5" /> Cetak / Print Sekarang
@@ -476,10 +485,10 @@ export function CetakBuktiTransaksiDialog({
           </div>
         </DialogHeader>
 
-        {/* Tampilan Preview Hasil Cetak F4 */}
+        {/* Tampilan Preview Hasil Cetak Portrait */}
         <div className="bg-muted/40 p-3 rounded-lg border overflow-x-auto">
           <div className="text-[11px] text-muted-foreground mb-2 flex items-center justify-between font-medium">
-            <span>📄 Pratinjau Cetak Kertas F4 (215mm × 330mm)</span>
+            <span>📄 Pratinjau Cetak Portrait (Atas: Arsip, Bawah: Penyetor)</span>
             <span className="text-primary font-bold">Siap Cetak 2 Rangkap</span>
           </div>
 
@@ -488,25 +497,27 @@ export function CetakBuktiTransaksiDialog({
             style={{
               backgroundColor: "#ffffff",
               color: "#000000",
-              padding: "16px",
+              padding: "12px",
               margin: "0 auto",
               border: "1px solid #ddd",
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              maxWidth: "210mm",
+              maxWidth: "195mm",
               boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            {/* RANGKAP 1 */}
+            {/* RANGKAP 1 (BAGIAN ATAS) */}
             {renderSlip(1, "LEMBAR 1: UNTUK ARSIP GEREJA / BENDAHARA")}
 
-            {/* GARIS POTONG DENGAN GUNTING */}
+            {/* GARIS POTONG DENGAN GUNTING (TENGAH) */}
             <div
               style={{
                 textAlign: "center",
                 borderTop: "1.5px dashed #666",
-                margin: "10px 0",
-                paddingTop: "4px",
-                fontSize: "9.5px",
+                margin: "8px 0",
+                paddingTop: "3px",
+                fontSize: "9px",
                 color: "#555",
                 fontWeight: "bold",
                 letterSpacing: "0.5px",
@@ -516,12 +527,12 @@ export function CetakBuktiTransaksiDialog({
                 gap: "8px",
               }}
             >
-              <Scissors style={{ width: "14px", height: "14px", color: "#666" }} />
+              <Scissors style={{ width: "13px", height: "13px", color: "#666" }} />
               <span>GUNTING / POTONG DI SINI (PEMISAH LEMBAR ARSIP & PENYETOR)</span>
-              <Scissors style={{ width: "14px", height: "14px", color: "#666", transform: "scaleX(-1)" }} />
+              <Scissors style={{ width: "13px", height: "13px", color: "#666", transform: "scaleX(-1)" }} />
             </div>
 
-            {/* RANGKAP 2 */}
+            {/* RANGKAP 2 (BAGIAN BAWAH) */}
             {renderSlip(
               2,
               isPenerimaan ? "LEMBAR 2: UNTUK PENYETOR (TANDA TERIMA SAH)" : "LEMBAR 2: UNTUK PENERIMA (TANDA TERIMA SAH)"
@@ -530,7 +541,7 @@ export function CetakBuktiTransaksiDialog({
         </div>
 
         <div className="border-t pt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>💡 <strong>Tips Cetak:</strong> Pada dialog print browser, pilih ukuran kertas <strong>F4 / Folio (8.5 x 13 in)</strong> dan Margin <strong>Default / Minimum</strong>.</span>
+          <span>💡 <strong>Tips Cetak:</strong> Pada jendela print browser, pastikan Orientation diset ke <strong>Portrait</strong> dan Margins <strong>Default</strong>.</span>
           <Button variant="secondary" size="sm" onClick={() => setIsOpen(false)}>
             Tutup
           </Button>
