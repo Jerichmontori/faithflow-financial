@@ -137,14 +137,27 @@ function PengaturanPage() {
                 <CardContent className="space-y-4 text-xs">
                   <div className="space-y-1.5">
                     <Label htmlFor="namaGereja" className="font-semibold">
-                      Nama Gereja / Jemaat <span className="text-destructive">*</span>
+                      Nama Sinode / Gereja <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="namaGereja"
                       value={form.namaGereja}
                       onChange={(e) => handleChange("namaGereja", e.target.value)}
-                      placeholder="Contoh: Gereja Masehi Injili di Minahasa (GMIM) Jemaat Bukit Moria Tikala Baru"
+                      placeholder="Contoh: Gereja Masehi Injili di Minahasa (GMIM)"
                       className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="namaJemaat" className="font-semibold">
+                      Nama Jemaat <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="namaJemaat"
+                      value={form.namaJemaat}
+                      onChange={(e) => handleChange("namaJemaat", e.target.value)}
+                      placeholder="Contoh: Jemaat Bukit Moria Tikala Baru"
+                      className="h-9 text-xs font-semibold text-primary"
                     />
                   </div>
 
@@ -400,13 +413,16 @@ function PengaturanPage() {
             <div className="border-b-2 border-black pb-2 mb-2 flex items-center justify-between text-center">
               <div className="w-full text-center">
                 <h2 className="text-[11.5px] font-black uppercase tracking-wide leading-tight">
-                  {form.namaGereja || "NAMA GEREJA"}
+                  {form.namaGereja || "GEREJA MASEHI INJILI DI MINAHASA (GMIM)"}
                 </h2>
-                <h3 className="text-[10px] font-extrabold uppercase mt-0.5 text-gray-800">
-                  {form.wilayah || "WILAYAH"}
+                <h3 className="text-[10.5px] font-black uppercase mt-0.5 text-gray-900">
+                  {form.namaJemaat || "JEMAAT BUKIT MORIA TIKALA BARU"}
                 </h3>
+                <h4 className="text-[9.5px] font-extrabold uppercase mt-0.5 text-gray-800">
+                  {form.wilayah || "WILAYAH MANADO WAWONASA KOMBOS"}
+                </h4>
                 <p className="text-[8px] text-gray-600 mt-0.5 truncate">
-                  {form.alamatGereja || "Alamat Gereja"}
+                  {form.alamatGereja || "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"}
                 </p>
               </div>
             </div>

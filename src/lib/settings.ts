@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
 export interface AppSettings {
-  namaGereja: string;
-  wilayah: string;
-  alamatGereja: string;
+  namaGereja: string; // e.g. "Gereja Masehi Injili di Minahasa (GMIM)"
+  namaJemaat: string; // e.g. "Jemaat Bukit Moria Tikala Baru"
+  wilayah: string; // e.g. "Wilayah Manado Wawonasa Kombos"
+  alamatGereja: string; // e.g. "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"
   namaAplikasi: string;
   subtitleAplikasi: string;
   logoUrl: string;
@@ -21,7 +22,8 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  namaGereja: "Gereja Masehi Injili di Minahasa (GMIM) Jemaat Bukit Moria Tikala Baru",
+  namaGereja: "Gereja Masehi Injili di Minahasa (GMIM)",
+  namaJemaat: "Jemaat Bukit Moria Tikala Baru",
   wilayah: "Wilayah Manado Wawonasa Kombos",
   alamatGereja: "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara",
   namaAplikasi: "BUMOTIK FINANCIAL",
@@ -47,7 +49,21 @@ export function getStoredSettings(): AppSettings {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed };
+
+    // Migration / fallback if namaGereja contained full text
+    let namaGereja = parsed.namaGereja || DEFAULT_SETTINGS.namaGereja;
+    let namaJemaat = parsed.namaJemaat || DEFAULT_SETTINGS.namaJemaat;
+    if (namaGereja.includes("Jemaat") && !parsed.namaJemaat) {
+      namaGereja = "Gereja Masehi Injili di Minahasa (GMIM)";
+      namaJemaat = "Jemaat Bukit Moria Tikala Baru";
+    }
+
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      namaGereja,
+      namaJemaat,
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }

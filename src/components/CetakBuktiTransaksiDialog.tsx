@@ -222,13 +222,16 @@ export function CetakBuktiTransaksiDialog({
                 />
               </td>
               <td style={{ textAlign: "center", verticalAlign: "middle" }}>
-                <div style={{ fontSize: "13px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "900", textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: "1.2" }}>
                   {settings.namaGereja || "GEREJA MASEHI INJILI DI MINAHASA (GMIM)"}
                 </div>
-                <div style={{ fontSize: "11px", fontWeight: "800", textTransform: "uppercase", marginTop: "2px" }}>
-                  {settings.wilayah || "JEMAAT BUKIT MORIA TIKALA BARU — WILAYAH MANADO WAWONASA KOMBOS"}
+                <div style={{ fontSize: "12px", fontWeight: "900", textTransform: "uppercase", marginTop: "2px", letterSpacing: "0.3px" }}>
+                  {settings.namaJemaat || "JEMAAT BUKIT MORIA TIKALA BARU"}
                 </div>
-                <div style={{ fontSize: "9px", color: "#333", marginTop: "2px" }}>
+                <div style={{ fontSize: "10.5px", fontWeight: "800", textTransform: "uppercase", marginTop: "1px", color: "#222" }}>
+                  {settings.wilayah || "WILAYAH MANADO WAWONASA KOMBOS"}
+                </div>
+                <div style={{ fontSize: "8.5px", color: "#444", marginTop: "2px" }}>
                   {settings.alamatGereja || "Jl. Lumimuut, Tikala Baru, Kec. Tikala, Kota Manado, Sulawesi Utara"}
                 </div>
               </td>
