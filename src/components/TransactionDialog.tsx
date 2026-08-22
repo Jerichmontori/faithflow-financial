@@ -36,9 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus, ShieldCheck } from "lucide-react";
+import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus, ShieldCheck, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BULAN_PANJANG, standardizeDescription } from "@/lib/kolom";
+import { CetakBuktiTransaksiDialog, type CetakData } from "@/components/CetakBuktiTransaksiDialog";
 
 const schema = z.object({
   trx_date: z.string().min(1, "Tanggal wajib diisi"),
@@ -116,6 +117,10 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     payment_method: "cash",
   });
 
+  const [cetakData, setCetakData] = useState<CetakData | null>(null);
+  const [openCetak, setOpenCetak] = useState(false);
+  const [autoPrintAfterSave, setAutoPrintAfterSave] = useState(false);
+
   const resetState = () => {
     setForm({
       trx_date: new Date().toISOString().slice(0, 10),
@@ -143,6 +148,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     setPbtkKolom("1");
     setPbtkBulan(String(new Date().getMonth()));
     setPbtkPeriodeTeks("");
+    setAutoPrintAfterSave(false);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -378,20 +384,52 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
           voucher_no: "",
         };
       });
-      const { error } = await supabase.from("transactions").insert(rows);
+      const { data: inserted, error } = await supabase
+        .from("transactions")
+        .insert(rows)
+        .select("id, voucher_no, trx_date, kind, amount, description, payee, payment_method");
       if (error) throw error;
-      return rows.length;
+      return { count: rows.length, inserted: inserted ?? [] };
     },
-    onSuccess: (count) => {
+    onSuccess: (res) => {
       toast.success(
         kind === "penerimaan"
-          ? `${count} penerimaan tercatat & tersinkronisasi`
+          ? `${res.count} penerimaan tercatat & tersinkronisasi`
           : "Pengeluaran berhasil dicatat",
       );
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+
+      if (autoPrintAfterSave) {
+        setCetakData({
+          voucher_no: res.inserted[0]?.voucher_no || "",
+          trx_date: form.trx_date,
+          kind,
+          budget_line_code: selected?.code,
+          budget_line_name: selected?.name,
+          amount: totalNominal,
+          payee: form.payee,
+          payment_method: form.payment_method,
+          description:
+            kind === "penerimaan"
+              ? items
+                  .map((i) => i.description)
+                  .filter(Boolean)
+                  .join("; ")
+              : form.description,
+          items:
+            kind === "penerimaan"
+              ? items
+                  .filter((i) => Number(i.amount) > 0)
+                  .map((i) => ({ description: i.description, amount: Number(i.amount) }))
+              : [{ description: form.description, amount: Number(form.amount) }],
+        });
+        setOpenCetak(true);
+      }
+
       setOpen(false);
       setItems([{ description: "", amount: "" }]);
       setForm((f) => ({ ...f, amount: "", description: "", payee: "" }));
+      setAutoPrintAfterSave(false);
     },
     onError: (err) => {
       toast.error(
@@ -403,6 +441,41 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       );
     },
   });
+
+  const handlePreviewCetak = () => {
+    if (!form.budget_line_id) {
+      toast.error("Silakan pilih mata anggaran terlebih dahulu");
+      return;
+    }
+    if (totalNominal <= 0) {
+      toast.error("Nominal transaksi harus lebih dari 0");
+      return;
+    }
+    setCetakData({
+      voucher_no: kind === "penerimaan" ? "KM-PREVIEW" : "KK-PREVIEW",
+      trx_date: form.trx_date,
+      kind,
+      budget_line_code: selected?.code,
+      budget_line_name: selected?.name,
+      amount: totalNominal,
+      payee: form.payee,
+      payment_method: form.payment_method,
+      description:
+        kind === "penerimaan"
+          ? items
+              .map((i) => i.description)
+              .filter(Boolean)
+              .join("; ")
+          : form.description,
+      items:
+        kind === "penerimaan"
+          ? items
+              .filter((i) => Number(i.amount) > 0)
+              .map((i) => ({ description: i.description, amount: Number(i.amount) }))
+          : [{ description: form.description, amount: Number(form.amount) }],
+    });
+    setOpenCetak(true);
+  };
 
   if (!canManageFinance) return null;
 
@@ -1326,22 +1399,56 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
             <span className="text-lg font-bold font-mono text-primary">{rupiah(totalNominal)}</span>
           </div>
 
-          <DialogFooter className="border-t pt-3 flex items-center justify-end gap-2">
+          <DialogFooter className="border-t pt-3 flex flex-wrap items-center justify-between gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setOpen(false)}
-              disabled={mutation.isPending}
+              onClick={handlePreviewCetak}
+              className="gap-1.5 text-xs text-primary font-semibold border-primary/30 hover:bg-primary/5"
             >
-              Batal
+              <Printer className="size-3.5" /> Cetak / Pratinjau (F4 2-Rangkap)
             </Button>
-            <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? "Menyimpan…" : "Simpan Transaksi"}
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen(false)}
+                disabled={mutation.isPending}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                variant="secondary"
+                onClick={() => setAutoPrintAfterSave(true)}
+                disabled={mutation.isPending}
+                className="gap-1.5 font-medium shadow-sm"
+              >
+                <Printer className="size-3.5 text-primary" /> Simpan & Cetak
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                onClick={() => setAutoPrintAfterSave(false)}
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? "Menyimpan…" : "Simpan Transaksi"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Dialog Cetak Bukti F4 2 Rangkap */}
+      <CetakBuktiTransaksiDialog
+        open={openCetak}
+        onOpenChange={setOpenCetak}
+        data={cetakData ?? undefined}
+      />
     </Dialog>
   );
 }

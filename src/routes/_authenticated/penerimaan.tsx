@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { KoreksiDialog } from "@/components/KoreksiDialog";
 import { HapusTransaksiDialog } from "@/components/HapusTransaksiDialog";
+import { CetakBuktiTransaksiDialog } from "@/components/CetakBuktiTransaksiDialog";
 import { ImportMassalDialog } from "@/components/ImportMassalDialog";
 import { BackupDataDialog } from "@/components/BackupDataDialog";
 import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
@@ -39,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Clock, RotateCcw, Check, ChevronsUpDown } from "lucide-react";
+import { Printer, Calendar, Clock, RotateCcw, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/penerimaan")({
@@ -449,6 +450,14 @@ function PenerimaanPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <CetakBuktiTransaksiDialog
+                        trx={t}
+                        trigger={
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Cetak Tanda Terima Setoran (F4 2-Rangkap)">
+                            <Printer className="size-3.5 text-primary" />
+                          </Button>
+                        }
+                      />
                       <KoreksiDialog trx={t} />
                       <HapusTransaksiDialog trx={t} />
                     </div>
