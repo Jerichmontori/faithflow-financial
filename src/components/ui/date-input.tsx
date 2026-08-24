@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { X } from "lucide-react";
 import { Input } from "./input";
 
 export interface DateInputProps
@@ -30,82 +30,42 @@ export function normalizeDateInput(val: string): string {
 }
 
 export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
-  ({ value = "", onChange, className, placeholder = "YYYY-MM-DD", ...props }, ref) => {
-    const [textVal, setTextVal] = React.useState(value);
-    const nativePickerRef = React.useRef<HTMLInputElement>(null);
+  ({ value = "", onChange, className, ...props }, ref) => {
+    const formattedVal = normalizeDateInput(value);
 
-    React.useEffect(() => {
-      setTextVal(value);
-    }, [value]);
-
-    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const v = e.target.value;
-      setTextVal(v);
-      const normalized = normalizeDateInput(v);
-      if (onChange) {
-        if (!v || /^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-          onChange(normalized);
-        }
-      }
-    };
-
-    const handleNativePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = e.target.value;
-      setTextVal(v);
       if (onChange) {
         onChange(v);
       }
     };
 
-    const openCalendarPicker = () => {
-      try {
-        if (nativePickerRef.current) {
-          if (typeof (nativePickerRef.current as any).showPicker === "function") {
-            (nativePickerRef.current as any).showPicker();
-          } else {
-            nativePickerRef.current.focus();
-            nativePickerRef.current.click();
-          }
-        }
-      } catch {
-        // Fallback for browsers that don't allow showPicker
-      }
+    const handleClear = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (onChange) onChange("");
     };
 
     return (
       <div className="relative flex items-center w-full">
         <Input
           ref={ref}
-          type="text"
-          value={textVal}
-          onChange={handleTextChange}
-          onBlur={() => {
-            const normalized = normalizeDateInput(textVal);
-            setTextVal(normalized);
-            if (onChange) onChange(normalized);
-          }}
-          placeholder={placeholder}
-          className={`pr-9 font-mono text-xs ${className || ""}`}
+          type="date"
+          value={formattedVal}
+          onChange={handleChange}
+          className={`h-9 font-mono text-xs cursor-pointer ${value ? "pr-8" : ""} ${className || ""}`}
           {...props}
         />
-        <button
-          type="button"
-          onClick={openCalendarPicker}
-          className="absolute right-2 text-muted-foreground hover:text-foreground focus:outline-none p-1 rounded hover:bg-muted"
-          title="Pilih tanggal dari kalender"
-          aria-label="Pilih tanggal dari kalender"
-        >
-          <CalendarIcon className="size-4 opacity-75" />
-        </button>
-        <input
-          ref={nativePickerRef}
-          type="date"
-          className="sr-only"
-          value={value || ""}
-          onChange={handleNativePickerChange}
-          tabIndex={-1}
-          aria-hidden="true"
-        />
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-7 text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
+            title="Hapus tanggal"
+            aria-label="Hapus tanggal"
+          >
+            <X className="size-3.5 opacity-60 hover:opacity-100" />
+          </button>
+        )}
       </div>
     );
   },

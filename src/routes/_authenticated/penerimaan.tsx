@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, useDeferredValue } from "react";
+import { useMemo, useState, useDeferredValue, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { KoreksiDialog } from "@/components/KoreksiDialog";
@@ -186,6 +186,13 @@ function PenerimaanPage() {
     return sortedPenerimaan.filter((t) => t.trx_date === today);
   }, [sortedPenerimaan, today]);
 
+  const [displayLimit, setDisplayLimit] = useState(DEFAULT_LIMIT);
+
+  // Reset limit display saat filter berubah
+  useEffect(() => {
+    setDisplayLimit(DEFAULT_LIMIT);
+  }, [q, tahun, bulan, budget, dari, sampai]);
+
   // Mode Standar: Menampilkan transaksi hari ini secara default
   const rows = useMemo(() => {
     if (aktif) return allFilteredRows;
@@ -193,6 +200,13 @@ function PenerimaanPage() {
     if (viewMode === "latest") return allFilteredRows.slice(0, DEFAULT_LIMIT);
     return todayRows;
   }, [allFilteredRows, aktif, viewMode, todayRows]);
+
+  const displayedRows = useMemo(() => {
+    if (aktif || viewMode === "all") {
+      return rows.slice(0, displayLimit);
+    }
+    return rows;
+  }, [rows, displayLimit, aktif, viewMode]);
 
   const total = rows.reduce((a, t) => a + Number(t.amount), 0);
   const totalHariIni = todayRows.reduce((a, t) => a + Number(t.amount), 0);
@@ -436,7 +450,7 @@ function PenerimaanPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((t) => (
+              {displayedRows.map((t) => (
                 <TableRow key={t.id} className="hover:bg-muted/10">
                   <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
                   <TableCell className="font-mono text-xs font-semibold text-primary">{t.voucher_no}</TableCell>
@@ -495,6 +509,33 @@ function PenerimaanPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Panel Muat Lebih Banyak Jika Hasil Filter > Limit */}
+        {rows.length > displayLimit && (
+          <div className="p-3 bg-muted/20 border-t flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              Menampilkan <strong>{displayedRows.length}</strong> dari <strong>{rows.length}</strong> transaksi hasil filter
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setDisplayLimit((prev) => prev + 50)}
+              >
+                Muat 50 Lebih Banyak
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setDisplayLimit(rows.length)}
+              >
+                Tampilkan Semua ({rows.length})
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );

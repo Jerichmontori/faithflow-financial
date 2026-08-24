@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useDeferredValue } from "react";
+import { useMemo, useState, useDeferredValue, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, X, Printer } from "lucide-react";
@@ -212,11 +212,25 @@ function PengeluaranPage() {
     setShowAll(false);
   };
 
+  const [displayLimit, setDisplayLimit] = useState(DEFAULT_LIMIT);
+
+  // Reset limit saat filter berubah
+  useEffect(() => {
+    setDisplayLimit(DEFAULT_LIMIT);
+  }, [q, tahun, bulan, budget, status, dari, sampai]);
+
   // Hanya tampilkan transaksi terbaru secara default (50 transaksi), kecuali filter aktif atau memilih tampilkan semua
   const rows = useMemo(() => {
     if (aktif || showAll) return allFilteredRows;
     return allFilteredRows.slice(0, DEFAULT_LIMIT);
   }, [allFilteredRows, aktif, showAll]);
+
+  const displayedRows = useMemo(() => {
+    if (aktif || showAll) {
+      return allFilteredRows.slice(0, displayLimit);
+    }
+    return rows;
+  }, [allFilteredRows, aktif, showAll, displayLimit, rows]);
 
   const disetujui = allFilteredRows
     .filter((t) => t.status === "approved")
@@ -449,7 +463,7 @@ function PengeluaranPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((t) => (
+              {displayedRows.map((t) => (
                 <TableRow key={t.id} className="hover:bg-muted/10">
                   <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
                   <TableCell>
@@ -530,6 +544,33 @@ function PengeluaranPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Panel Muat Lebih Banyak Jika Hasil Filter > Limit */}
+        {allFilteredRows.length > displayLimit && (aktif || showAll) && (
+          <div className="p-3 bg-muted/20 border-t flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              Menampilkan <strong>{displayedRows.length}</strong> dari <strong>{allFilteredRows.length}</strong> transaksi hasil filter
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setDisplayLimit((prev) => prev + 50)}
+              >
+                Muat 50 Lebih Banyak
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setDisplayLimit(allFilteredRows.length)}
+              >
+                Tampilkan Semua ({allFilteredRows.length})
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );
