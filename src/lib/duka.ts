@@ -82,6 +82,8 @@ export const DEFAULT_TARIF_RULES: TarifKolomRule[] = [
   },
 ];
 
+import { supabase } from "@/integrations/supabase/client";
+
 export const notifyDukaChanged = () => {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
@@ -91,6 +93,57 @@ export const notifyDukaChanged = () => {
       bc.postMessage({ type: "duka_updated" });
       bc.close();
     } catch {}
+  }
+};
+
+export const syncDukaToDatabase = async () => {
+  if (typeof window === "undefined") return;
+  try {
+    const payload = {
+      daftar_duka: bacaDaftarDuka(),
+      tarif_rules: bacaTarifRules(),
+      tunggakan_lalu: bacaTunggakanTahunLalu(),
+      duka_map: bacaDuka(),
+    };
+    await supabase.from("app_settings").upsert([
+      {
+        key: "dana_duka_data",
+        value: payload,
+        updated_at: new Date().toISOString(),
+      },
+    ]);
+  } catch (err) {
+    console.error("Gagal sinkronisasi dana duka ke database:", err);
+  }
+};
+
+export const tarikDukaDariDatabase = async () => {
+  if (typeof window === "undefined") return;
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "dana_duka_data")
+      .maybeSingle();
+
+    if (!error && data?.value) {
+      const v = data.value as any;
+      if (Array.isArray(v.daftar_duka)) {
+        localStorage.setItem(DAFTAR_DUKA_KEY, JSON.stringify(v.daftar_duka));
+      }
+      if (Array.isArray(v.tarif_rules)) {
+        localStorage.setItem(DUKA_RULES_KEY, JSON.stringify(v.tarif_rules));
+      }
+      if (v.tunggakan_lalu && typeof v.tunggakan_lalu === "object") {
+        localStorage.setItem(DUKA_TAHUN_LALU_KEY, JSON.stringify(v.tunggakan_lalu));
+      }
+      if (v.duka_map && typeof v.duka_map === "object") {
+        localStorage.setItem(DUKA_KEY, JSON.stringify(v.duka_map));
+      }
+      notifyDukaChanged();
+    }
+  } catch (err) {
+    console.error("Gagal tarik dana duka dari database:", err);
   }
 };
 
@@ -113,6 +166,7 @@ export const simpanDaftarDuka = (list: KasusDuka[]): void => {
   try {
     localStorage.setItem(DAFTAR_DUKA_KEY, JSON.stringify(list));
     notifyDukaChanged();
+    syncDukaToDatabase();
   } catch (e) {
     console.error("Gagal simpan daftar duka:", e);
   }
@@ -137,6 +191,7 @@ export const simpanTarifRules = (rules: TarifKolomRule[]): void => {
   try {
     localStorage.setItem(DUKA_RULES_KEY, JSON.stringify(rules));
     notifyDukaChanged();
+    syncDukaToDatabase();
   } catch (e) {
     console.error("Gagal simpan aturan tarif:", e);
   }
@@ -160,6 +215,7 @@ export const simpanTunggakanTahunLalu = (data: TunggakanTahunLaluMap): void => {
   try {
     localStorage.setItem(DUKA_TAHUN_LALU_KEY, JSON.stringify(data));
     notifyDukaChanged();
+    syncDukaToDatabase();
   } catch (e) {
     console.error("Gagal simpan tunggakan tahun lalu:", e);
   }
@@ -180,6 +236,7 @@ export const simpanDuka = (data: DukaMap) => {
   if (typeof window === "undefined") return;
   localStorage.setItem(DUKA_KEY, JSON.stringify(data));
   notifyDukaChanged();
+  syncDukaToDatabase();
 };
 
 /**

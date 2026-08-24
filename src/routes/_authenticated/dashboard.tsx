@@ -88,15 +88,22 @@ const getDefaultWartaCutoff = () => {
 function DashboardPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
-  const { settings } = useAppSettings();
+  const { settings, updateSettings } = useAppSettings();
 
-  const [tglTerakhirWarta, setTglTerakhirWarta] = useState(getDefaultWartaCutoff);
+  const [tglTerakhirWarta, setTglTerakhirWarta] = useState(
+    () => settings.tglTerakhirWarta || getDefaultWartaCutoff(),
+  );
 
   useEffect(() => {
-    if (tglTerakhirWarta) {
-      localStorage.setItem("bumotik.tglTerakhirWarta", tglTerakhirWarta);
+    if (settings.tglTerakhirWarta) {
+      setTglTerakhirWarta(settings.tglTerakhirWarta);
     }
-  }, [tglTerakhirWarta]);
+  }, [settings.tglTerakhirWarta]);
+
+  const handleWartaCutoffChange = (val: string) => {
+    setTglTerakhirWarta(val);
+    updateSettings({ tglTerakhirWarta: val });
+  };
 
   const allRows = (trx.data ?? []).filter((t) => t.status !== "rejected");
   const budgetRows = allRows.filter((t) => !isInternalCash(t));
@@ -219,7 +226,7 @@ function DashboardPage() {
             <DateInput
               id="tglWarta"
               value={tglTerakhirWarta}
-              onChange={setTglTerakhirWarta}
+              onChange={handleWartaCutoffChange}
               placeholder="YYYY-MM-DD"
               className="h-8 text-xs"
             />

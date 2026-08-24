@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface AppSettings {
   namaGereja: string; // e.g. "Gereja Masehi Injili di Minahasa (GMIM)"
@@ -12,6 +13,7 @@ export interface AppSettings {
   // Rekening & Saldo Awal Bank
   saldoAwalBank: number; // e.g. 15000000
   tglSaldoAwalBank: string; // e.g. "2026-01-01"
+  tglTerakhirWarta?: string; // e.g. "2026-08-14"
   namaBank: string; // e.g. "Bank SulutGo / BCA"
   nomorRekeningBank: string; // e.g. "001.02.03.000123-4"
 
@@ -60,6 +62,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
   saldoAwalBank: 0,
   tglSaldoAwalBank: "2026-01-01",
+  tglTerakhirWarta: "2026-08-14",
   namaBank: "Bank SulutGo",
   nomorRekeningBank: "001-02-03-004567-8",
 
@@ -129,6 +132,7 @@ export function getStoredSettings(): AppSettings {
       namaJemaat,
       saldoAwalBank,
       tglSaldoAwalBank: parsed.tglSaldoAwalBank || DEFAULT_SETTINGS.tglSaldoAwalBank,
+      tglTerakhirWarta: parsed.tglTerakhirWarta || DEFAULT_SETTINGS.tglTerakhirWarta,
       namaBank: parsed.namaBank || DEFAULT_SETTINGS.namaBank,
       nomorRekeningBank: parsed.nomorRekeningBank || DEFAULT_SETTINGS.nomorRekeningBank,
       bannerBerandaUrl: parsed.bannerBerandaUrl ?? DEFAULT_SETTINGS.bannerBerandaUrl,
@@ -171,13 +175,36 @@ export function saveStoredSettings(settings: AppSettings): void {
   }
 }
 
-/** Hook untuk reactive update settings di seluruh komponen */
+/** Hook untuk reactive update settings di seluruh komponen dan sinkronisasi cloud */
 export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
   useEffect(() => {
-    // Segera muat pengaturan tersimpan saat client mount
+    // 1. Segera muat pengaturan tersimpan dari cache lokal
     setSettings(getStoredSettings());
+
+    // 2. Tarik pengaturan resmi dari Database PostgreSQL
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "general_settings")
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!error && data?.value) {
+          const dbSettings = data.value as Partial<AppSettings>;
+          const current = getStoredSettings();
+          const merged: AppSettings = {
+            ...current,
+            ...dbSettings,
+          };
+          setSettings(merged);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            localStorage.setItem("bumotik.saldoAwalBank", String(merged.saldoAwalBank ?? 0));
+          } catch {}
+          notifySettingsChanged(merged);
+        }
+      });
 
     const handleUpdate = (e: Event) => {
       const custom = e as CustomEvent<AppSettings>;
@@ -206,11 +233,36 @@ export function useAppSettings() {
     const merged = { ...settings, ...newSettings };
     setSettings(merged);
     saveStoredSettings(merged);
+
+    // Sinkronisasi ke PostgreSQL Database agar otomatis berlaku ke semua perangkat & user
+    supabase
+      .from("app_settings")
+      .upsert([
+        {
+          key: "general_settings",
+          value: merged,
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .then(({ error }) => {
+        if (error) {
+          console.error("Gagal sinkronisasi ke database:", error);
+        }
+      });
   };
 
   const resetSettings = () => {
     setSettings(DEFAULT_SETTINGS);
     saveStoredSettings(DEFAULT_SETTINGS);
+    supabase
+      .from("app_settings")
+      .upsert([
+        {
+          key: "general_settings",
+          value: DEFAULT_SETTINGS,
+          updated_at: new Date().toISOString(),
+        },
+      ]);
   };
 
   return { settings, updateSettings, resetSettings };

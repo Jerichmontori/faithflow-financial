@@ -36,6 +36,7 @@ import {
   simpanTunggakanTahunLalu,
   bacaDuka,
   simpanDuka,
+  tarikDukaDariDatabase,
   hitungSemuaTunggakanDuka,
   hitungTotalTargetDukaTahap,
   buatDefaultTarifKolom,
@@ -125,6 +126,9 @@ function DanaDukaPage() {
     setTarifRules(bacaTarifRules());
     setTunggakanLaluMap(bacaTunggakanTahunLalu());
     setOverrideMap(bacaDuka());
+
+    // Tarik versi terkini dari database cloud
+    tarikDukaDariDatabase();
 
     const handleUpdate = () => {
       setDaftarDuka(bacaDaftarDuka());

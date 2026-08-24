@@ -19,6 +19,7 @@ import {
   bacaDaftarDuka,
   bacaTarifRules,
   bacaTunggakanTahunLalu,
+  tarikDukaDariDatabase,
   hitungSemuaTunggakanDuka,
   type DukaMap,
   type KasusDuka,
@@ -149,6 +150,9 @@ function WartaPage() {
     setDaftarDuka(bacaDaftarDuka());
     setTarifRules(bacaTarifRules());
     setTunggakanLaluMap(bacaTunggakanTahunLalu());
+
+    // Tarik versi terkini dari cloud database
+    tarikDukaDariDatabase();
 
     const handleDukaUpdate = () => {
       setDuka(bacaDuka());
