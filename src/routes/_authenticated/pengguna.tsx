@@ -47,13 +47,11 @@ export const Route = createFileRoute("/_authenticated/pengguna")({
 const ROLES: AppRole[] = [
   "super_admin",
   "admin_keuangan",
-  "ketua_jemaat",
-  "bpmj",
   "ketua_bpmj",
+  "viewer",
   "sekretaris",
   "pendeta",
   "auditor",
-  "viewer",
 ];
 
 type ProfileRow = {
