@@ -139,38 +139,152 @@ const KATEGORI_MONITORING = [
   { id: "2.3.50.07", label: "Persembahan SD GMIM V" },
 ];
 
-const cocokKategori = (code: string | undefined, name: string | undefined, targetId: string): boolean => {
+const cocokKategori = (
+  code: string | undefined,
+  name: string | undefined,
+  desc: string | undefined,
+  targetId: string,
+): boolean => {
   if (targetId === "semua") return true;
-  if (!code && !name) return false;
   const c = code || "";
   const n = (name || "").toLowerCase();
+  const d = (desc || "").toLowerCase();
 
-  if (targetId === "1.3.66.12") {
-    return c === "1.3.66.12" || c === "1.3.66.13" || c === "1.3.66.15" || c === "1.3.53.09" || n.includes("syukur");
+  if (targetId === "1.3.53.02") {
+    // PKB
+    return (
+      c === "1.3.53.02" ||
+      c === "1.3.01.01" ||
+      n.includes("pria/kaum bapa") ||
+      n.includes("pkb") ||
+      d.startsWith("pkb") ||
+      d.includes("ibadah pkb")
+    );
   }
-  if (targetId === "1.3.66.01") {
-    return c === "1.3.66.01" || c === "1.3.53.07" || n.includes("kelahiran") || n.includes("hut pribadi");
+  if (targetId === "1.3.53.03") {
+    // WKI
+    return (
+      c === "1.3.53.03" ||
+      c === "1.3.01.02" ||
+      n.includes("wanita/kaum ibu") ||
+      n.includes("wki") ||
+      d.startsWith("wki") ||
+      d.includes("ibadah wki")
+    );
   }
-  if (targetId === "1.3.66.02") {
-    return c === "1.3.66.02" || c === "1.3.66.03" || c === "1.3.53.08" || n.includes("pernikahan") || n.includes("perkawinan");
+  if (targetId === "1.3.53.04") {
+    // Pemuda
+    return (
+      c === "1.3.53.04" ||
+      c === "1.3.01.03" ||
+      ((n.includes("pemuda") || d.includes("pemuda")) &&
+        !n.includes("remaja") &&
+        !d.includes("remaja") &&
+        !d.includes("p/r"))
+    );
   }
-  if (targetId === "1.3.66.16") {
-    return c === "1.3.66.16" || n.includes("perpuluhan");
+  if (targetId === "1.3.53.05") {
+    // Remaja
+    return (
+      c === "1.3.53.05" ||
+      c === "1.3.01.04" ||
+      ((n.includes("remaja") || d.includes("remaja")) &&
+        !n.includes("pemuda") &&
+        !d.includes("pemuda") &&
+        !d.includes("p/r"))
+    );
   }
-  if (targetId === "1.3.66.14") {
-    return c === "1.3.66.14" || n.includes("pbtk");
+  if (targetId === "1.3.53.06") {
+    // ASM
+    return (
+      c === "1.3.53.06" ||
+      c === "1.3.01.05" ||
+      n.includes("sekolah minggu") ||
+      n.includes("asm") ||
+      d.includes("asm") ||
+      d.includes("sekolah minggu")
+    );
   }
   if (targetId === "1.3.53.11") {
-    return c === "1.3.53.11" || (n.includes("pemuda") && n.includes("remaja"));
+    // Pemuda & Remaja Gabungan
+    return (
+      c === "1.3.53.11" ||
+      c === "1.3.01.09" ||
+      (n.includes("pemuda") && n.includes("remaja")) ||
+      d.includes("p/r") ||
+      (d.includes("pemuda") && d.includes("remaja"))
+    );
   }
-  if (targetId === "2.3.50.08") {
-    return c === "2.3.50.08" || n.includes("tk bumotik");
-  }
-  if (targetId === "2.3.50.07") {
-    return c === "2.3.50.07" || n.includes("sd gmim");
+  if (targetId === "1.3.53.01") {
+    // Ibadah Kolom Rutin
+    return (
+      c === "1.3.53.01" ||
+      n.includes("rutin") ||
+      (n.includes("perkunjungan") && !n.includes("pkb") && !n.includes("wki"))
+    );
   }
   if (targetId === "1.3.55.01") {
-    return c === "1.3.55.01" || c === "3.3.03.01" || n.includes("dana duka");
+    // Dana Duka
+    return (
+      c === "1.3.55.01" ||
+      c === "3.3.03.01" ||
+      n.includes("dana duka") ||
+      d.includes("dana duka")
+    );
+  }
+  if (targetId === "1.3.66.14") {
+    // Sampul PBTK
+    return c === "1.3.66.14" || n.includes("pbtk") || d.includes("pbtk");
+  }
+  if (targetId === "1.3.66.12") {
+    // Sampul Syukur
+    return (
+      c === "1.3.66.12" ||
+      c === "1.3.66.13" ||
+      c === "1.3.66.15" ||
+      c === "1.3.53.09" ||
+      n.includes("syukur") ||
+      d.includes("syukur")
+    );
+  }
+  if (targetId === "1.3.66.01") {
+    // HUT Pribadi
+    return (
+      c === "1.3.66.01" ||
+      c === "1.3.53.07" ||
+      n.includes("kelahiran") ||
+      n.includes("hut pribadi") ||
+      d.includes("kelahiran")
+    );
+  }
+  if (targetId === "1.3.66.02") {
+    // HUT Perkawinan
+    return (
+      c === "1.3.66.02" ||
+      c === "1.3.66.03" ||
+      c === "1.3.53.08" ||
+      n.includes("pernikahan") ||
+      n.includes("perkawinan") ||
+      d.includes("pernikahan")
+    );
+  }
+  if (targetId === "1.3.66.16") {
+    // Persepuluhan
+    return (
+      c === "1.3.66.16" ||
+      n.includes("persepuluhan") ||
+      n.includes("perpuluhan") ||
+      d.includes("persepuluhan") ||
+      d.includes("perpuluhan")
+    );
+  }
+  if (targetId === "2.3.50.08") {
+    // TK Bumotik
+    return c === "2.3.50.08" || n.includes("tk bumotik") || d.includes("tk bumotik");
+  }
+  if (targetId === "2.3.50.07") {
+    // SD GMIM V
+    return c === "2.3.50.07" || n.includes("sd gmim") || d.includes("sd gmim");
   }
   return c === targetId;
 };
@@ -238,6 +352,7 @@ function LaporanPage() {
     setQuickKategori(catId);
     setMonitoringKat(catId);
     setBudgetId("semua");
+    setKolomFilter("semua");
   };
 
   async function downloadPdf() {
@@ -265,16 +380,18 @@ function LaporanPage() {
         // Filter Pos Anggaran / Quick Kategori
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
         if (quickKategori !== "semua") {
-          if (!cocokKategori(b?.code, b?.name || t.description, quickKategori)) return false;
+          if (!cocokKategori(b?.code, b?.name, t.description, quickKategori)) return false;
         }
 
         // Filter Kolom
         if (kolomFilter !== "semua") {
           if (kolomFilter === "tanpa") {
-            if (t.kolom !== null) return false;
+            if (t.kolom !== null || t.nama) return false;
           } else if (kolomFilter.startsWith("nama:")) {
-            if ((b?.grup || "") !== GRUP_NAMA_KOLOM) return false;
-            if ((t.nama || "").toLowerCase() !== kolomFilter.slice(5).toLowerCase()) return false;
+            const reqNama = kolomFilter.slice(5).toLowerCase();
+            if ((t.nama || "").toLowerCase() !== reqNama && !(t.description || "").toLowerCase().includes(reqNama)) {
+              return false;
+            }
           } else if (String(t.kolom) !== kolomFilter) {
             return false;
           }
@@ -282,7 +399,8 @@ function LaporanPage() {
 
         // Filter Bulan
         if (bulanFilter !== "semua") {
-          if (bulanFilter === "tanpa" ? t.bulan !== null : String(t.bulan) !== bulanFilter)
+          const tBulan = t.bulan !== null ? t.bulan : new Date(t.trx_date).getMonth();
+          if (bulanFilter === "tanpa" ? t.bulan !== null : String(tBulan) !== bulanFilter)
             return false;
         }
 
@@ -297,7 +415,8 @@ function LaporanPage() {
           const matchDesc = t.description?.toLowerCase().includes(q);
           const matchBudget = t.budget_lines?.name?.toLowerCase().includes(q) || t.budget_lines?.code?.toLowerCase().includes(q);
           const matchKolom = t.kolom ? `kolom ${t.kolom}`.includes(q) : false;
-          if (!matchVoucher && !matchDesc && !matchBudget && !matchKolom) return false;
+          const matchNama = t.nama ? t.nama.toLowerCase().includes(q) : false;
+          if (!matchVoucher && !matchDesc && !matchBudget && !matchKolom && !matchNama) return false;
         }
 
         return true;
@@ -307,49 +426,59 @@ function LaporanPage() {
 
   const kolomList = useMemo(() => {
     const set = new Set<number>();
-    const allowed = new Set(
-      (budgets.data ?? [])
-        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
-        .map((b) => b.id),
-    );
     parsed.forEach((t) => {
-      if (allowed.has(t.budget_line_id) && t.kolom !== null) set.add(t.kolom);
+      if (t.kolom !== null) set.add(t.kolom);
     });
     return [...set].sort((a, b) => a - b);
-  }, [parsed, budgets.data]);
+  }, [parsed]);
 
-  /** Daftar nama kolom hasil ekstraksi keterangan (khusus grup BIPRA) */
+  /** Daftar nama kolom hasil ekstraksi keterangan */
   const namaList = useMemo(() => {
-    const allowed = new Set(
-      (budgets.data ?? [])
-        .filter((b) => (b.grup || "") === GRUP_NAMA_KOLOM)
-        .map((b) => b.id),
-    );
     const set = new Set<string>();
     parsed.forEach((t) => {
-      if (allowed.has(t.budget_line_id) && t.nama) set.add(t.nama);
+      if (t.nama) set.add(t.nama);
     });
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [parsed, budgets.data]);
+  }, [parsed]);
 
-  /** Matriks kolom × bulan */
+  /** Matriks kolom/rayon × bulan */
   const matrix = useMemo(() => {
-    const map = new Map<string, { kolom: number | null; cells: Map<string, number>; total: number }>();
+    const map = new Map<
+      string,
+      { label: string; kolom: number | null; cells: Map<string, number>; total: number }
+    >();
     for (const t of rows) {
-      const key = t.kolom === null ? "tanpa" : String(t.kolom);
-      if (!map.has(key)) map.set(key, { kolom: t.kolom, cells: new Map(), total: 0 });
+      let key: string;
+      let label: string;
+      if (t.kolom !== null) {
+        key = `kolom:${t.kolom}`;
+        label = labelKolom(t.kolom);
+      } else if (t.nama) {
+        key = `nama:${t.nama}`;
+        label = `Rayon / Kolom ${t.nama}`;
+      } else {
+        key = "tanpa";
+        label = "Tanpa Kolom / Umum";
+      }
+
+      if (!map.has(key)) map.set(key, { label, kolom: t.kolom, cells: new Map(), total: 0 });
       const entry = map.get(key)!;
-      const mk = t.bulan === null ? "tanpa" : String(t.bulan);
+      const mk = t.bulan === null ? String(new Date(t.trx_date).getMonth()) : String(t.bulan);
       entry.cells.set(mk, (entry.cells.get(mk) ?? 0) + Number(t.amount));
       entry.total += Number(t.amount);
     }
-    return [...map.values()].sort((a, b) => (a.kolom ?? 9999) - (b.kolom ?? 9999));
+    return [...map.values()].sort((a, b) => {
+      if (a.kolom !== null && b.kolom !== null) return a.kolom - b.kolom;
+      if (a.kolom !== null) return -1;
+      if (b.kolom !== null) return 1;
+      return a.label.localeCompare(b.label);
+    });
   }, [rows]);
 
   const columnTotals = useMemo(() => {
     const totals = new Map<string, number>();
     for (const t of rows) {
-      const mk = t.bulan === null ? "tanpa" : String(t.bulan);
+      const mk = t.bulan === null ? String(new Date(t.trx_date).getMonth()) : String(t.bulan);
       totals.set(mk, (totals.get(mk) ?? 0) + Number(t.amount));
     }
     return totals;
@@ -360,25 +489,32 @@ function LaporanPage() {
   /** Statistik Ringkas untuk Tampilan Klien */
   const clientStats = useMemo(() => {
     const totalTrx = rows.length;
-    const activeKolomCount = new Set(rows.filter((r) => r.kolom !== null).map((r) => r.kolom)).size;
-    const avgPerKolom = activeKolomCount > 0 ? grandTotal / activeKolomCount : 0;
-    
-    // Cari kolom tertinggi
-    let topKolom: number | null = null;
-    let topKolomNominal = 0;
+    const distinctUnits = new Set(
+      rows.map((r) =>
+        r.kolom !== null
+          ? `Kolom ${r.kolom}`
+          : r.nama
+            ? `Rayon ${r.nama}`
+            : "Umum",
+      ),
+    ).size;
+    const avgPerUnit = distinctUnits > 0 ? grandTotal / distinctUnits : 0;
+
+    let topUnit = "—";
+    let topUnitNominal = 0;
     for (const m of matrix) {
-      if (m.kolom !== null && m.total > topKolomNominal) {
-        topKolomNominal = m.total;
-        topKolom = m.kolom;
+      if (m.total > topUnitNominal) {
+        topUnitNominal = m.total;
+        topUnit = m.label;
       }
     }
 
     return {
       totalTrx,
-      activeKolomCount,
-      avgPerKolom,
-      topKolom,
-      topKolomNominal,
+      distinctUnits,
+      avgPerUnit,
+      topUnit,
+      topUnitNominal,
     };
   }, [rows, grandTotal, matrix]);
 
@@ -433,7 +569,7 @@ function LaporanPage() {
           if (t.budget_line_id !== budgetId) return false;
         } else if (targetKatCode !== "semua") {
           const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
-          if (!cocokKategori(b?.code, b?.name || t.description, targetKatCode)) return false;
+          if (!cocokKategori(b?.code, b?.name, t.description, targetKatCode)) return false;
         }
         return true;
       });
@@ -581,10 +717,10 @@ function LaporanPage() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                Kolom Terdaftar
+                Kolom / Rayon Terdaftar
               </span>
               <span className="text-xl font-black text-emerald-700 font-mono">
-                {clientStats.activeKolomCount} dari 29 Kolom
+                {clientStats.distinctUnits} Kolom / Rayon
               </span>
               <span className="text-[11px] text-muted-foreground block mt-0.5">
                 Aktif menyetor pada filter ini
@@ -600,13 +736,13 @@ function LaporanPage() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                Rata-rata per Kolom
+                Rata-rata Setoran
               </span>
               <span className="text-xl font-black text-blue-700 font-mono">
-                {rupiah(clientStats.avgPerKolom)}
+                {rupiah(clientStats.avgPerUnit)}
               </span>
               <span className="text-[11px] text-muted-foreground block mt-0.5">
-                Distribusi setoran kolom
+                Distribusi rata-rata penerimaan
               </span>
             </div>
             <div className="size-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
@@ -621,11 +757,11 @@ function LaporanPage() {
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
                 Setoran Terbesar
               </span>
-              <span className="text-xl font-black text-amber-700 font-mono">
-                {clientStats.topKolom ? `Kolom ${clientStats.topKolom}` : "—"}
+              <span className="text-xl font-black text-amber-700 font-mono truncate max-w-[180px] block">
+                {clientStats.topUnit}
               </span>
               <span className="text-[11px] text-muted-foreground block mt-0.5">
-                {clientStats.topKolomNominal > 0 ? rupiah(clientStats.topKolomNominal) : "Belum ada"}
+                {clientStats.topUnitNominal > 0 ? rupiah(clientStats.topUnitNominal) : "Belum ada"}
               </span>
             </div>
             <div className="size-9 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
@@ -865,16 +1001,22 @@ function LaporanPage() {
                 <TableBody>
                   {matrix.map((r) => (
                     <TableRow
-                      key={String(r.kolom)}
+                      key={r.label}
                       className="cursor-pointer hover:bg-muted/20"
                       onClick={() => {
-                        setKolomFilter(r.kolom === null ? "tanpa" : String(r.kolom));
+                        if (r.kolom !== null) {
+                          setKolomFilter(String(r.kolom));
+                        } else if (r.label.startsWith("Rayon / Kolom ")) {
+                          setKolomFilter(`nama:${r.label.replace("Rayon / Kolom ", "")}`);
+                        } else {
+                          setKolomFilter("semua");
+                        }
                         setTab("rincian");
                       }}
                     >
                       <TableCell className="sticky left-0 bg-card font-semibold text-xs whitespace-nowrap">
                         <Badge variant="outline" className="font-mono text-xs">
-                          {labelKolom(r.kolom)}
+                          {r.label}
                         </Badge>
                       </TableCell>
                       {activeMonths.map((m) => {
