@@ -79,7 +79,9 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
-  const [items, setItems] = useState([{ description: "", amount: "" }]);
+  const [items, setItems] = useState<{ description: string; amount: string; payee?: string }[]>([
+    { description: "", amount: "", payee: "" },
+  ]);
 
   // Asisten Pintar Terbuka Otomatis Sesuai Mata Anggaran
   const [asistenAktif, setAsistenAktif] = useState(true);
@@ -131,7 +133,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       payee: "",
       payment_method: "cash",
     });
-    setItems([{ description: "", amount: "" }]);
+    setItems([{ description: "", amount: "", payee: "" }]);
     setBudgetOpen(false);
     setPilihKolom("1");
     setPilihBulan(String(new Date().getMonth()));
@@ -349,25 +351,20 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     applyDescriptionToEmpty(ket, selected?.id);
   };
 
-  const totalNominal =
-    kind === "penerimaan"
-      ? items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0)
-      : Number(form.amount) || 0;
+  const totalNominal = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const baris =
-        kind === "penerimaan"
-          ? items.filter((i) => i.amount !== "" || i.description.trim() !== "")
-          : [{ description: form.description, amount: form.amount }];
-      if (baris.length === 0) throw new Error("Minimal satu keterangan wajib diisi");
+      const baris = items.filter((i) => i.amount !== "" || i.description.trim() !== "");
+      if (baris.length === 0) throw new Error("Minimal satu baris rincian transaksi wajib diisi");
       const rows = baris.map((b) => {
         const cleanDesc = standardizeDescription(b.description);
+        const linePayee = (b.payee && b.payee.trim()) || (form.payee && form.payee.trim()) || undefined;
         const parsed = schema.parse({
           ...form,
           description: cleanDesc,
           amount: Number(b.amount),
-          payee: form.payee || undefined,
+          payee: linePayee,
         });
         return {
           trx_date: parsed.trx_date,
@@ -393,9 +390,7 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     },
     onSuccess: (res) => {
       toast.success(
-        kind === "penerimaan"
-          ? `${res.count} penerimaan tercatat & tersinkronisasi`
-          : "Pengeluaran berhasil dicatat",
+        `${res.count} ${kind === "penerimaan" ? "penerimaan" : "pengeluaran"} tercatat & tersinkronisasi`,
       );
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
 
@@ -409,25 +404,19 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
           amount: totalNominal,
           payee: form.payee,
           payment_method: form.payment_method,
-          description:
-            kind === "penerimaan"
-              ? items
-                  .map((i) => i.description)
-                  .filter(Boolean)
-                  .join("; ")
-              : form.description,
-          items:
-            kind === "penerimaan"
-              ? items
-                  .filter((i) => Number(i.amount) > 0)
-                  .map((i) => ({ description: i.description, amount: Number(i.amount) }))
-              : [{ description: form.description, amount: Number(form.amount) }],
+          description: items
+            .map((i) => i.description)
+            .filter(Boolean)
+            .join("; "),
+          items: items
+            .filter((i) => Number(i.amount) > 0)
+            .map((i) => ({ description: i.description, amount: Number(i.amount) })),
         });
         setOpenCetak(true);
       }
 
       setOpen(false);
-      setItems([{ description: "", amount: "" }]);
+      setItems([{ description: "", amount: "", payee: "" }]);
       setForm((f) => ({ ...f, amount: "", description: "", payee: "" }));
       setAutoPrintAfterSave(false);
     },
@@ -460,19 +449,13 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
       amount: totalNominal,
       payee: form.payee,
       payment_method: form.payment_method,
-      description:
-        kind === "penerimaan"
-          ? items
-              .map((i) => i.description)
-              .filter(Boolean)
-              .join("; ")
-          : form.description,
-      items:
-        kind === "penerimaan"
-          ? items
-              .filter((i) => Number(i.amount) > 0)
-              .map((i) => ({ description: i.description, amount: Number(i.amount) }))
-          : [{ description: form.description, amount: Number(form.amount) }],
+      description: items
+        .map((i) => i.description)
+        .filter(Boolean)
+        .join("; "),
+      items: items
+        .filter((i) => Number(i.amount) > 0)
+        .map((i) => ({ description: i.description, amount: Number(i.amount) })),
     });
     setOpenCetak(true);
   };
@@ -1312,24 +1295,8 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
               </div>
             </div>
           ) : (
-            <>
+            <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="nominal" className="text-xs font-semibold">
-                    Nominal (Rp) <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="nominal"
-                    type="number"
-                    min={1}
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    placeholder="0"
-                    required
-                    className="h-9 font-mono"
-                  />
-                </div>
-
                 <div className="space-y-1.5">
                   <Label htmlFor="metode" className="text-xs font-semibold">
                     Metode / Sumber Dana <span className="text-destructive">*</span>
@@ -1351,6 +1318,20 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="penerima" className="text-xs font-semibold">
+                    Penerima / Vendor Utama (Opsional)
+                  </Label>
+                  <Input
+                    id="penerima"
+                    value={form.payee}
+                    onChange={(e) => setForm({ ...form, payee: e.target.value })}
+                    placeholder="Nama penerima / vendor umum"
+                    maxLength={150}
+                    className="h-9 text-xs"
+                  />
+                </div>
               </div>
 
               {form.payment_method === "transfer" && (
@@ -1362,37 +1343,98 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="penerima" className="text-xs font-semibold">Penerima</Label>
-                <Input
-                  id="penerima"
-                  value={form.payee}
-                  onChange={(e) => setForm({ ...form, payee: e.target.value })}
-                  placeholder="Nama penerima atau vendor"
-                  maxLength={150}
-                  className="h-9 text-xs"
-                />
-              </div>
+              {/* Rincian Uraian & Nominal Pengeluaran (Maks. 5 baris) */}
+              <div className="space-y-2.5 border-t pt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">
+                    Rincian Uraian & Nominal Pengeluaran (maks. 5 baris)
+                  </Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={items.length >= 5}
+                    onClick={() => setItems([...items, { description: "", amount: "", payee: "" }])}
+                    className="h-7 text-xs px-2.5 gap-1"
+                  >
+                    <Plus className="size-3.5" /> Tambah Baris
+                  </Button>
+                </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="ket" className="text-xs font-semibold">Keterangan</Label>
-                <Textarea
-                  id="ket"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Uraian pengeluaran kas"
-                  maxLength={500}
-                  className="text-xs"
-                />
+                <div className="space-y-2">
+                  {items.map((it, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-[1fr_10rem_11rem_auto] gap-2 items-center">
+                      <Input
+                        value={it.description}
+                        onChange={(e) =>
+                          setItems(
+                            items.map((x, i) =>
+                              i === idx ? { ...x, description: e.target.value } : x,
+                            ),
+                          )
+                        }
+                        onBlur={(e) => {
+                          const clean = standardizeDescription(e.target.value);
+                          if (clean !== e.target.value) {
+                            setItems(
+                              items.map((x, i) =>
+                                i === idx ? { ...x, description: clean } : x,
+                              ),
+                            );
+                          }
+                        }}
+                        placeholder={`Keterangan / uraian baris ${idx + 1}`}
+                        maxLength={500}
+                        className="h-9 text-xs font-medium"
+                      />
+                      <Input
+                        value={it.payee || ""}
+                        onChange={(e) =>
+                          setItems(
+                            items.map((x, i) =>
+                              i === idx ? { ...x, payee: e.target.value } : x,
+                            ),
+                          )
+                        }
+                        placeholder={form.payee ? `Penerima (${form.payee})` : "Penerima baris"}
+                        maxLength={150}
+                        className="h-9 text-xs"
+                      />
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={it.amount}
+                          onChange={(e) =>
+                            setItems(items.map((x, i) => (i === idx ? { ...x, amount: e.target.value } : x)))
+                          }
+                          placeholder="Nominal (Rp)"
+                          className="h-9 text-xs font-mono font-medium pl-3"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={items.length === 1}
+                        onClick={() => setItems(items.filter((_, i) => i !== idx))}
+                        aria-label="Hapus baris"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Ringkasan Total Transaksi (Proporsional & Jelas) */}
           <div className="flex items-center justify-between rounded-lg border bg-primary/5 px-4 py-3">
             <div>
               <span className="text-xs text-muted-foreground font-medium block">
-                Total Transaksi {kind === "penerimaan" && items.length > 1 ? `(${items.length} rincian)` : ""}
+                Total Transaksi {items.length > 1 ? `(${items.length} rincian)` : ""}
               </span>
               <span className="text-xs text-muted-foreground">Nomor bukti dibuat otomatis</span>
             </div>
