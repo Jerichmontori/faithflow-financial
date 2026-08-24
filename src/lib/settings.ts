@@ -19,6 +19,16 @@ export interface AppSettings {
   kotaSurat: string;
   labelPenyetor: string;
   labelPenerima: string;
+
+  // Pengaturan Tampilan Beranda (Landing Page)
+  judulBeranda: string;
+  subjudulBeranda: string;
+  deskripsiBeranda: string;
+  mottoAyatBeranda: string;
+  teksTombolBeranda: string;
+  kontakSekretariat: string;
+  jadwalIbadahSingkat: string;
+  bannerBerandaUrl?: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -39,6 +49,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   kotaSurat: "Manado",
   labelPenyetor: "Penyetor / Yang Menyerahkan",
   labelPenerima: "Penerima Kas",
+
+  judulBeranda: "Keuangan gereja yang tertib, transparan, dan mudah dipertanggungjawabkan.",
+  subjudulBeranda: "SISTEM MANAJEMEN KEUANGAN & ADMINISTRASI JEMAAT",
+  deskripsiBeranda: "Catat penerimaan dan pengeluaran, kendalikan mata anggaran, jalankan approval, dan pantau realisasi anggaran jemaat secara realtime.",
+  mottoAyatBeranda: "1 Korintus 14:40 — 'Tetapi segala sesuatu harus berlangsung dengan sopan dan teratur.'",
+  teksTombolBeranda: "Mulai Kelola Keuangan",
+  kontakSekretariat: "Sekretariat Jemaat: Jl. Lumimuut, Tikala Baru | Telp/WA: 0812-44xx-xxxx",
+  jadwalIbadahSingkat: "Ibadah Minggu: Subuh 05.30 | Pagi 09.00 | Sore 17.00 WITA",
+  bannerBerandaUrl: "",
 };
 
 const STORAGE_KEY = "bumotik.app_settings_v1";
@@ -50,7 +69,6 @@ export function getStoredSettings(): AppSettings {
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
 
-    // Migration / fallback if namaGereja contained full text
     let namaGereja = parsed.namaGereja || DEFAULT_SETTINGS.namaGereja;
     let namaJemaat = parsed.namaJemaat || DEFAULT_SETTINGS.namaJemaat;
     if (namaGereja.includes("Jemaat") && !parsed.namaJemaat) {
