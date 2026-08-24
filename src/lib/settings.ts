@@ -96,8 +96,12 @@ export function getStoredSettings(): AppSettings {
 
 export function saveStoredSettings(settings: AppSettings): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  window.dispatchEvent(new CustomEvent("bumotik_settings_updated", { detail: settings }));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    window.dispatchEvent(new CustomEvent("bumotik_settings_updated", { detail: settings }));
+  } catch (err) {
+    console.error("Gagal menyimpan ke localStorage:", err);
+  }
 }
 
 /** Hook untuk reactive update settings di seluruh komponen */
@@ -105,6 +109,9 @@ export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
   useEffect(() => {
+    // Segera muat pengaturan tersimpan saat client mount
+    setSettings(getStoredSettings());
+
     const handleUpdate = (e: Event) => {
       const custom = e as CustomEvent<AppSettings>;
       if (custom.detail) {

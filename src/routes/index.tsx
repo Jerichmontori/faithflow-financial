@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Church, ShieldCheck, LineChart, Wallet, ClipboardCheck, Sparkles, BookOpen, Clock, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/lib/settings";
@@ -48,7 +49,13 @@ const FITUR = [
 
 function Index() {
   const { settings } = useAppSettings();
-  const bgOpacity = (settings.bannerOpacity ?? 45) / 100;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const bgOpacity = ((settings.bannerOpacity ?? 45) / 100);
   const bgColor = settings.warnaBackgroundBeranda || "#0b192c";
 
   return (
@@ -85,15 +92,15 @@ function Index() {
       {/* Hero Section dengan Background Biru & Gambar Latar Kustom */}
       <main className="flex-1">
         <section
-          className="relative overflow-hidden px-6 pt-16 pb-24 text-center text-white lg:pt-24 lg:pb-32"
+          className="relative overflow-hidden px-6 pt-16 pb-24 text-center text-white lg:pt-24 lg:pb-32 transition-colors duration-300"
           style={{ backgroundColor: bgColor }}
         >
           {/* Layer Gambar Background dengan Opacity yang dapat diatur */}
           {settings.bannerBerandaUrl && (
             <div
-              className="absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-300 pointer-events-none"
+              className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-opacity duration-300 pointer-events-none"
               style={{
-                backgroundImage: `url('${settings.bannerBerandaUrl}')`,
+                backgroundImage: `url("${settings.bannerBerandaUrl}")`,
                 opacity: bgOpacity,
               }}
             />
@@ -104,7 +111,7 @@ function Index() {
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background: settings.bannerBerandaUrl
-                ? "linear-gradient(180deg, rgba(11, 25, 44, 0.75) 0%, rgba(11, 25, 44, 0.90) 100%)"
+                ? "linear-gradient(180deg, rgba(11, 25, 44, 0.70) 0%, rgba(11, 25, 44, 0.88) 100%)"
                 : "radial-gradient(circle at center, rgba(30, 58, 138, 0.45) 0%, rgba(11, 25, 44, 0.95) 100%)",
             }}
           />
