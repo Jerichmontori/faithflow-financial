@@ -78,7 +78,22 @@ const tglPanjang = (s: string) => {
 const tglPendek = (s: string) => {
   if (!s) return "";
   const [, m, d] = s.split("-").map(Number);
-  return `${d} ${(BULAN[(m ?? 1) - 1] ?? "").slice(0, 5)}`;
+  const b = BULAN[(m ?? 1) - 1] ?? "";
+  const bShort = b === "Agustus" ? "Agust" : b.slice(0, 4);
+  return `${d} ${bShort}`;
+};
+
+/** Format angka tabel warta tanpa label "Rp" sesuai cetakan resmi */
+const angka = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  if (isNaN(n) || n === 0) return "";
+  return new Intl.NumberFormat("id-ID").format(n);
+};
+
+const angkaSaldo = (value: number | string | null | undefined) => {
+  const n = Number(value ?? 0);
+  return new Intl.NumberFormat("id-ID").format(n);
 };
 
 /** Senin minggu berjalan */
@@ -359,49 +374,57 @@ function WartaPage() {
         </div>
       </div>
 
-      <div className="warta-area panel overflow-x-auto p-6">
-        <div className="warta-sheet">
-          <div className="text-center">
-            <h2 className="text-lg font-bold uppercase tracking-wide">Warta Keuangan</h2>
-            <p className="text-sm">
-              Laporan Penerimaan &amp; Pengeluaran Kas Jemaat Tanggal {tglPanjang(dari)} s/d{" "}
-              {tglPanjang(sampai)}
+      <div className="warta-area panel overflow-x-auto p-6 bg-white text-black">
+        <div className="warta-sheet max-w-5xl mx-auto">
+          <div className="text-center pb-2 mb-2 border-b-2 border-black/80">
+            <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-black">
+              WARTA KEUANGAN
+            </h1>
+            <p className="text-xs sm:text-sm font-semibold mt-0.5 text-black/90">
+              Laporan Penerimaan &amp; Pengeluaran Kas Jemaat Tanggal {tglPanjang(dari)} S/d {tglPanjang(sampai)}
             </p>
           </div>
 
-          <table className="warta-table mt-4 w-full">
+          <table className="warta-table mt-3 w-full border-collapse">
             <thead>
-              <tr className="bg-muted/40">
-                <th className="w-24 text-left">Tgl</th>
-                <th className="text-left">Uraian</th>
-                <th className="w-32 text-right">Masuk (Rp)</th>
-                <th className="w-32 text-right">Keluar (Rp)</th>
-                <th className="w-36 text-right">Saldo (Rp)</th>
+              <tr className="bg-muted/40 border-y border-black/70 text-black font-bold">
+                <th className="w-20 text-left py-1.5 px-2">Tgl</th>
+                <th className="text-left py-1.5 px-2">Uraian</th>
+                <th className="w-28 sm:w-32 text-right py-1.5 px-2">Masuk (Rp)</th>
+                <th className="w-28 sm:w-32 text-right py-1.5 px-2">Keluar (Rp)</th>
+                <th className="w-28 sm:w-36 text-right py-1.5 px-2">Saldo (Rp)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td />
-                <td className="font-bold">Saldo Awal</td>
-                <td />
-                <td />
-                <td className="text-right font-bold">{rupiah(saldoAwal)}</td>
+              {/* Row 1: Saldo Awal */}
+              <tr className="border-b border-border/80">
+                <td className="py-1 px-2" />
+                <td className="py-1 px-2 font-bold text-black">Saldo Awal</td>
+                <td className="py-1 px-2 text-right" />
+                <td className="py-1 px-2 text-right" />
+                <td className="py-1 px-2 text-right font-mono font-bold text-black">
+                  {angkaSaldo(saldoAwal)}
+                </td>
               </tr>
+
+              {/* Data Rows */}
               {baris.map((b) =>
                 b.tipe === "grup" ? (
-                  <tr key={b.key} className="bg-muted/15 font-semibold">
-                    <td className="whitespace-nowrap font-semibold">
+                  <tr key={b.key} className="border-b border-border/80 bg-muted/10 font-bold">
+                    <td className="py-1 px-2 whitespace-nowrap font-bold text-black align-top">
                       {b.tanggal ? tglPendek(b.tanggal) : ""}
                     </td>
-                    <td className="font-bold">{b.nama}</td>
-                    <td />
-                    <td />
-                    <td />
+                    <td className="py-1 px-2 font-bold text-black">
+                      {b.nama}
+                    </td>
+                    <td className="py-1 px-2 text-right" />
+                    <td className="py-1 px-2 text-right" />
+                    <td className="py-1 px-2 text-right" />
                   </tr>
                 ) : (
-                  <tr key={b.key}>
-                    <td />
-                    <td className="pl-6 text-sm">
+                  <tr key={b.key} className="border-b border-border/60 hover:bg-muted/10">
+                    <td className="py-0.5 px-2" />
+                    <td className="py-0.5 px-2 pl-5 text-xs sm:text-[13px] text-black">
                       {b.trx.description || b.trx.payee || b.trx.voucher_no}
                       {b.trx.koreksi_catatan && (
                         <span className="ml-1 text-[11px] italic text-muted-foreground">
@@ -409,16 +432,19 @@ function WartaPage() {
                         </span>
                       )}
                     </td>
-                    <td className="text-right text-sm font-medium text-success">
-                      {b.trx.kind === "penerimaan" ? rupiah(b.trx.amount) : ""}
+                    <td className="py-0.5 px-2 text-right text-xs sm:text-[13px] font-mono text-black">
+                      {b.trx.kind === "penerimaan" ? angka(b.trx.amount) : ""}
                     </td>
-                    <td className="text-right text-sm font-medium text-destructive">
-                      {b.trx.kind === "pengeluaran" ? rupiah(b.trx.amount) : ""}
+                    <td className="py-0.5 px-2 text-right text-xs sm:text-[13px] font-mono text-black">
+                      {b.trx.kind === "pengeluaran" ? angka(b.trx.amount) : ""}
                     </td>
-                    <td className="text-right text-sm font-mono font-semibold">{rupiah(b.saldo)}</td>
+                    <td className="py-0.5 px-2 text-right text-xs sm:text-[13px] font-mono text-black">
+                      {angkaSaldo(b.saldo)}
+                    </td>
                   </tr>
                 ),
               )}
+
               {baris.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-6 text-center text-muted-foreground">
@@ -426,36 +452,44 @@ function WartaPage() {
                   </td>
                 </tr>
               )}
-              <tr className="bg-muted/40 font-bold">
-                <td>TOTAL</td>
-                <td />
-                <td className="text-right text-success">{rupiah(totalMasuk)}</td>
-                <td className="text-right text-destructive">{rupiah(totalKeluar)}</td>
-                <td className="text-right text-primary">{rupiah(saldoAkhir)}</td>
+
+              {/* Total Row */}
+              <tr className="bg-muted/30 font-bold border-t-2 border-black/70">
+                <td className="py-1.5 px-2" />
+                <td className="py-1.5 px-2 font-bold text-black">TOTAL</td>
+                <td className="py-1.5 px-2 text-right font-mono font-bold text-black">
+                  {angkaSaldo(totalMasuk)}
+                </td>
+                <td className="py-1.5 px-2 text-right font-mono font-bold text-black">
+                  {angkaSaldo(totalKeluar)}
+                </td>
+                <td className="py-1.5 px-2 text-right font-mono font-bold text-black">
+                  {angkaSaldo(saldoAkhir)}
+                </td>
               </tr>
             </tbody>
           </table>
 
           <div className="mt-6">
-            <p className="text-sm font-bold uppercase tracking-wide">Rekapitulasi</p>
-            <table className="warta-table mt-1.5 w-full">
+            <p className="text-sm font-bold uppercase tracking-wide text-black">Rekapitulasi</p>
+            <table className="warta-table mt-1.5 w-full border-collapse">
               <thead>
-                <tr className="bg-muted/30">
-                  <th className="w-10 text-center">No</th>
-                  <th className="text-left">Uraian</th>
-                  <th className="w-40 text-right">DANA RUTIN</th>
-                  <th className="w-40 text-right">SIMPANAN BANK</th>
-                  <th className="w-40 text-right">JUMLAH</th>
+                <tr className="bg-muted/30 border-y border-black/60 font-bold text-black">
+                  <th className="w-10 text-center py-1 px-2">No</th>
+                  <th className="text-left py-1 px-2">Uraian</th>
+                  <th className="w-36 text-right py-1 px-2">DANA RUTIN</th>
+                  <th className="w-36 text-right py-1 px-2">SIMPANAN BANK</th>
+                  <th className="w-36 text-right py-1 px-2">JUMLAH</th>
                 </tr>
               </thead>
               <tbody>
                 {rekap.map((r) => (
-                  <tr key={r.no} className={r.no === "4." ? "bg-muted/20 font-bold" : ""}>
-                    <td className="text-center">{r.no}</td>
-                    <td>{r.label}</td>
-                    <td className="text-right">{rupiah(r.rutin)}</td>
-                    <td className="text-right">{rupiah(r.bank)}</td>
-                    <td className="text-right font-semibold">{rupiah(r.rutin + r.bank)}</td>
+                  <tr key={r.no} className={`border-b border-border/80 ${r.no === "4." ? "bg-muted/20 font-bold text-black" : ""}`}>
+                    <td className="text-center py-1 px-2">{r.no}</td>
+                    <td className="py-1 px-2 font-medium text-black">{r.label}</td>
+                    <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.rutin)}</td>
+                    <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.bank)}</td>
+                    <td className="text-right py-1 px-2 font-mono font-bold text-black">{angkaSaldo(r.rutin + r.bank)}</td>
                   </tr>
                 ))}
               </tbody>

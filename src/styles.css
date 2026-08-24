@@ -269,10 +269,15 @@
 }
 
 /* ── Warta Keuangan ─────────────────────────────────────────── */
+.warta-table {
+  border-collapse: collapse !important;
+  width: 100%;
+}
+
 .warta-table th,
 .warta-table td {
-  border: 1px solid #cbd5e1;
-  padding: 2px 6px;
+  border: 1px solid #94a3b8;
+  padding: 2.5px 6px;
   font-size: 0.8rem;
   vertical-align: top;
 }
@@ -287,10 +292,13 @@
   .warta-area {
     border: none !important;
     padding: 0 !important;
+    background: transparent !important;
   }
 
   .warta-sheet {
     page-break-inside: auto;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .warta-copy-2 {
@@ -302,9 +310,16 @@
 
   .warta-table th,
   .warta-table td {
-    border: 1px solid #999 !important;
-    padding: 1px 4px !important;
+    border: 1px solid #222 !important;
+    padding: 1.5px 5px !important;
     font-size: 8.5pt !important;
+    color: black !important;
+  }
+
+  .warta-table thead th {
+    background-color: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .warta-table tr {
