@@ -127,6 +127,10 @@ function WartaPage() {
   const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>([]);
   const [tunggakanLaluMap, setTunggakanLaluMap] = useState<TunggakanTahunLaluMap>({});
 
+  // Layout Cetak 1/2 Halaman Landscape & Skala 62%
+  const [layoutCetak, setLayoutCetak] = useState<"setengah" | "ganda" | "penuh">("setengah");
+  const [scale, setScale] = useState<number>(62);
+
   useEffect(() => {
     setSaldoAwalBank(String(settings.saldoAwalBank ?? 0));
     setKetua(settings.namaKetuaBpmj || "Pdt. Handry Mecky Dengah, M.Th");
@@ -331,8 +335,8 @@ function WartaPage() {
         </div>
       }
     >
-      <div className="panel no-print mb-4 p-4">
-        <div className="grid gap-3 md:grid-cols-3">
+      <div className="panel no-print mb-4 p-4 space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           <div className="space-y-1.5">
             <Label htmlFor="dari">Tanggal Mulai</Label>
             <Input id="dari" type="date" value={dari} onChange={(e) => setDari(e.target.value)} />
@@ -372,196 +376,297 @@ function WartaPage() {
             />
           </div>
         </div>
-      </div>
 
-      <div className="warta-area panel overflow-x-auto p-6 bg-white text-black">
-        <div className="warta-sheet max-w-5xl mx-auto">
-          <div className="text-center pb-2 mb-2 border-b-2 border-black/80">
-            <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-black">
-              WARTA KEUANGAN
-            </h1>
-            <p className="text-xs sm:text-sm font-semibold mt-0.5 text-black/90">
-              Laporan Penerimaan &amp; Pengeluaran Kas Jemaat Tanggal {tglPanjang(dari)} S/d {tglPanjang(sampai)}
-            </p>
-          </div>
-
-          <table className="warta-table mt-3 w-full border-collapse">
-            <thead>
-              <tr className="bg-muted/40 border-y border-black/70 text-black font-bold">
-                <th className="w-20 text-left py-1.5 px-2">Tgl</th>
-                <th className="text-left py-1.5 px-2">Uraian</th>
-                <th className="w-28 sm:w-32 text-right py-1.5 px-2">Masuk (Rp)</th>
-                <th className="w-28 sm:w-32 text-right py-1.5 px-2">Keluar (Rp)</th>
-                <th className="w-28 sm:w-36 text-right py-1.5 px-2">Saldo (Rp)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Row 1: Saldo Awal */}
-              <tr className="border-b border-border/80">
-                <td className="py-1 px-2" />
-                <td className="py-1 px-2 font-bold text-black">Saldo Awal</td>
-                <td className="py-1 px-2 text-right" />
-                <td className="py-1 px-2 text-right" />
-                <td className="py-1 px-2 text-right font-mono font-bold text-black">
-                  {angkaSaldo(saldoAwal)}
-                </td>
-              </tr>
-
-              {/* Data Rows */}
-              {baris.map((b) =>
-                b.tipe === "grup" ? (
-                  <tr key={b.key} className="border-b border-border/80 bg-muted/10 font-bold">
-                    <td className="py-1 px-2 whitespace-nowrap font-bold text-black align-top">
-                      {b.tanggal ? tglPendek(b.tanggal) : ""}
-                    </td>
-                    <td className="py-1 px-2 font-bold text-black">
-                      {b.nama}
-                    </td>
-                    <td className="py-1 px-2 text-right" />
-                    <td className="py-1 px-2 text-right" />
-                    <td className="py-1 px-2 text-right" />
-                  </tr>
-                ) : (
-                  <tr key={b.key} className="border-b border-border/60 hover:bg-muted/10">
-                    <td className="py-0.5 px-2" />
-                    <td className="py-0.5 px-2 pl-5 text-xs sm:text-[13px] text-black">
-                      {b.trx.description || b.trx.payee || b.trx.voucher_no}
-                      {b.trx.koreksi_catatan && (
-                        <span className="ml-1 text-[11px] italic text-muted-foreground">
-                          [{b.trx.koreksi_catatan}]
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-0.5 px-2 text-right text-xs sm:text-[13px] font-mono text-black">
-                      {b.trx.kind === "penerimaan" ? angka(b.trx.amount) : ""}
-                    </td>
-                    <td className="py-0.5 px-2 text-right text-xs sm:text-[13px] font-mono text-black">
-                      {b.trx.kind === "pengeluaran" ? angka(b.trx.amount) : ""}
-                    </td>
-                    <td className="py-0.5 px-2 text-right text-xs sm:text-[13px] font-mono text-black">
-                      {angkaSaldo(b.saldo)}
-                    </td>
-                  </tr>
-                ),
-              )}
-
-              {baris.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                    {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi pada rentang tanggal ini."}
-                  </td>
-                </tr>
-              )}
-
-              {/* Total Row */}
-              <tr className="bg-muted/30 font-bold border-t-2 border-black/70">
-                <td className="py-1.5 px-2" />
-                <td className="py-1.5 px-2 font-bold text-black">TOTAL</td>
-                <td className="py-1.5 px-2 text-right font-mono font-bold text-black">
-                  {angkaSaldo(totalMasuk)}
-                </td>
-                <td className="py-1.5 px-2 text-right font-mono font-bold text-black">
-                  {angkaSaldo(totalKeluar)}
-                </td>
-                <td className="py-1.5 px-2 text-right font-mono font-bold text-black">
-                  {angkaSaldo(saldoAkhir)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div className="mt-6">
-            <p className="text-sm font-bold uppercase tracking-wide text-black">Rekapitulasi</p>
-            <table className="warta-table mt-1.5 w-full border-collapse">
-              <thead>
-                <tr className="bg-muted/30 border-y border-black/60 font-bold text-black">
-                  <th className="w-10 text-center py-1 px-2">No</th>
-                  <th className="text-left py-1 px-2">Uraian</th>
-                  <th className="w-36 text-right py-1 px-2">DANA RUTIN</th>
-                  <th className="w-36 text-right py-1 px-2">SIMPANAN BANK</th>
-                  <th className="w-36 text-right py-1 px-2">JUMLAH</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rekap.map((r) => (
-                  <tr key={r.no} className={`border-b border-border/80 ${r.no === "4." ? "bg-muted/20 font-bold text-black" : ""}`}>
-                    <td className="text-center py-1 px-2">{r.no}</td>
-                    <td className="py-1 px-2 font-medium text-black">{r.label}</td>
-                    <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.rutin)}</td>
-                    <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.bank)}</td>
-                    <td className="text-right py-1 px-2 font-mono font-bold text-black">{angkaSaldo(r.rutin + r.bank)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-5 text-xs leading-relaxed">
-            <p>
-              Terima kasih kepada seluruh jemaat dan para tamu yang telah berpartispasi memberikan
-              persembahan, baik dalam bentuk Persembahan Persepuluhan, serta Persembahan Syukur lainnya.
-            </p>
-            <p className="font-medium">Tuhan Yesus Memberkati.</p>
-          </div>
-
-          <div className="mt-5 text-xs">
-            <p className="text-right">
-              {tempat}, {tglPanjang(sampai)}
-            </p>
-            <p className="mt-2 text-center font-bold uppercase tracking-wider">
-              BADAN PEKERJA MAJELIS JEMAAT
-            </p>
-            <div className="mt-3 flex justify-between text-center">
-              <div className="w-1/2">
-                <p className="font-semibold">Ketua</p>
-                <p className="mt-12 font-bold underline">{ketua}</p>
-              </div>
-              <div className="w-1/2">
-                <p className="font-semibold">Bendahara</p>
-                <p className="mt-12 font-bold underline">{bendahara}</p>
-              </div>
+        {/* Pengaturan Format Cetak: 1/2 Halaman Landscape & Scale 62% */}
+        <div className="pt-2 border-t flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-foreground">Format Cetak Landscape:</span>
+            <div className="inline-flex rounded-lg border p-0.5 bg-muted/30">
+              <button
+                type="button"
+                onClick={() => setLayoutCetak("setengah")}
+                className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                  layoutCetak === "setengah"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                1/2 Halaman (Landscape)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutCetak("ganda")}
+                className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                  layoutCetak === "ganda"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                2 Salinan (Kiri & Kanan)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutCetak("penuh")}
+                className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                  layoutCetak === "penuh"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                1 Halaman Penuh
+              </button>
             </div>
           </div>
 
-          <p className="mt-4 text-[10.5px] italic text-muted-foreground text-center">
-            * Jika ada persembahan-persembahan yang sudah diberikan, tetapi belum tercantum/masuk dalam Warta Jemaat ini
-            dapat diklarifikasikan di kantor jemaat pada waktu jam kerja *
-          </p>
-
-          <div className="mt-6 border-t pt-4">
-            <p className="text-sm font-bold uppercase tracking-wide">DANA DIAKONIA DUKA JEMAAT</p>
-            <table className="warta-table mt-2 w-full text-xs">
-              <thead>
-                <tr className="bg-muted/30">
-                  <th className="w-16">Kolom</th>
-                  <th className="text-left">Tunggakan</th>
-                  <th className="w-16">Kolom</th>
-                  <th className="text-left">Tunggakan</th>
-                  <th className="w-16">Kolom</th>
-                  <th className="text-left">Tunggakan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: 10 }, (_, i) => {
-                  const k1 = i + 1;
-                  const k2 = i + 11;
-                  const k3 = i + 21;
-                  return (
-                    <tr key={i}>
-                      <td className="font-semibold text-center">{k1 <= 29 ? `Kolom ${k1}` : ""}</td>
-                      <td>{k1 <= 29 ? (ringkasanDuka[k1]?.statusLabel || "Lunas") : ""}</td>
-                      <td className="font-semibold text-center">{k2 <= 29 ? `Kolom ${k2}` : ""}</td>
-                      <td>{k2 <= 29 ? (ringkasanDuka[k2]?.statusLabel || "Lunas") : ""}</td>
-                      <td className="font-semibold text-center">{k3 <= 29 ? `Kolom ${k3}` : ""}</td>
-                      <td>{k3 <= 29 ? (ringkasanDuka[k3]?.statusLabel || "Lunas") : ""}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="scale" className="font-semibold text-xs text-muted-foreground">
+              Skala Cetak:
+            </Label>
+            <Input
+              id="scale"
+              type="number"
+              min="30"
+              max="100"
+              value={scale}
+              onChange={(e) => setScale(Number(e.target.value) || 62)}
+              className="w-16 h-8 text-xs font-mono font-bold"
+            />
+            <span className="text-xs text-muted-foreground">%</span>
+            {scale !== 62 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setScale(62)}
+                className="h-8 text-[11px] px-2 text-primary"
+              >
+                Set 62%
+              </Button>
+            )}
           </div>
         </div>
       </div>
+
+      <div className="warta-area panel overflow-x-auto p-4 sm:p-6 bg-white text-black">
+        {layoutCetak === "ganda" ? (
+          <div className="warta-half-layout flex justify-between gap-6 w-full">
+            <div className="warta-sheet-half flex-1" style={{ zoom: `${scale}%` }}>
+              {renderWartaSheet("Salinan 1 (Kiri)")}
+            </div>
+            <div className="warta-sheet-half flex-1 border-l-2 border-dashed border-gray-300 pl-6" style={{ zoom: `${scale}%` }}>
+              {renderWartaSheet("Salinan 2 (Kanan)")}
+            </div>
+          </div>
+        ) : layoutCetak === "setengah" ? (
+          <div className="warta-half-layout flex justify-start w-full">
+            <div className="warta-sheet-half w-full sm:w-[49%]" style={{ zoom: `${scale}%` }}>
+              {renderWartaSheet()}
+            </div>
+          </div>
+        ) : (
+          <div className="warta-sheet-full max-w-5xl mx-auto" style={{ zoom: `${scale}%` }}>
+            {renderWartaSheet()}
+          </div>
+        )}
+      </div>
     </AppShell>
   );
+
+  function renderWartaSheet(tagSalinan?: string) {
+    return (
+      <div className="warta-content space-y-3">
+        <div className="text-center pb-2 mb-2 border-b-2 border-black/80">
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-black">
+              WARTA KEUANGAN
+            </h1>
+            {tagSalinan && (
+              <span className="text-[10px] uppercase font-bold text-gray-500 border border-gray-300 px-1.5 py-0.5 rounded">
+                {tagSalinan}
+              </span>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm font-semibold mt-0.5 text-black/90">
+            Laporan Penerimaan &amp; Pengeluaran Kas Jemaat Tanggal {tglPanjang(dari)} S/d {tglPanjang(sampai)}
+          </p>
+        </div>
+
+        <table className="warta-table mt-2 w-full border-collapse">
+          <thead>
+            <tr className="bg-muted/40 border-y border-black/70 text-black font-bold">
+              <th className="w-16 text-left py-1 px-1.5">Tgl</th>
+              <th className="text-left py-1 px-1.5">Uraian</th>
+              <th className="w-24 sm:w-28 text-right py-1 px-1.5">Masuk (Rp)</th>
+              <th className="w-24 sm:w-28 text-right py-1 px-1.5">Keluar (Rp)</th>
+              <th className="w-24 sm:w-32 text-right py-1 px-1.5">Saldo (Rp)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* Row 1: Saldo Awal */}
+            <tr className="border-b border-border/80">
+              <td className="py-0.5 px-1.5" />
+              <td className="py-0.5 px-1.5 font-bold text-black">Saldo Awal</td>
+              <td className="py-0.5 px-1.5 text-right" />
+              <td className="py-0.5 px-1.5 text-right" />
+              <td className="py-0.5 px-1.5 text-right font-mono font-bold text-black">
+                {angkaSaldo(saldoAwal)}
+              </td>
+            </tr>
+
+            {/* Data Rows */}
+            {baris.map((b) =>
+              b.tipe === "grup" ? (
+                <tr key={b.key} className="border-b border-border/80 bg-muted/10 font-bold">
+                  <td className="py-0.5 px-1.5 whitespace-nowrap font-bold text-black align-top">
+                    {b.tanggal ? tglPendek(b.tanggal) : ""}
+                  </td>
+                  <td className="py-0.5 px-1.5 font-bold text-black">
+                    {b.nama}
+                  </td>
+                  <td className="py-0.5 px-1.5 text-right" />
+                  <td className="py-0.5 px-1.5 text-right" />
+                  <td className="py-0.5 px-1.5 text-right" />
+                </tr>
+              ) : (
+                <tr key={b.key} className="border-b border-border/60 hover:bg-muted/10">
+                  <td className="py-0.5 px-1.5" />
+                  <td className="py-0.5 px-1.5 pl-4 text-xs text-black">
+                    {b.trx.description || b.trx.payee || b.trx.voucher_no}
+                    {b.trx.koreksi_catatan && (
+                      <span className="ml-1 text-[10px] italic text-muted-foreground">
+                        [{b.trx.koreksi_catatan}]
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-0.5 px-1.5 text-right text-xs font-mono text-black">
+                    {b.trx.kind === "penerimaan" ? angka(b.trx.amount) : ""}
+                  </td>
+                  <td className="py-0.5 px-1.5 text-right text-xs font-mono text-black">
+                    {b.trx.kind === "pengeluaran" ? angka(b.trx.amount) : ""}
+                  </td>
+                  <td className="py-0.5 px-1.5 text-right text-xs font-mono text-black">
+                    {angkaSaldo(b.saldo)}
+                  </td>
+                </tr>
+              ),
+            )}
+
+            {baris.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                  {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi pada rentang tanggal ini."}
+                </td>
+              </tr>
+            )}
+
+            {/* Total Row */}
+            <tr className="bg-muted/30 font-bold border-t-2 border-black/70">
+              <td className="py-1 px-1.5" />
+              <td className="py-1 px-1.5 font-bold text-black">TOTAL</td>
+              <td className="py-1 px-1.5 text-right font-mono font-bold text-black">
+                {angkaSaldo(totalMasuk)}
+              </td>
+              <td className="py-1 px-1.5 text-right font-mono font-bold text-black">
+                {angkaSaldo(totalKeluar)}
+              </td>
+              <td className="py-1 px-1.5 text-right font-mono font-bold text-black">
+                {angkaSaldo(saldoAkhir)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="mt-4">
+          <p className="text-xs sm:text-sm font-bold uppercase tracking-wide text-black">Rekapitulasi</p>
+          <table className="warta-table mt-1 w-full border-collapse">
+            <thead>
+              <tr className="bg-muted/30 border-y border-black/60 font-bold text-black">
+                <th className="w-8 text-center py-0.5 px-1">No</th>
+                <th className="text-left py-0.5 px-1.5">Uraian</th>
+                <th className="w-28 text-right py-0.5 px-1.5">DANA RUTIN</th>
+                <th className="w-28 text-right py-0.5 px-1.5">SIMPANAN BANK</th>
+                <th className="w-28 text-right py-0.5 px-1.5">JUMLAH</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rekap.map((r) => (
+                <tr key={r.no} className={`border-b border-border/80 ${r.no === "4." ? "bg-muted/20 font-bold text-black" : ""}`}>
+                  <td className="text-center py-0.5 px-1">{r.no}</td>
+                  <td className="py-0.5 px-1.5 font-medium text-black">{r.label}</td>
+                  <td className="text-right py-0.5 px-1.5 font-mono text-black">{angkaSaldo(r.rutin)}</td>
+                  <td className="text-right py-0.5 px-1.5 font-mono text-black">{angkaSaldo(r.bank)}</td>
+                  <td className="text-right py-0.5 px-1.5 font-mono font-bold text-black">{angkaSaldo(r.rutin + r.bank)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-3 text-[11px] leading-relaxed">
+          <p>
+            Terima kasih kepada seluruh jemaat dan para tamu yang telah berpartispasi memberikan
+            persembahan, baik dalam bentuk Persembahan Persepuluhan, serta Persembahan Syukur lainnya.
+          </p>
+          <p className="font-medium">Tuhan Yesus Memberkati.</p>
+        </div>
+
+        <div className="mt-3 text-[11px]">
+          <p className="text-right">
+            {tempat}, {tglPanjang(sampai)}
+          </p>
+          <p className="mt-1 text-center font-bold uppercase tracking-wider">
+            BADAN PEKERJA MAJELIS JEMAAT
+          </p>
+          <div className="mt-2 flex justify-between text-center">
+            <div className="w-1/2">
+              <p className="font-semibold">Ketua</p>
+              <p className="mt-8 font-bold underline">{ketua}</p>
+            </div>
+            <div className="w-1/2">
+              <p className="font-semibold">Bendahara</p>
+              <p className="mt-8 font-bold underline">{bendahara}</p>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-2 text-[9.5px] italic text-muted-foreground text-center">
+          * Jika ada persembahan-persembahan yang sudah diberikan, tetapi belum tercantum/masuk dalam Warta Jemaat ini
+          dapat diklarifikasikan di kantor jemaat pada waktu jam kerja *
+        </p>
+
+        <div className="mt-4 border-t pt-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-black">DANA DIAKONIA DUKA JEMAAT</p>
+          <table className="warta-table mt-1 w-full text-[10.5px]">
+            <thead>
+              <tr className="bg-muted/30 border-y border-black/60">
+                <th className="w-14">Kolom</th>
+                <th className="text-left">Tunggakan</th>
+                <th className="w-14">Kolom</th>
+                <th className="text-left">Tunggakan</th>
+                <th className="w-14">Kolom</th>
+                <th className="text-left">Tunggakan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 10 }, (_, i) => {
+                const k1 = i + 1;
+                const k2 = i + 11;
+                const k3 = i + 21;
+                return (
+                  <tr key={i} className="border-b border-border/80">
+                    <td className="font-semibold text-center">{k1 <= 29 ? `Kolom ${k1}` : ""}</td>
+                    <td>{k1 <= 29 ? (ringkasanDuka[k1]?.statusLabel || "Lunas") : ""}</td>
+                    <td className="font-semibold text-center">{k2 <= 29 ? `Kolom ${k2}` : ""}</td>
+                    <td>{k2 <= 29 ? (ringkasanDuka[k2]?.statusLabel || "Lunas") : ""}</td>
+                    <td className="font-semibold text-center">{k3 <= 29 ? `Kolom ${k3}` : ""}</td>
+                    <td>{k3 <= 29 ? (ringkasanDuka[k3]?.statusLabel || "Lunas") : ""}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 }

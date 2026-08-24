@@ -289,30 +289,51 @@
 }
 
 @media print {
+  /* Kertas F4 / Folio (330 x 215 mm) Posisi Landscape */
+  @page {
+    size: 330mm 215mm landscape;
+    margin: 5mm 6mm;
+  }
+
   .warta-area {
     border: none !important;
     padding: 0 !important;
     background: transparent !important;
+    width: 100% !important;
   }
 
-  .warta-sheet {
+  /* Wadah Cetak 1/2 Halaman Landscape */
+  .warta-half-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    gap: 8mm !important;
+    width: 100% !important;
+  }
+
+  /* Ukuran 1/2 Halaman Landscape dengan Scale 62% */
+  .warta-sheet-half {
+    page-break-inside: auto;
+    width: 48.8% !important;
+    max-width: 48.8% !important;
+    zoom: 62% !important;
+    transform-origin: top left;
+  }
+
+  /* Ukuran Penuh Landscape */
+  .warta-sheet-full {
     page-break-inside: auto;
     width: 100% !important;
     max-width: 100% !important;
-  }
-
-  .warta-copy-2 {
-    page-break-before: always;
-    margin-top: 0 !important;
-    border-top: none !important;
-    padding-top: 0 !important;
+    zoom: 62% !important;
+    transform-origin: top center;
   }
 
   .warta-table th,
   .warta-table td {
-    border: 1px solid #222 !important;
-    padding: 1.5px 5px !important;
-    font-size: 8.5pt !important;
+    border: 1px solid #111 !important;
+    padding: 1px 4px !important;
+    font-size: 8pt !important;
     color: black !important;
   }
 
