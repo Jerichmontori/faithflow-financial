@@ -28,7 +28,9 @@ export interface AppSettings {
   teksTombolBeranda: string;
   kontakSekretariat: string;
   jadwalIbadahSingkat: string;
-  bannerBerandaUrl?: string;
+  bannerBerandaUrl: string;
+  bannerOpacity: number; // 0 to 100
+  warnaBackgroundBeranda: string; // hex / gradient color
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -58,6 +60,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   kontakSekretariat: "Sekretariat Jemaat: Jl. Lumimuut, Tikala Baru | Telp/WA: 0812-44xx-xxxx",
   jadwalIbadahSingkat: "Ibadah Minggu: Subuh 05.30 | Pagi 09.00 | Sore 17.00 WITA",
   bannerBerandaUrl: "",
+  bannerOpacity: 45,
+  warnaBackgroundBeranda: "#0b192c",
 };
 
 const STORAGE_KEY = "bumotik.app_settings_v1";
@@ -81,6 +85,9 @@ export function getStoredSettings(): AppSettings {
       ...parsed,
       namaGereja,
       namaJemaat,
+      bannerBerandaUrl: parsed.bannerBerandaUrl ?? DEFAULT_SETTINGS.bannerBerandaUrl,
+      bannerOpacity: typeof parsed.bannerOpacity === "number" ? parsed.bannerOpacity : DEFAULT_SETTINGS.bannerOpacity,
+      warnaBackgroundBeranda: parsed.warnaBackgroundBeranda || DEFAULT_SETTINGS.warnaBackgroundBeranda,
     };
   } catch {
     return DEFAULT_SETTINGS;

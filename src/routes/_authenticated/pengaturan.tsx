@@ -19,6 +19,10 @@ import {
   Sparkles,
   Clock,
   ArrowRight,
+  Sliders,
+  Palette,
+  Trash2,
+  ImageIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAppSettings, DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
@@ -38,12 +42,12 @@ export const Route = createFileRoute("/_authenticated/pengaturan")({
       {
         name: "description",
         content:
-          "Pengaturan nama gereja, wilayah, alamat, logo aplikasi, tampilan beranda, serta penandatangan kuitansi dan laporan keuangan.",
+          "Pengaturan nama gereja, wilayah, alamat, logo aplikasi, background beranda, serta penandatangan kuitansi dan laporan keuangan.",
       },
       { property: "og:title", content: "Pengaturan Awal — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Kelola profil jemaat, logo aplikasi, tampilan beranda, dan nama penandatangan kwitansi.",
+        content: "Kelola profil jemaat, logo aplikasi, gambar background beranda, dan nama penandatangan kwitansi.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -52,16 +56,24 @@ export const Route = createFileRoute("/_authenticated/pengaturan")({
   component: PengaturanPage,
 });
 
+const WARNA_BACKGROUND_PRESET = [
+  { label: "Navy GMIM", value: "#0b192c", bgClass: "bg-[#0b192c]" },
+  { label: "Royal Deep Blue", value: "#1e3a8a", bgClass: "bg-[#1e3a8a]" },
+  { label: "Midnight Blue", value: "#0f172a", bgClass: "bg-[#0f172a]" },
+  { label: "Ocean Blue", value: "#0369a1", bgClass: "bg-[#0369a1]" },
+];
+
 function PengaturanPage() {
   const { settings, updateSettings, resetSettings } = useAppSettings();
   const { canManageFinance } = useSession();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<AppSettings>({ ...settings });
   const [logoPreview, setLogoPreview] = useState<string>(settings.logoUrl || "/favicon.png");
   const [activeTab, setActiveTab] = useState("profil");
 
-  const handleChange = (field: keyof AppSettings, value: string) => {
+  const handleChange = (field: keyof AppSettings, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -84,6 +96,24 @@ function PengaturanPage() {
     reader.readAsDataURL(file);
   };
 
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Ukuran gambar background maksimal 3MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setForm((prev) => ({ ...prev, bannerBerandaUrl: result }));
+      toast.success("Gambar background beranda berhasil dipilih. Silakan atur opacity dan klik Simpan.");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = () => {
     updateSettings(form);
     toast.success("Pengaturan berhasil disimpan dan langsung diterapkan ke seluruh aplikasi & beranda!");
@@ -101,7 +131,7 @@ function PengaturanPage() {
   return (
     <AppShell
       title="Pengaturan Awal & Profil Gereja"
-      subtitle="Kelola identitas jemaat, logo, tampilan beranda, dan nama pejabat penandatangan kuitansi"
+      subtitle="Kelola identitas jemaat, logo, gambar latar beranda, dan nama pejabat penandatangan kuitansi"
       actions={
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleReset} className="gap-1.5 text-xs">
@@ -252,7 +282,7 @@ function PengaturanPage() {
                       <div className="space-y-1.5">
                         <input
                           type="file"
-                          ref={fileInputRef}
+                          ref={logoInputRef}
                           onChange={handleLogoUpload}
                           accept="image/png,image/jpeg,image/svg+xml,image/webp"
                           className="hidden"
@@ -262,7 +292,7 @@ function PengaturanPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => logoInputRef.current?.click()}
                             className="gap-1.5 text-xs h-8"
                           >
                             <Upload className="size-3.5" /> Ganti Logo (PNG/JPG)
@@ -290,12 +320,144 @@ function PengaturanPage() {
               </Card>
             </TabsContent>
 
-            {/* TAB 3: PENGATURAN TAMPILAN BERANDA */}
+            {/* TAB 3: PENGATURAN TAMPILAN BERANDA & GAMBAR LATAR */}
             <TabsContent value="beranda" className="space-y-4 pt-3">
+              {/* Card Gambar Background Hero & Opacity */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Home className="size-4 text-primary" /> Pengaturan Tampilan Beranda (Landing Page)
+                    <ImageIcon className="size-4 text-primary" /> Gambar Background & Warna Latar Hero
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Tambahkan foto gedung gereja / jemaat sebagai latar belakang hero dan atur tingkat transparansinya (*opacity*).
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-xs">
+                  {/* Upload Gambar Background */}
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Foto / Gambar Background Beranda</Label>
+                    <input
+                      type="file"
+                      ref={bannerInputRef}
+                      onChange={handleBannerUpload}
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                    />
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      {form.bannerBerandaUrl ? (
+                        <div className="relative h-20 w-36 rounded-lg border overflow-hidden shadow-xs shrink-0 bg-slate-900">
+                          <img
+                            src={form.bannerBerandaUrl}
+                            alt="Background Preview"
+                            className="size-full object-cover"
+                            style={{ opacity: (form.bannerOpacity ?? 45) / 100 }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-1">
+                            <span className="text-[9px] text-white font-bold">
+                              Opacity {form.bannerOpacity}%
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-20 w-36 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 shrink-0">
+                          <ImageIcon className="size-5 mb-1" />
+                          <span className="text-[9.5px]">Warna Polos</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => bannerInputRef.current?.click()}
+                            className="gap-1.5 text-xs h-8 font-semibold"
+                          >
+                            <Upload className="size-3.5 text-primary" />
+                            {form.bannerBerandaUrl ? "Ganti Gambar Foto" : "Unggah Gambar Foto (JPG/PNG)"}
+                          </Button>
+
+                          {form.bannerBerandaUrl && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setForm((prev) => ({ ...prev, bannerBerandaUrl: "" }))}
+                              className="text-xs h-8 text-destructive gap-1"
+                            >
+                              <Trash2 className="size-3.5" /> Hapus Gambar
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Disarankan foto lanskap resolusi tinggi (foto gedung gereja, altar, atau suasana ibadah).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Slider Opacity (Transparansi Gambar) */}
+                  {form.bannerBerandaUrl && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="bannerOpacity" className="font-semibold flex items-center gap-1.5">
+                          <Sliders className="size-3.5 text-primary" /> Tingkat Transparansi Gambar (Opacity)
+                        </Label>
+                        <span className="text-xs font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">
+                          {form.bannerOpacity}%
+                        </span>
+                      </div>
+                      <input
+                        id="bannerOpacity"
+                        type="range"
+                        min="10"
+                        max="100"
+                        step="5"
+                        value={form.bannerOpacity ?? 45}
+                        onChange={(e) => handleChange("bannerOpacity", Number(e.target.value))}
+                        className="w-full accent-primary cursor-pointer h-2 bg-muted rounded-lg"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>10% (Samar-samar)</span>
+                        <span className="text-primary font-medium">40% - 50% (Direkomendasikan agar teks jelas)</span>
+                        <span>100% (Sangat Terang)</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pilihan Warna Dasar Background */}
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="font-semibold flex items-center gap-1.5">
+                      <Palette className="size-3.5 text-primary" /> Warna Dasar Latar Hero
+                    </Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {WARNA_BACKGROUND_PRESET.map((preset) => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => handleChange("warnaBackgroundBeranda", preset.value)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all ${
+                            form.warnaBackgroundBeranda === preset.value
+                              ? "border-primary ring-2 ring-primary/20 font-bold bg-primary/5"
+                              : "hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          <div className={`size-4 rounded-full ${preset.bgClass} border shadow-xs`} />
+                          <span className="text-[11px] truncate">{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card Teks Sambutan & Motto */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Home className="size-4 text-primary" /> Teks Sambutan & Informasi Beranda
                   </CardTitle>
                   <CardDescription className="text-xs">
                     Atur judul sambutan, tagline, firman Tuhan/motto, dan informasi kontak yang tampil di halaman depan website.
@@ -519,7 +681,7 @@ function PengaturanPage() {
         {/* Kolom Kanan: Pratinjau Langsung (Live Preview) */}
         <div className="lg:col-span-5 space-y-3">
           {activeTab === "beranda" ? (
-            /* LIVE PREVIEW TAMPILAN BERANDA */
+            /* LIVE PREVIEW TAMPILAN BERANDA DENGAN BACKGROUND GAMBAR */
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -530,51 +692,78 @@ function PengaturanPage() {
                 </span>
               </div>
 
-              <div className="rounded-xl border bg-card p-4 shadow-md text-xs space-y-4">
+              <div className="rounded-xl border overflow-hidden shadow-lg text-xs space-y-0">
                 {/* Mini Navbar Preview */}
-                <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center justify-between border-b bg-background px-3 py-2">
                   <div className="flex items-center gap-2">
                     <img
                       src={logoPreview || "/favicon.png"}
                       alt="Logo"
-                      className="size-7 object-contain rounded-sm border p-0.5"
+                      className="size-6 object-contain rounded-sm border p-0.5"
                     />
                     <div>
-                      <strong className="block text-[11px] leading-tight font-bold">{form.namaAplikasi}</strong>
-                      <span className="text-[9px] text-primary font-semibold block">{form.namaJemaat}</span>
+                      <strong className="block text-[10.5px] leading-tight font-bold">{form.namaAplikasi}</strong>
+                      <span className="text-[8.5px] text-primary font-semibold block">{form.namaJemaat}</span>
                     </div>
                   </div>
-                  <span className="text-[10px] bg-primary text-primary-foreground px-2 py-1 rounded-sm font-semibold">
+                  <span className="text-[9.5px] bg-primary text-primary-foreground px-2 py-0.5 rounded-sm font-semibold">
                     Masuk
                   </span>
                 </div>
 
-                {/* Hero Preview */}
-                <div className="text-center py-2 space-y-2">
-                  <span className="inline-block text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase">
-                    {form.subjudulBeranda || "TAGLINE BERANDA"}
-                  </span>
-                  <h4 className="text-sm font-extrabold text-foreground leading-snug">
-                    {form.judulBeranda || "Judul Utama Beranda"}
-                  </h4>
-                  <p className="text-[10.5px] text-muted-foreground leading-relaxed">
-                    {form.deskripsiBeranda || "Deskripsi sambutan beranda..."}
-                  </p>
-                  {form.mottoAyatBeranda && (
-                    <div className="p-2 rounded-md bg-primary/5 border border-primary/20 text-[9.5px] italic text-primary">
-                      "{form.mottoAyatBeranda}"
-                    </div>
+                {/* Hero Preview dengan Background Gambar & Opacity Live */}
+                <div
+                  className="relative text-center py-6 px-4 text-white overflow-hidden"
+                  style={{ backgroundColor: form.warnaBackgroundBeranda || "#0b192c" }}
+                >
+                  {/* Layer Gambar Background */}
+                  {form.bannerBerandaUrl && (
+                    <div
+                      className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+                      style={{
+                        backgroundImage: `url('${form.bannerBerandaUrl}')`,
+                        opacity: (form.bannerOpacity ?? 45) / 100,
+                      }}
+                    />
                   )}
-                  <div className="pt-1">
-                    <span className="inline-flex items-center gap-1 bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-bold text-[10px] shadow-xs">
-                      {form.teksTombolBeranda || "Mulai Kelola Keuangan"} <ArrowRight className="size-3" />
+
+                  {/* Gradient Overlay */}
+                  <div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                      background: form.bannerBerandaUrl
+                        ? "linear-gradient(180deg, rgba(11, 25, 44, 0.75) 0%, rgba(11, 25, 44, 0.90) 100%)"
+                        : "radial-gradient(circle at center, rgba(30, 58, 138, 0.45) 0%, rgba(11, 25, 44, 0.95) 100%)",
+                    }}
+                  />
+
+                  {/* Konten Hero Live */}
+                  <div className="relative z-10 space-y-2">
+                    <span className="inline-block text-[8.5px] font-bold text-white bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full uppercase backdrop-blur-xs">
+                      {form.subjudulBeranda || "TAGLINE BERANDA"}
                     </span>
+                    <h4 className="text-xs font-black text-white leading-snug drop-shadow-xs max-w-xs mx-auto">
+                      {form.judulBeranda || "Judul Utama Beranda"}
+                    </h4>
+                    <p className="text-[9.5px] text-gray-200 leading-relaxed max-w-xs mx-auto">
+                      {form.deskripsiBeranda || "Deskripsi sambutan beranda..."}
+                    </p>
+                    {form.mottoAyatBeranda && (
+                      <div className="p-2 rounded-md bg-white/10 border border-white/20 text-[8.5px] italic text-amber-200 max-w-xs mx-auto">
+                        "{form.mottoAyatBeranda}"
+                      </div>
+                    )}
+                    <div className="pt-1">
+                      <span className="inline-flex items-center gap-1 bg-primary text-primary-foreground px-3 py-1 rounded-md font-bold text-[9.5px] shadow-sm">
+                        {form.teksTombolBeranda || "Mulai Kelola Keuangan"} <ArrowRight className="size-2.5" />
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Footer Preview */}
                 {(form.jadwalIbadahSingkat || form.kontakSekretariat) && (
-                  <div className="border-t pt-2 space-y-1 text-[9.5px] text-muted-foreground">
+                  <div className="bg-muted/40 p-2.5 space-y-1 text-[9px] text-muted-foreground border-t">
                     {form.jadwalIbadahSingkat && (
                       <div className="flex items-center gap-1.5">
                         <Clock className="size-3 text-primary shrink-0" />

@@ -48,6 +48,8 @@ const FITUR = [
 
 function Index() {
   const { settings } = useAppSettings();
+  const bgOpacity = (settings.bannerOpacity ?? 45) / 100;
+  const bgColor = settings.warnaBackgroundBeranda || "#0b192c";
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-between">
@@ -80,45 +82,72 @@ function Index() {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section dengan Background Biru & Gambar Latar Kustom */}
       <main className="flex-1">
-        <section className="mx-auto max-w-5xl px-6 pt-12 pb-16 text-center lg:pt-20">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-primary mb-6">
-            <Sparkles className="size-3.5" />
-            {settings.subjudulBeranda || "SISTEM MANAJEMEN KEUANGAN & ADMINISTRASI JEMAAT"}
-          </div>
-
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-foreground leading-[1.15] max-w-4xl mx-auto">
-            {settings.judulBeranda || "Keuangan gereja yang tertib, transparan, dan mudah dipertanggungjawabkan."}
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-            {settings.deskripsiBeranda ||
-              "Catat penerimaan dan pengeluaran, kendalikan mata anggaran, jalankan approval, dan pantau realisasi anggaran jemaat secara realtime."}
-          </p>
-
-          {/* Motto / Firman Tuhan Callout */}
-          {settings.mottoAyatBeranda && (
-            <div className="mx-auto mt-8 max-w-xl rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-primary font-medium flex items-center justify-center gap-2 shadow-xs">
-              <BookOpen className="size-4 shrink-0" />
-              <span className="italic leading-snug">"{settings.mottoAyatBeranda}"</span>
-            </div>
+        <section
+          className="relative overflow-hidden px-6 pt-16 pb-24 text-center text-white lg:pt-24 lg:pb-32"
+          style={{ backgroundColor: bgColor }}
+        >
+          {/* Layer Gambar Background dengan Opacity yang dapat diatur */}
+          {settings.bannerBerandaUrl && (
+            <div
+              className="absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-300 pointer-events-none"
+              style={{
+                backgroundImage: `url('${settings.bannerBerandaUrl}')`,
+                opacity: bgOpacity,
+              }}
+            />
           )}
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg" className="font-semibold px-6 shadow-md gap-2">
-              <Link to="/auth">
-                {settings.teksTombolBeranda || "Mulai Kelola Keuangan"}
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+          {/* Layer Gradient Overlay untuk Kontras Teks yang Elegan */}
+          <div
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{
+              background: settings.bannerBerandaUrl
+                ? "linear-gradient(180deg, rgba(11, 25, 44, 0.75) 0%, rgba(11, 25, 44, 0.90) 100%)"
+                : "radial-gradient(circle at center, rgba(30, 58, 138, 0.45) 0%, rgba(11, 25, 44, 0.95) 100%)",
+            }}
+          />
+
+          {/* Konten Hero */}
+          <div className="relative z-10 mx-auto max-w-5xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white mb-6 shadow-sm">
+              <Sparkles className="size-3.5 text-amber-300" />
+              {settings.subjudulBeranda || "SISTEM MANAJEMEN KEUANGAN & ADMINISTRASI JEMAAT"}
+            </div>
+
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-white leading-[1.18] max-w-4xl mx-auto drop-shadow-sm">
+              {settings.judulBeranda || "Keuangan gereja yang tertib, transparan, dan mudah dipertanggungjawabkan."}
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-2xl text-sm sm:text-base text-gray-200 leading-relaxed drop-shadow-xs font-normal">
+              {settings.deskripsiBeranda ||
+                "Catat penerimaan dan pengeluaran, kendalikan mata anggaran, jalankan approval, dan pantau realisasi anggaran jemaat secara realtime."}
+            </p>
+
+            {/* Motto / Firman Tuhan Callout */}
+            {settings.mottoAyatBeranda && (
+              <div className="mx-auto mt-8 max-w-xl rounded-xl border border-white/20 bg-white/10 backdrop-blur-md p-4 text-xs text-amber-100 font-medium flex items-center justify-center gap-2.5 shadow-md">
+                <BookOpen className="size-4.5 text-amber-300 shrink-0" />
+                <span className="italic leading-relaxed">"{settings.mottoAyatBeranda}"</span>
+              </div>
+            )}
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild size="lg" className="font-bold px-7 py-6 text-sm sm:text-base shadow-xl gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-white/20">
+                <Link to="/auth">
+                  {settings.teksTombolBeranda || "Mulai Kelola Keuangan"}
+                  <ArrowRight className="size-4.5" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
 
         {/* Feature Grid */}
-        <section className="mx-auto grid max-w-5xl gap-4 px-6 pb-20 sm:grid-cols-2">
+        <section className="mx-auto grid max-w-5xl gap-5 px-6 -mt-10 mb-16 relative z-20 sm:grid-cols-2">
           {FITUR.map(({ icon: Icon, title, desc }) => (
-            <article key={title} className="panel p-6 border rounded-xl bg-card shadow-xs hover:border-primary/40 transition-colors">
+            <article key={title} className="panel p-6 border rounded-xl bg-card shadow-md hover:border-primary/50 transition-all hover:shadow-lg">
               <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                 <Icon className="size-5" />
               </div>
@@ -133,7 +162,7 @@ function Index() {
           <section className="border-t bg-muted/30 py-8 px-6">
             <div className="mx-auto max-w-5xl grid gap-4 sm:grid-cols-2 text-xs">
               {settings.jadwalIbadahSingkat && (
-                <div className="flex items-start gap-2.5 p-3 rounded-lg border bg-background">
+                <div className="flex items-start gap-2.5 p-3.5 rounded-lg border bg-background shadow-xs">
                   <Clock className="size-4 text-primary shrink-0 mt-0.5" />
                   <div>
                     <strong className="block text-foreground font-semibold">Jadwal Pelayanan & Ibadah</strong>
@@ -142,7 +171,7 @@ function Index() {
                 </div>
               )}
               {settings.kontakSekretariat && (
-                <div className="flex items-start gap-2.5 p-3 rounded-lg border bg-background">
+                <div className="flex items-start gap-2.5 p-3.5 rounded-lg border bg-background shadow-xs">
                   <MapPin className="size-4 text-primary shrink-0 mt-0.5" />
                   <div>
                     <strong className="block text-foreground font-semibold">Sekretariat & Informasi</strong>
