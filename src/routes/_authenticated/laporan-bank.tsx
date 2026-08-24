@@ -118,9 +118,9 @@ function LaporanBankPage() {
   }, [rows]);
 
   const chart = BULAN.map((nama, idx) => ({
-    bulan: nama,
-    Pemasukan: byMonth.get(idx)?.in ?? 0,
-    Pengeluaran: byMonth.get(idx)?.out ?? 0,
+    name: nama,
+    masuk: byMonth.get(idx)?.in ?? 0,
+    keluar: byMonth.get(idx)?.out ?? 0,
   }));
 
   let saldo = saldoAwalNum;
@@ -218,8 +218,8 @@ function LaporanBankPage() {
                 contentStyle={{ borderRadius: 8, fontSize: 12 }}
               />
               <Legend />
-              <Bar dataKey="masuk" name="Pemasukan Bank" className="fill-primary" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="keluar" name="Pengeluaran Bank" className="fill-destructive" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="masuk" name="Pemasukan Bank (Kas Keluar)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="keluar" name="Pengeluaran Bank (Kas Masuk)" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
