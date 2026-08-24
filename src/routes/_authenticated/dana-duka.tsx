@@ -37,6 +37,7 @@ import {
   bacaDuka,
   simpanDuka,
   tarikDukaDariDatabase,
+  dapatkanTarifDukaKolom,
   hitungSemuaTunggakanDuka,
   hitungTotalTargetDukaTahap,
   buatDefaultTarifKolom,
@@ -250,13 +251,27 @@ function DanaDukaPage() {
   // Handlers Aturan Tarif Kolom Dinamis
   const openAddRuleModal = () => {
     setEditingRule(null);
-    setRuleNama(`Penyesuaian Tarif Tahap ${daftarDuka.length + 1}`);
-    setRuleMulaiTahap(daftarDuka.length + 1 > 0 ? daftarDuka.length + 1 : 1);
+    const nextStage = daftarDuka.length > 0 ? daftarDuka.length + 1 : 1;
+    setRuleNama(`Penyesuaian Tarif Tahap ${nextStage}`);
+    setRuleMulaiTahap(nextStage);
     setRuleSampaiTahap("");
     setRuleMode("terpilih");
-    setSelectedKolomList([1]); // default pilih kolom 1
-    setRuleTarifMap({ 1: 50000 });
-    setRuleBatchNominal("50000");
+    setSelectedKolomList([1]);
+
+    // Ambil tarif aktif terkini dari setiap kolom sebagai modal awal
+    const currentBaseMap: Record<number, number> = {};
+    for (const k of DUKA_KOLOM) {
+      const dummy: KasusDuka = {
+        id: "ref",
+        urutan: nextStage,
+        nama: "",
+        tanggal: "",
+        iuranPerKolom: DEFAULT_TARIF_DUKA,
+      };
+      currentBaseMap[k] = dapatkanTarifDukaKolom(dummy, k, tarifRules);
+    }
+    setRuleTarifMap(currentBaseMap);
+    setRuleBatchNominal("75000");
     setRuleModalOpen(true);
   };
 
@@ -269,8 +284,19 @@ function DanaDukaPage() {
     const isAll = keys.length >= 29;
     setRuleMode(isAll ? "semua" : "terpilih");
     setSelectedKolomList(keys.length > 0 ? keys : [1]);
-    setRuleTarifMap({ ...rule.tarifPerKolom });
-    setRuleBatchNominal("50000");
+
+    const baseMap: Record<number, number> = {};
+    for (const k of DUKA_KOLOM) {
+      baseMap[k] =
+        rule.tarifPerKolom[k] ??
+        dapatkanTarifDukaKolom(
+          { id: "ref", urutan: rule.mulaiTahap, nama: "", tanggal: "", iuranPerKolom: DEFAULT_TARIF_DUKA },
+          k,
+          tarifRules.filter((r) => r.id !== rule.id),
+        );
+    }
+    setRuleTarifMap(baseMap);
+    setRuleBatchNominal("75000");
     setRuleModalOpen(true);
   };
 
@@ -280,7 +306,15 @@ function DanaDukaPage() {
     } else {
       setSelectedKolomList([...selectedKolomList, k].sort((a, b) => a - b));
       if (!ruleTarifMap[k]) {
-        setRuleTarifMap((prev) => ({ ...prev, [k]: Number(ruleBatchNominal) || DEFAULT_TARIF_DUKA }));
+        const dummy: KasusDuka = {
+          id: "ref",
+          urutan: ruleMulaiTahap,
+          nama: "",
+          tanggal: "",
+          iuranPerKolom: DEFAULT_TARIF_DUKA,
+        };
+        const currentVal = dapatkanTarifDukaKolom(dummy, k, tarifRules);
+        setRuleTarifMap((prev) => ({ ...prev, [k]: currentVal || Number(ruleBatchNominal) || DEFAULT_TARIF_DUKA }));
       }
     }
   };
@@ -1119,7 +1153,7 @@ function DanaDukaPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-xs">
-            <div className="grid sm:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-4 gap-3">
               <div className="sm:col-span-2 space-y-1.5">
                 <Label htmlFor="ruleNama" className="font-semibold">
                   Nama Aturan / Dasar Keputusan <span className="text-destructive">*</span>
@@ -1144,6 +1178,21 @@ function DanaDukaPage() {
                   value={ruleMulaiTahap}
                   onChange={(e) => setRuleMulaiTahap(Number(e.target.value))}
                   className="h-9 text-xs font-bold text-primary"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="ruleSampaiTahap" className="font-semibold text-muted-foreground">
+                  Sampai Tahap <span className="text-[10px] font-normal">(opsional)</span>
+                </Label>
+                <Input
+                  id="ruleSampaiTahap"
+                  type="number"
+                  min={ruleMulaiTahap}
+                  placeholder="Seterusnya"
+                  value={ruleSampaiTahap}
+                  onChange={(e) => setRuleSampaiTahap(e.target.value)}
+                  className="h-9 text-xs font-medium"
                 />
               </div>
             </div>
