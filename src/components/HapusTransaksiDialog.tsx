@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function HapusTransaksiDialog({ trx }: { trx: Transaction }) {
+  const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -25,20 +27,50 @@ export function HapusTransaksiDialog({ trx }: { trx: Transaction }) {
       const { error } = await supabase.from("transactions").delete().eq("id", trx.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success(`Transaksi ${trx.voucher_no} dihapus`);
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    // Optimistic Update: Langsung hapus dari cache UI seketika (0 ms delay)
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
+      const previousTrx = queryClient.getQueryData<Transaction[]>(["transactions"]);
+      
+      // Update data di cache seketika
+      queryClient.setQueryData<Transaction[]>(["transactions"], (old) =>
+        old ? old.filter((t) => t.id !== trx.id) : [],
+      );
+
+      // Tutup dialog seketika
+      setOpen(false);
+
+      return { previousTrx };
     },
-    onError: (e: unknown) =>
+    onSuccess: () => {
+      toast.success(`Transaksi ${trx.voucher_no} berhasil dihapus`);
+      // Broadcast realtime sync ke tab lain
+      if (typeof window !== "undefined") {
+        try {
+          const bc = new BroadcastChannel("bumotik_realtime_sync");
+          bc.postMessage({ type: "SYNC_TRANSACTIONS", timestamp: Date.now() });
+          bc.close();
+        } catch {}
+      }
+    },
+    onError: (e: unknown, _, context) => {
+      // Rollback jika terjadi error
+      if (context?.previousTrx) {
+        queryClient.setQueryData(["transactions"], context.previousTrx);
+      }
       toast.error(
         e instanceof Error
           ? `Gagal menghapus: ${e.message}`
-          : "Gagal menghapus transaksi. Hanya Super Administrator yang dapat menghapus.",
-      ),
+          : "Gagal menghapus transaksi. Hanya Super Administrator/Admin Keuangan yang dapat menghapus.",
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
   });
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
           <Trash2 className="size-3.5" />
@@ -54,7 +86,7 @@ export function HapusTransaksiDialog({ trx }: { trx: Transaction }) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={mutation.isPending}>Batal</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={mutation.isPending}
