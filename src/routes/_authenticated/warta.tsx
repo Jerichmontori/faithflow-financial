@@ -131,6 +131,9 @@ function WartaPage() {
   const [layoutCetak, setLayoutCetak] = useState<"setengah" | "ganda" | "penuh">("setengah");
   const [scale, setScale] = useState<number>(62);
 
+  // Mode Kolom Koreksi: Otomatis Sembunyi jika tidak ada / Tampilkan / Sembunyikan
+  const [koreksiMode, setKoreksiMode] = useState<"auto" | "show" | "hide">("auto");
+
   useEffect(() => {
     setSaldoAwalBank(String(settings.saldoAwalBank ?? 0));
     setKetua(settings.namaKetuaBpmj || "Pdt. Handry Mecky Dengah, M.Th");
@@ -252,6 +255,13 @@ function WartaPage() {
     { no: "4.", label: "Saldo Kas Minggu ini", rutin: saldoAkhir, bank: bankAkhir },
   ];
 
+  const koreksiList = useMemo(() => {
+    return rentang.filter((t) => Boolean(t.koreksi_catatan || t.koreksi_dari));
+  }, [rentang]);
+
+  const hasKoreksi = koreksiList.length > 0;
+  const showKoreksi = koreksiMode === "show" || (koreksiMode === "auto" && hasKoreksi);
+
   const ringkasanDuka = useMemo(() => {
     return hitungSemuaTunggakanDuka(all, daftarDuka, duka, tarifRules, tunggakanLaluMap);
   }, [all, daftarDuka, duka, tarifRules, tunggakanLaluMap]);
@@ -264,20 +274,39 @@ function WartaPage() {
       ["WARTA KEUANGAN JEMAAT"],
       [`Periode: ${tglPanjang(dari)} s/d ${tglPanjang(sampai)}`],
       [],
-      ["No", "KETERANGAN / POS ANGGARAN", "PENERIMAAN", "PENGELUARAN", "SALDO KAS"],
-      ["#", `SALDO AWAL KAS FISIK (s/d ${tglPanjang(plusHari(dari, -1))})`, "", "", saldoAwal],
-      ...baris.map((b) =>
-        b.tipe === "grup"
-          ? ["", b.nama, "", "", b.tanggal ? tglPanjang(b.tanggal) : ""]
+      showKoreksi
+        ? ["No", "KETERANGAN / POS ANGGARAN", "KOREKSI", "PENERIMAAN", "PENGELUARAN", "SALDO KAS"]
+        : ["No", "KETERANGAN / POS ANGGARAN", "PENERIMAAN", "PENGELUARAN", "SALDO KAS"],
+      showKoreksi
+        ? ["#", `SALDO AWAL KAS FISIK (s/d ${tglPanjang(plusHari(dari, -1))})`, "", "", "", saldoAwal]
+        : ["#", `SALDO AWAL KAS FISIK (s/d ${tglPanjang(plusHari(dari, -1))})`, "", "", saldoAwal],
+      ...baris.map((b) => {
+        if (b.tipe === "grup") {
+          return showKoreksi
+            ? ["", b.nama, "", "", "", b.tanggal ? tglPanjang(b.tanggal) : ""]
+            : ["", b.nama, "", "", b.tanggal ? tglPanjang(b.tanggal) : ""];
+        }
+        const catatanKoreksi = b.trx.koreksi_catatan || (b.trx.koreksi_dari ? `Koreksi: ${b.trx.koreksi_dari}` : "");
+        return showKoreksi
+          ? [
+              b.trx.voucher_no.replace(/^KM-\d{4}-|^KK-\d{4}-/, ""),
+              `${b.trx.description}${b.trx.budget_lines ? ` (${b.trx.budget_lines.code})` : ""}`,
+              catatanKoreksi,
+              b.trx.kind === "penerimaan" ? Number(b.trx.amount) : "",
+              b.trx.kind === "pengeluaran" ? Number(b.trx.amount) : "",
+              b.saldo,
+            ]
           : [
               b.trx.voucher_no.replace(/^KM-\d{4}-|^KK-\d{4}-/, ""),
               `${b.trx.description}${b.trx.budget_lines ? ` (${b.trx.budget_lines.code})` : ""}`,
               b.trx.kind === "penerimaan" ? Number(b.trx.amount) : "",
               b.trx.kind === "pengeluaran" ? Number(b.trx.amount) : "",
               b.saldo,
-            ],
-      ),
-      ["TOTAL", "", totalMasuk, totalKeluar, saldoAkhir],
+            ];
+      }),
+      showKoreksi
+        ? ["TOTAL", "", "", totalMasuk, totalKeluar, saldoAkhir]
+        : ["TOTAL", "", totalMasuk, totalKeluar, saldoAkhir],
       [],
       ["REKAPITULASI"],
       ["No", "Uraian", "DANA RUTIN", "SIMPANAN BANK", "JUMLAH"],
@@ -316,7 +345,7 @@ function WartaPage() {
       data,
       `Warta-Keuangan-${dari}-sd-${sampai}.xlsx`,
       "warta",
-      [14, 52, 18, 18, 20, 20],
+      showKoreksi ? [14, 45, 20, 18, 18, 20] : [14, 52, 18, 18, 20, 20],
     );
   }
 
@@ -377,50 +406,92 @@ function WartaPage() {
           </div>
         </div>
 
-        {/* Pengaturan Format Cetak: 1/2 Halaman Landscape & Scale 62% */}
+        {/* Pengaturan Format Cetak & Kolom Koreksi */}
         <div className="pt-2 border-t flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-foreground">Format Cetak Landscape:</span>
-            <div className="inline-flex rounded-lg border p-0.5 bg-muted/30">
-              <button
-                type="button"
-                onClick={() => setLayoutCetak("setengah")}
-                className={`px-3 py-1 rounded-md font-semibold transition-all ${
-                  layoutCetak === "setengah"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                1/2 Halaman (Landscape)
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutCetak("ganda")}
-                className={`px-3 py-1 rounded-md font-semibold transition-all ${
-                  layoutCetak === "ganda"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                2 Salinan (Kiri & Kanan)
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutCetak("penuh")}
-                className={`px-3 py-1 rounded-md font-semibold transition-all ${
-                  layoutCetak === "penuh"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                1 Halaman Penuh
-              </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground">Layout Cetak:</span>
+              <div className="inline-flex rounded-lg border p-0.5 bg-muted/30">
+                <button
+                  type="button"
+                  onClick={() => setLayoutCetak("setengah")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    layoutCetak === "setengah"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  1/2 Halaman
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutCetak("ganda")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    layoutCetak === "ganda"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  2 Salinan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutCetak("penuh")}
+                  className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                    layoutCetak === "penuh"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Penuh
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground">Kolom Koreksi:</span>
+              <div className="inline-flex rounded-lg border p-0.5 bg-muted/30">
+                <button
+                  type="button"
+                  onClick={() => setKoreksiMode("auto")}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    koreksiMode === "auto"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Otomatis muncul jika ada transaksi koreksi, sembunyi jika tidak ada"
+                >
+                  Otomatis {hasKoreksi ? `(${koreksiList.length} Koreksi)` : "(Tidak Ada)"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKoreksiMode("show")}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    koreksiMode === "show"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Tampilkan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKoreksiMode("hide")}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    koreksiMode === "hide"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sembunyi
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Label htmlFor="scale" className="font-semibold text-xs text-muted-foreground">
-              Skala Cetak:
+              Skala:
             </Label>
             <Input
               id="scale"
@@ -487,11 +558,12 @@ function WartaPage() {
         <table className="warta-table mt-2 w-full border-collapse text-[11pt]">
           <thead>
             <tr className="bg-muted/40 border-y border-black/70 text-black font-bold text-[11pt]">
-              <th className="w-20 text-left py-1 px-2">Tgl</th>
+              <th className="w-16 sm:w-20 text-left py-1 px-2">Tgl</th>
               <th className="text-left py-1 px-2">Uraian</th>
-              <th className="w-28 sm:w-32 text-right py-1 px-2">Masuk (Rp)</th>
-              <th className="w-28 sm:w-32 text-right py-1 px-2">Keluar (Rp)</th>
-              <th className="w-28 sm:w-36 text-right py-1 px-2">Saldo (Rp)</th>
+              {showKoreksi && <th className="w-28 sm:w-36 text-left py-1 px-2">Koreksi</th>}
+              <th className="w-24 sm:w-28 text-right py-1 px-2">Masuk (Rp)</th>
+              <th className="w-24 sm:w-28 text-right py-1 px-2">Keluar (Rp)</th>
+              <th className="w-24 sm:w-32 text-right py-1 px-2">Saldo (Rp)</th>
             </tr>
           </thead>
           <tbody>
@@ -499,6 +571,7 @@ function WartaPage() {
             <tr className="border-b border-border/80">
               <td className="py-1 px-2" />
               <td className="py-1 px-2 font-bold text-black text-[11pt]">Saldo Awal</td>
+              {showKoreksi && <td className="py-1 px-2" />}
               <td className="py-1 px-2 text-right" />
               <td className="py-1 px-2 text-right" />
               <td className="py-1 px-2 text-right font-mono font-bold text-black text-[11pt]">
@@ -516,6 +589,7 @@ function WartaPage() {
                   <td className="py-1 px-2 font-bold text-black uppercase tracking-tight">
                     {b.nama}
                   </td>
+                  {showKoreksi && <td className="py-1 px-2" />}
                   <td className="py-1 px-2 text-right" />
                   <td className="py-1 px-2 text-right" />
                   <td className="py-1 px-2 text-right" />
@@ -525,12 +599,12 @@ function WartaPage() {
                   <td className="py-0.5 px-2" />
                   <td className="py-0.5 px-2 pl-5 text-[11pt] text-black">
                     {b.trx.description || b.trx.payee || b.trx.voucher_no}
-                    {b.trx.koreksi_catatan && (
-                      <span className="ml-1 text-[9.5pt] italic text-muted-foreground">
-                        [{b.trx.koreksi_catatan}]
-                      </span>
-                    )}
                   </td>
+                  {showKoreksi && (
+                    <td className="py-0.5 px-2 text-[10pt] italic text-destructive font-medium">
+                      {b.trx.koreksi_catatan || (b.trx.koreksi_dari ? `Koreksi: ${b.trx.koreksi_dari}` : "")}
+                    </td>
+                  )}
                   <td className="py-0.5 px-2 text-right text-[11pt] font-mono text-black">
                     {b.trx.kind === "penerimaan" ? angka(b.trx.amount) : ""}
                   </td>
@@ -546,7 +620,7 @@ function WartaPage() {
 
             {baris.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-muted-foreground text-[11pt]">
+                <td colSpan={showKoreksi ? 6 : 5} className="py-6 text-center text-muted-foreground text-[11pt]">
                   {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi pada rentang tanggal ini."}
                 </td>
               </tr>
@@ -556,6 +630,7 @@ function WartaPage() {
             <tr className="bg-muted/30 font-bold border-t-2 border-black/70 text-[11pt]">
               <td className="py-1 px-2" />
               <td className="py-1 px-2 font-bold text-black">TOTAL</td>
+              {showKoreksi && <td className="py-1 px-2" />}
               <td className="py-1 px-2 text-right font-mono font-bold text-black">
                 {angkaSaldo(totalMasuk)}
               </td>
