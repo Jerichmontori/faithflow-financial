@@ -1,7 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Download, FileDown, RotateCcw, AlertCircle, CheckCircle2, Filter } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Download,
+  FileDown,
+  RotateCcw,
+  AlertCircle,
+  CheckCircle2,
+  Filter,
+  Search,
+  Users,
+  Wallet,
+  TrendingUp,
+  Church,
+  Calendar,
+  Layers,
+  Sparkles,
+  ArrowUpDown,
+} from "lucide-react";
 import html2pdf from "html2pdf.js";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
@@ -19,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -83,6 +102,18 @@ const GRUP_LAPORAN = [
   "HASIL PENGGALANGAN DANA PEMBANGUNAN DARI KOLOM",
 ];
 
+const QUICK_KATEGORI = [
+  { id: "semua", label: "Semua Kategori", icon: "🌐" },
+  { id: "1.3.53.01", label: "Ibadah Kolom", icon: "⛪" },
+  { id: "1.3.53.02", label: "PKB", icon: "👨" },
+  { id: "1.3.53.03", label: "WKI", icon: "👩" },
+  { id: "1.3.53.04", label: "Pemuda", icon: "🏃" },
+  { id: "1.3.53.05", label: "Remaja", icon: "🧒" },
+  { id: "1.3.53.06", label: "ASM", icon: "👶" },
+  { id: "1.3.55.01", label: "Dana Duka", icon: "🕊️" },
+  { id: "1.3.57.01", label: "Pembangunan", icon: "🏗️" },
+];
+
 const KATEGORI_MONITORING = [
   { id: "semua", label: "Semua Pos Setoran Kolom" },
   { id: "1.3.53.01", label: "Ibadah Perkunjungan Rutin Kolom" },
@@ -106,6 +137,8 @@ function LaporanPage() {
   const [budgetId, setBudgetId] = useState("semua");
   const [kolomFilter, setKolomFilter] = useState("semua");
   const [bulanFilter, setBulanFilter] = useState("semua");
+  const [quickKategori, setQuickKategori] = useState("semua");
+  const [searchRincian, setSearchRincian] = useState("");
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [openBudget, setOpenBudget] = useState(false);
@@ -145,9 +178,25 @@ function LaporanPage() {
     setBudgetId("semua");
     setKolomFilter("semua");
     setBulanFilter("semua");
+    setQuickKategori("semua");
+    setSearchRincian("");
     setDari("");
     setSampai("");
   }
+
+  const handleSelectQuickKategori = (catId: string) => {
+    setQuickKategori(catId);
+    if (catId === "semua") {
+      setBudgetId("semua");
+    } else {
+      const match = (budgets.data ?? []).find((b) => b.code === catId);
+      if (match) {
+        setBudgetId(match.id);
+      } else {
+        setBudgetId("semua");
+      }
+    }
+  };
 
   async function downloadPdf() {
     setIsGeneratingPdf(true);
@@ -171,7 +220,12 @@ function LaporanPage() {
       parsed.filter((t) => {
         const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
         if (!GRUP_LAPORAN.includes(b?.grup || "")) return false;
+        
+        // Filter Pos Anggaran / Quick Kategori
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
+        if (quickKategori !== "semua" && b?.code !== quickKategori) return false;
+
+        // Filter Kolom
         if (kolomFilter !== "semua") {
           if (kolomFilter === "tanpa") {
             if (t.kolom !== null) return false;
@@ -182,15 +236,30 @@ function LaporanPage() {
             return false;
           }
         }
+
+        // Filter Bulan
         if (bulanFilter !== "semua") {
           if (bulanFilter === "tanpa" ? t.bulan !== null : String(t.bulan) !== bulanFilter)
             return false;
         }
+
+        // Filter Tanggal
         if (dari && t.trx_date < dari) return false;
         if (sampai && t.trx_date > sampai) return false;
+
+        // Filter Search di Rincian
+        if (searchRincian.trim()) {
+          const q = searchRincian.toLowerCase();
+          const matchVoucher = t.voucher_no?.toLowerCase().includes(q);
+          const matchDesc = t.description?.toLowerCase().includes(q);
+          const matchBudget = t.budget_lines?.name?.toLowerCase().includes(q) || t.budget_lines?.code?.toLowerCase().includes(q);
+          const matchKolom = t.kolom ? `kolom ${t.kolom}`.includes(q) : false;
+          if (!matchVoucher && !matchDesc && !matchBudget && !matchKolom) return false;
+        }
+
         return true;
       }),
-    [parsed, budgets.data, budgetId, kolomFilter, bulanFilter, dari, sampai],
+    [parsed, budgets.data, budgetId, quickKategori, kolomFilter, bulanFilter, dari, sampai, searchRincian],
   );
 
   const kolomList = useMemo(() => {
@@ -245,6 +314,31 @@ function LaporanPage() {
 
   const grandTotal = rows.reduce((a, t) => a + Number(t.amount), 0);
 
+  /** Statistik Ringkas untuk Tampilan Klien */
+  const clientStats = useMemo(() => {
+    const totalTrx = rows.length;
+    const activeKolomCount = new Set(rows.filter((r) => r.kolom !== null).map((r) => r.kolom)).size;
+    const avgPerKolom = activeKolomCount > 0 ? grandTotal / activeKolomCount : 0;
+    
+    // Cari kolom tertinggi
+    let topKolom: number | null = null;
+    let topKolomNominal = 0;
+    for (const m of matrix) {
+      if (m.kolom !== null && m.total > topKolomNominal) {
+        topKolomNominal = m.total;
+        topKolom = m.kolom;
+      }
+    }
+
+    return {
+      totalTrx,
+      activeKolomCount,
+      avgPerKolom,
+      topKolom,
+      topKolomNominal,
+    };
+  }, [rows, grandTotal, matrix]);
+
   /** Rekap per mata anggaran × bulan */
   const perAnggaran = useMemo(() => {
     const map = new Map<
@@ -283,14 +377,11 @@ function LaporanPage() {
     const targetKatCode = monitoringKat;
 
     return DAFTAR_29_KOLOM.map((k) => {
-      // Cari transaksi yang cocok untuk kolom k pada bulan targetBulanIdx
       const matches = parsed.filter((t) => {
         if (t.kolom !== k) return false;
-        // Cek bulan dari keterangan atau trx_date
         const trxMonth = t.bulan !== null ? t.bulan : new Date(t.trx_date).getMonth();
         if (trxMonth !== targetBulanIdx) return false;
 
-        // Cek kategori anggaran jika difilter
         if (targetKatCode !== "semua") {
           const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
           if (b?.code !== targetKatCode) return false;
@@ -392,24 +483,25 @@ function LaporanPage() {
   return (
     <AppShell
       title="Laporan Penerimaan per Kolom & BIPRA"
-      subtitle={`${rows.length} transaksi · total ${rupiah(grandTotal)}`}
+      subtitle={`${rows.length} transaksi penerimaan · total ${rupiah(grandTotal)}`}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={resetFilter}>
-            <RotateCcw className="size-4" /> Reset filter
+          <Button variant="ghost" size="sm" onClick={resetFilter} className="h-8 gap-1 text-xs">
+            <RotateCcw className="size-3.5" /> Reset filter
           </Button>
           {!isReadOnly && (
             <>
-              <Button variant="outline" size="sm" onClick={exportCsv}>
-                <Download className="size-4" /> Ekspor CSV
+              <Button variant="outline" size="sm" onClick={exportCsv} className="h-8 gap-1 text-xs">
+                <Download className="size-3.5" /> Ekspor CSV
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={downloadPdf}
                 disabled={isGeneratingPdf}
+                className="h-8 gap-1 text-xs bg-primary/5 hover:bg-primary/10 text-primary border-primary/20"
               >
-                <FileDown className="size-4" />
+                <FileDown className="size-3.5" />
                 {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
               </Button>
             </>
@@ -417,18 +509,176 @@ function LaporanPage() {
         </div>
       }
     >
-      <div className="panel no-print mb-5 grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-6">
+      {/* 4 HIGHLIGHT CARDS RINGKASAN */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
+        <Card className="border-l-4 border-l-primary shadow-xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Total Penerimaan
+              </span>
+              <span className="text-xl font-black text-foreground font-mono">{rupiah(grandTotal)}</span>
+              <span className="text-[11px] text-muted-foreground block mt-0.5">
+                {rows.length} transaksi terfilter
+              </span>
+            </div>
+            <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <Wallet className="size-4.5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-emerald-500 shadow-xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Kolom Terdaftar
+              </span>
+              <span className="text-xl font-black text-emerald-700 font-mono">
+                {clientStats.activeKolomCount} dari 29 Kolom
+              </span>
+              <span className="text-[11px] text-muted-foreground block mt-0.5">
+                Aktif menyetor pada filter ini
+              </span>
+            </div>
+            <div className="size-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <Church className="size-4.5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500 shadow-xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Rata-rata per Kolom
+              </span>
+              <span className="text-xl font-black text-blue-700 font-mono">
+                {rupiah(clientStats.avgPerKolom)}
+              </span>
+              <span className="text-[11px] text-muted-foreground block mt-0.5">
+                Distribusi setoran kolom
+              </span>
+            </div>
+            <div className="size-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+              <TrendingUp className="size-4.5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500 shadow-xs">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Setoran Terbesar
+              </span>
+              <span className="text-xl font-black text-amber-700 font-mono">
+                {clientStats.topKolom ? `Kolom ${clientStats.topKolom}` : "—"}
+              </span>
+              <span className="text-[11px] text-muted-foreground block mt-0.5">
+                {clientStats.topKolomNominal > 0 ? rupiah(clientStats.topKolomNominal) : "Belum ada"}
+              </span>
+            </div>
+            <div className="size-9 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+              <Sparkles className="size-4.5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* QUICK FILTER CHIPS BIPRA & KOMPELKA */}
+      <div className="mb-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Layers className="size-3.5 text-primary" /> Pos Ibadah & Kompelka BIPRA:
+          </span>
+          {quickKategori !== "semua" && (
+            <button
+              onClick={() => handleSelectQuickKategori("semua")}
+              className="text-[11px] text-primary hover:underline font-semibold"
+            >
+              Lihat Semua Pos
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 no-scrollbar">
+          {QUICK_KATEGORI.map((cat) => {
+            const isActive = quickKategori === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => handleSelectQuickKategori(cat.id)}
+                className={cn(
+                  "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground border-border",
+                )}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* QUICK 29-KOLOM SELECTOR PILLS */}
+      <div className="mb-5 space-y-2 bg-card p-3 rounded-lg border shadow-2xs">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Users className="size-3.5 text-primary" /> Pilih Cepat Kolom (1 — 29):
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {kolomFilter === "semua" ? "Menampilkan Semua 29 Kolom" : `Terpilih: Kolom ${kolomFilter}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <Button
+            variant={kolomFilter === "semua" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setKolomFilter("semua")}
+            className="h-7 px-2.5 text-xs font-semibold rounded-md shrink-0"
+          >
+            Semua Kolom
+          </Button>
+          {DAFTAR_29_KOLOM.map((k) => {
+            const isSelected = kolomFilter === String(k);
+            return (
+              <Button
+                key={k}
+                variant={isSelected ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setKolomFilter(String(k));
+                }}
+                className={cn(
+                  "h-7 min-w-8 px-2 text-xs font-semibold rounded-md shrink-0",
+                  isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-primary/10 hover:text-primary",
+                )}
+              >
+                {k}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* FILTER PANEL LANJUTAN */}
+      <div className="panel no-print mb-5 grid gap-3 p-4 bg-muted/20 border md:grid-cols-2 xl:grid-cols-5">
         <div className="space-y-1.5 xl:col-span-2">
-          <Label>Mata Anggaran</Label>
+          <Label className="text-xs font-semibold">Pilih Spesifik Mata Anggaran</Label>
           <Popover open={openBudget} onOpenChange={setOpenBudget}>
             <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+              <Button variant="outline" role="combobox" className="w-full justify-between font-normal text-xs h-9 bg-background">
                 <span className="truncate">
                   {selectedBudget
                     ? `${selectedBudget.code} — ${selectedBudget.name}`
                     : "Semua mata anggaran"}
                 </span>
-                <ChevronsUpDown className="size-4 opacity-50" />
+                <ChevronsUpDown className="size-3.5 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[380px] p-0" align="start">
@@ -441,6 +691,7 @@ function LaporanPage() {
                       value="semua"
                       onSelect={() => {
                         setBudgetId("semua");
+                        setQuickKategori("semua");
                         setOpenBudget(false);
                       }}
                     >
@@ -472,38 +723,9 @@ function LaporanPage() {
         </div>
 
         <div className="space-y-1.5">
-          <Label>Kolom</Label>
-          <Select
-            value={kolomFilter}
-            onValueChange={(v) => {
-              setKolomFilter(v);
-              if (v !== "semua") setTab("rincian");
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              <SelectItem value="semua">Semua kolom</SelectItem>
-              <SelectItem value="tanpa">Tanpa kolom</SelectItem>
-              {kolomList.map((k) => (
-                <SelectItem key={k} value={String(k)}>
-                  Kolom {k}
-                </SelectItem>
-              ))}
-              {namaList.map((n) => (
-                <SelectItem key={`nama:${n}`} value={`nama:${n}`}>
-                  {n}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Bulan (dari keterangan)</Label>
+          <Label className="text-xs font-semibold">Bulan (Keterangan)</Label>
           <Select value={bulanFilter} onValueChange={setBulanFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="h-9 text-xs bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-72">
@@ -518,14 +740,14 @@ function LaporanPage() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 xl:col-span-2">
           <div className="space-y-1.5">
-            <Label>Dari</Label>
-            <Input type="date" value={dari} onChange={(e) => setDari(e.target.value)} />
+            <Label className="text-xs font-semibold">Dari Tanggal</Label>
+            <Input type="date" value={dari} onChange={(e) => setDari(e.target.value)} className="h-9 text-xs bg-background" />
           </div>
           <div className="space-y-1.5">
-            <Label>Sampai</Label>
-            <Input type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} />
+            <Label className="text-xs font-semibold">Sampai Tanggal</Label>
+            <Input type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="h-9 text-xs bg-background" />
           </div>
         </div>
       </div>
@@ -533,424 +755,455 @@ function LaporanPage() {
       <div ref={pdfRef}>
         <div className={cn("mb-4 border-b border-black pb-3", isGeneratingPdf ? "block" : "hidden")}>
           <h2 className="text-lg font-bold">Laporan Penerimaan per Kolom & BIPRA</h2>
-          <p className="text-sm">BUMOTIK FINANCIAL</p>
+          <p className="text-sm font-semibold">BUMOTIK FINANCIAL</p>
           <p className="text-sm">
             {rows.length} transaksi · total {rupiah(grandTotal)}
             {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
           </p>
         </div>
+
         <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="no-print mb-4">
-          <TabsTrigger value="matriks">Matriks Kolom × Bulan</TabsTrigger>
-          <TabsTrigger value="monitoring" className="font-semibold text-primary">
-            🔍 Monitoring Setoran (Belum Setor)
-          </TabsTrigger>
-          <TabsTrigger value="anggaran">Mata Anggaran × Bulan</TabsTrigger>
-          <TabsTrigger value="rincian">Rincian Transaksi ({rows.length})</TabsTrigger>
-        </TabsList>
+          <TabsList className="no-print mb-4 grid grid-cols-2 sm:grid-cols-4 h-auto p-1 gap-1">
+            <TabsTrigger value="matriks" className="text-xs py-2">
+              📊 Matriks Kolom × Bulan
+            </TabsTrigger>
+            <TabsTrigger value="monitoring" className="text-xs py-2 font-semibold text-primary">
+              🔍 Monitoring Setoran Kolom
+            </TabsTrigger>
+            <TabsTrigger value="anggaran" className="text-xs py-2">
+              📂 Rekap Pos BIPRA
+            </TabsTrigger>
+            <TabsTrigger value="rincian" className="text-xs py-2">
+              📋 Rincian Transaksi ({rows.length})
+            </TabsTrigger>
+          </TabsList>
 
-        {/* TAB 1: MATRIKS KOLOM X BULAN */}
-        <TabsContent value="matriks">
-          <div className="panel overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="sticky left-0 bg-card">Kolom</TableHead>
-                  {activeMonths.map((m) => (
-                    <TableHead key={String(m)} className="text-right whitespace-nowrap">
-                      {labelBulan(m)}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-right font-bold">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {matrix.map((r) => (
-                  <TableRow
-                    key={String(r.kolom)}
-                    className="cursor-pointer hover:bg-muted/20"
-                    onClick={() => {
-                      setKolomFilter(r.kolom === null ? "tanpa" : String(r.kolom));
-                      setTab("rincian");
-                    }}
-                  >
-                    <TableCell className="sticky left-0 bg-card font-semibold">
-                      {labelKolom(r.kolom)}
-                    </TableCell>
-                    {activeMonths.map((m) => {
-                      const v = r.cells.get(m === null ? "tanpa" : String(m)) ?? 0;
-                      return (
-                        <TableCell
-                          key={String(m)}
-                          className={cn(
-                            "text-right text-sm whitespace-nowrap font-mono",
-                            v === 0 && "text-muted-foreground/40",
-                          )}
-                        >
-                          {v === 0 ? "—" : rupiah(v)}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success">
-                      {rupiah(r.total)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {matrix.length > 0 && (
-                  <TableRow className="bg-muted/40">
-                    <TableCell className="sticky left-0 bg-muted/40 font-bold">Total</TableCell>
-                    {activeMonths.map((m) => (
-                      <TableCell
-                        key={String(m)}
-                        className="text-right font-bold font-mono whitespace-nowrap text-primary"
-                      >
-                        {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success text-base">
-                      {rupiah(grandTotal)}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {matrix.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
-                      {trx.isLoading ? "Memuat data…" : "Tidak ada data untuk filter ini."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-
-        {/* TAB 2: MONITORING SETORAN & KOLOM YANG BELUM MENYETOR */}
-        <TabsContent value="monitoring">
-          <div className="space-y-4">
-            {/* Filter Bar Monitoring */}
-            <div className="panel p-4 bg-muted/20 border">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-1.5">
-                  <Label>Bulan Yang Dimonitor</Label>
-                  <Select value={monitoringBulan} onValueChange={setMonitoringBulan}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {BULAN_PANJANG.map((b, i) => (
-                        <SelectItem key={b} value={String(i)}>
-                          {b}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>Pos Setoran / Kompelka</Label>
-                  <Select value={monitoringKat} onValueChange={setMonitoringKat}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {KATEGORI_MONITORING.map((k) => (
-                        <SelectItem key={k.id} value={k.id}>
-                          {k.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>Status Kolom</Label>
-                  <Select
-                    value={monitoringStatusFilter}
-                    onValueChange={(v: any) => setMonitoringStatusFilter(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="semua">Semua Status (29 Kolom)</SelectItem>
-                      <SelectItem value="belum">🔴 Hanya Yang Belum Setor ({totalBelumSetor})</SelectItem>
-                      <SelectItem value="sudah">🟢 Hanya Yang Sudah Setor ({totalSudahSetor})</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {!isReadOnly && (
-                  <div className="flex items-end">
-                    <Button variant="outline" onClick={exportMonitoringExcel} className="w-full gap-1.5">
-                      <Download className="size-4" /> Ekspor Status Excel
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Stat Card Ringkasan Monitoring */}
-              <div className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
-                <div className="panel p-3 bg-background border">
-                  <span className="text-xs text-muted-foreground block">Total Kolom Terdaftar</span>
-                  <span className="text-xl font-bold font-mono">29 Kolom</span>
-                </div>
-                <div className="panel p-3 bg-success/10 border border-success/20">
-                  <span className="text-xs text-success font-semibold flex items-center gap-1">
-                    <CheckCircle2 className="size-3.5" /> Sudah Menyetor
-                  </span>
-                  <span className="text-xl font-bold font-mono text-success">
-                    {totalSudahSetor} Kolom ({((totalSudahSetor / 29) * 100).toFixed(0)}%)
-                  </span>
-                </div>
-                <div className="panel p-3 bg-destructive/10 border border-destructive/20">
-                  <span className="text-xs text-destructive font-semibold flex items-center gap-1">
-                    <AlertCircle className="size-3.5" /> Belum Menyetor
-                  </span>
-                  <span className="text-xl font-bold font-mono text-destructive">
-                    {totalBelumSetor} Kolom
-                  </span>
-                </div>
-                <div className="panel p-3 bg-primary/10 border border-primary/20">
-                  <span className="text-xs text-primary font-semibold block">Total Setoran Terkumpul</span>
-                  <span className="text-xl font-bold font-mono text-primary">
-                    {rupiah(totalNominalMonitoring)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Tabel Daftar Status Kolom */}
-            <div className="panel overflow-hidden">
+          {/* TAB 1: MATRIKS KOLOM X BULAN */}
+          <TabsContent value="matriks">
+            <div className="panel overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
-                    <TableHead className="w-28 font-bold">Kolom</TableHead>
-                    <TableHead className="w-44 font-bold">Status Setoran</TableHead>
-                    <TableHead className="w-40 text-right font-bold">Total Setoran</TableHead>
-                    <TableHead className="w-32 font-bold">Tgl Transaksi</TableHead>
-                    <TableHead className="w-36 font-bold">No. Bukti</TableHead>
-                    <TableHead className="font-bold">Keterangan Transaksi</TableHead>
-                    <TableHead className="w-24 text-right font-bold">Aksi</TableHead>
+                    <TableHead className="sticky left-0 bg-card font-bold w-32">Kolom</TableHead>
+                    {activeMonths.map((m) => (
+                      <TableHead key={String(m)} className="text-right whitespace-nowrap font-bold">
+                        {labelBulan(m)}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-right font-black text-primary">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {monitoringFiltered.map((d) => (
+                  {matrix.map((r) => (
                     <TableRow
-                      key={d.kolom}
-                      className={cn("hover:bg-muted/20", !d.sudahSetor && "bg-destructive/5")}
+                      key={String(r.kolom)}
+                      className="cursor-pointer hover:bg-muted/20"
+                      onClick={() => {
+                        setKolomFilter(r.kolom === null ? "tanpa" : String(r.kolom));
+                        setTab("rincian");
+                      }}
                     >
-                      <TableCell className="font-bold">Kolom {d.kolom}</TableCell>
-                      <TableCell>
-                        {d.sudahSetor ? (
-                          <Badge variant="default" className="bg-success text-white hover:bg-success/90 gap-1 text-[11px]">
-                            <CheckCircle2 className="size-3" /> Sudah Setor ({d.transaksiCount}x)
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive" className="gap-1 text-[11px]">
-                            <AlertCircle className="size-3" /> BELUM SETOR
-                          </Badge>
-                        )}
+                      <TableCell className="sticky left-0 bg-card font-semibold text-xs whitespace-nowrap">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {labelKolom(r.kolom)}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-sm">
-                        {d.sudahSetor ? (
-                          <span className="text-success">{rupiah(d.totalSetoran)}</span>
-                        ) : (
-                          <span className="text-muted-foreground font-normal">Rp 0</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {d.transaksiTerakhir ? tanggal(d.transaksiTerakhir.trx_date) : "—"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-primary font-semibold">
-                        {d.transaksiTerakhir?.voucher_no ?? "—"}
-                      </TableCell>
-                      <TableCell className="max-w-72 truncate text-xs text-muted-foreground">
-                        {d.transaksiTerakhir?.description ?? "Belum ada transaksi setoran pada bulan ini."}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {d.sudahSetor ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              setKolomFilter(String(d.kolom));
-                              setBulanFilter(monitoringBulan);
-                              setTab("rincian");
-                            }}
+                      {activeMonths.map((m) => {
+                        const v = r.cells.get(m === null ? "tanpa" : String(m)) ?? 0;
+                        return (
+                          <TableCell
+                            key={String(m)}
+                            className={cn(
+                              "text-right text-xs whitespace-nowrap font-mono",
+                              v === 0 ? "text-muted-foreground/30" : "font-medium text-foreground",
+                            )}
                           >
-                            Rincian
-                          </Button>
-                        ) : (
-                          <span className="text-[11px] text-destructive font-medium italic">Tunggakan</span>
-                        )}
+                            {v === 0 ? "—" : rupiah(v)}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right font-bold font-mono whitespace-nowrap text-emerald-700">
+                        {rupiah(r.total)}
                       </TableCell>
                     </TableRow>
                   ))}
+                  {matrix.length > 0 && (
+                    <TableRow className="bg-muted/50 font-bold border-t-2">
+                      <TableCell className="sticky left-0 bg-muted font-bold text-xs uppercase tracking-wider">
+                        TOTAL SEMUA
+                      </TableCell>
+                      {activeMonths.map((m) => (
+                        <TableCell
+                          key={String(m)}
+                          className="text-right font-bold font-mono whitespace-nowrap text-primary"
+                        >
+                          {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-right font-black font-mono whitespace-nowrap text-emerald-700 text-sm">
+                        {rupiah(grandTotal)}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {matrix.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={activeMonths.length + 2} className="py-12 text-center text-muted-foreground">
+                        {trx.isLoading ? "Memuat data penerimaan…" : "Tidak ada data penerimaan untuk filter ini."}
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* TAB 3: MATA ANGGARAN X BULAN */}
-        <TabsContent value="anggaran">
-          <div className="panel overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="sticky left-0 bg-card">Mata Anggaran</TableHead>
-                  {activeMonths.map((m) => (
-                    <TableHead key={String(m)} className="text-right whitespace-nowrap">
-                      {labelBulan(m)}
-                    </TableHead>
+          {/* TAB 2: MONITORING SETORAN & KOLOM YANG BELUM MENYETOR */}
+          <TabsContent value="monitoring">
+            <div className="space-y-4">
+              {/* Filter Bar Monitoring */}
+              <div className="panel p-4 bg-muted/20 border">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Bulan Yang Dimonitor</Label>
+                    <Select value={monitoringBulan} onValueChange={setMonitoringBulan}>
+                      <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {BULAN_PANJANG.map((b, i) => (
+                          <SelectItem key={b} value={String(i)}>
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Pos Setoran / Kompelka</Label>
+                    <Select value={monitoringKat} onValueChange={setMonitoringKat}>
+                      <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {KATEGORI_MONITORING.map((k) => (
+                          <SelectItem key={k.id} value={k.id}>
+                            {k.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Status Setoran</Label>
+                    <Select
+                      value={monitoringStatusFilter}
+                      onValueChange={(v: any) => setMonitoringStatusFilter(v)}
+                    >
+                      <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="semua">Semua Status (29 Kolom)</SelectItem>
+                        <SelectItem value="belum">🔴 Hanya Yang Belum Setor ({totalBelumSetor})</SelectItem>
+                        <SelectItem value="sudah">🟢 Hanya Yang Sudah Setor ({totalSudahSetor})</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {!isReadOnly && (
+                    <div className="flex items-end">
+                      <Button variant="outline" onClick={exportMonitoringExcel} className="w-full gap-1.5 h-9 text-xs font-semibold bg-background">
+                        <Download className="size-3.5" /> Ekspor Status Excel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stat Card Ringkasan Monitoring */}
+                <div className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-4">
+                  <div className="panel p-3 bg-background border">
+                    <span className="text-[11px] text-muted-foreground block font-medium">Total Kolom</span>
+                    <span className="text-lg font-bold font-mono">29 Kolom</span>
+                  </div>
+                  <div className="panel p-3 bg-emerald-50/70 border border-emerald-200">
+                    <span className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5" /> Sudah Menyetor
+                    </span>
+                    <span className="text-lg font-bold font-mono text-emerald-700">
+                      {totalSudahSetor} Kolom ({((totalSudahSetor / 29) * 100).toFixed(0)}%)
+                    </span>
+                  </div>
+                  <div className="panel p-3 bg-rose-50/70 border border-rose-200">
+                    <span className="text-[11px] text-rose-800 font-semibold flex items-center gap-1">
+                      <AlertCircle className="size-3.5" /> Belum Menyetor
+                    </span>
+                    <span className="text-lg font-bold font-mono text-rose-700">
+                      {totalBelumSetor} Kolom
+                    </span>
+                  </div>
+                  <div className="panel p-3 bg-primary/10 border border-primary/20">
+                    <span className="text-[11px] text-primary font-semibold block">Total Setoran Terkumpul</span>
+                    <span className="text-lg font-bold font-mono text-primary">
+                      {rupiah(totalNominalMonitoring)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabel Daftar Status Kolom */}
+              <div className="panel overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="w-24 font-bold">Kolom</TableHead>
+                      <TableHead className="w-40 font-bold">Status Setoran</TableHead>
+                      <TableHead className="w-36 text-right font-bold">Total Setoran</TableHead>
+                      <TableHead className="w-32 font-bold">Tgl Transaksi</TableHead>
+                      <TableHead className="w-36 font-bold">No. Bukti</TableHead>
+                      <TableHead className="font-bold">Keterangan Transaksi</TableHead>
+                      <TableHead className="w-20 text-right font-bold">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monitoringFiltered.map((d) => (
+                      <TableRow
+                        key={d.kolom}
+                        className={cn("hover:bg-muted/20", !d.sudahSetor && "bg-rose-50/30")}
+                      >
+                        <TableCell className="font-bold font-mono">Kolom {d.kolom}</TableCell>
+                        <TableCell>
+                          {d.sudahSetor ? (
+                            <Badge variant="default" className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1 text-[11px]">
+                              <CheckCircle2 className="size-3" /> Sudah Setor ({d.transaksiCount}x)
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="gap-1 text-[11px]">
+                              <AlertCircle className="size-3" /> BELUM SETOR
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-xs">
+                          {d.sudahSetor ? (
+                            <span className="text-emerald-700">{rupiah(d.totalSetoran)}</span>
+                          ) : (
+                            <span className="text-muted-foreground font-normal">Rp 0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {d.transaksiTerakhir ? tanggal(d.transaksiTerakhir.trx_date) : "—"}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-primary font-semibold">
+                          {d.transaksiTerakhir?.voucher_no ?? "—"}
+                        </TableCell>
+                        <TableCell className="max-w-72 truncate text-xs text-muted-foreground">
+                          {d.transaksiTerakhir?.description ?? "Belum ada transaksi setoran pada bulan ini."}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {d.sudahSetor ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs font-semibold text-primary"
+                              onClick={() => {
+                                setKolomFilter(String(d.kolom));
+                                setBulanFilter(monitoringBulan);
+                                setTab("rincian");
+                              }}
+                            >
+                              Rincian
+                            </Button>
+                          ) : (
+                            <span className="text-[11px] text-rose-600 font-medium italic">Tunggakan</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 3: MATA ANGGARAN X BULAN */}
+          <TabsContent value="anggaran">
+            <div className="panel overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="sticky left-0 bg-card font-bold min-w-64">Mata Anggaran</TableHead>
+                    {activeMonths.map((m) => (
+                      <TableHead key={String(m)} className="text-right whitespace-nowrap font-bold">
+                        {labelBulan(m)}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-right font-black text-primary">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {perAnggaran.map((r) => (
+                    <TableRow
+                      key={r.label}
+                      className="cursor-pointer hover:bg-muted/20"
+                      onClick={() => {
+                        if (r.id) setBudgetId(r.id);
+                        setTab("rincian");
+                      }}
+                    >
+                      <TableCell className="sticky left-0 bg-card min-w-64 text-xs font-medium">
+                        {r.label}
+                      </TableCell>
+                      {activeMonths.map((m) => {
+                        const v = r.cells.get(m === null ? "tanpa" : String(m)) ?? 0;
+                        return (
+                          <TableCell
+                            key={String(m)}
+                            className={cn(
+                              "text-right text-xs whitespace-nowrap font-mono",
+                              v === 0 ? "text-muted-foreground/30" : "font-medium text-foreground",
+                            )}
+                          >
+                            {v === 0 ? "—" : rupiah(v)}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right font-bold font-mono whitespace-nowrap text-emerald-700">
+                        {rupiah(r.total)}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                  <TableHead className="text-right font-bold">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {perAnggaran.map((r) => (
-                  <TableRow
-                    key={r.label}
-                    className="cursor-pointer hover:bg-muted/20"
-                    onClick={() => {
-                      if (r.id) setBudgetId(r.id);
-                      setTab("rincian");
-                    }}
-                  >
-                    <TableCell className="sticky left-0 bg-card min-w-72 text-sm font-medium">
-                      {r.label}
-                    </TableCell>
-                    {activeMonths.map((m) => {
-                      const v = r.cells.get(m === null ? "tanpa" : String(m)) ?? 0;
-                      return (
+                  {perAnggaran.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={activeMonths.length + 2} className="py-12 text-center text-muted-foreground">
+                        {trx.isLoading ? "Memuat data…" : "Tidak ada data untuk filter ini."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {perAnggaran.length > 0 && (
+                    <TableRow className="bg-muted/50 font-bold border-t-2">
+                      <TableCell className="sticky left-0 bg-muted font-bold text-xs uppercase tracking-wider">
+                        TOTAL SEMUA
+                      </TableCell>
+                      {activeMonths.map((m) => (
                         <TableCell
                           key={String(m)}
-                          className={cn(
-                            "text-right text-sm whitespace-nowrap font-mono",
-                            v === 0 && "text-muted-foreground/40",
-                          )}
+                          className="text-right font-bold font-mono whitespace-nowrap text-primary"
                         >
-                          {v === 0 ? "—" : rupiah(v)}
+                          {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
                         </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success">
-                      {rupiah(r.total)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {perAnggaran.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
-                      {trx.isLoading ? "Memuat data…" : "Tidak ada data untuk filter ini."}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {perAnggaran.length > 0 && (
-                  <TableRow className="bg-muted/40">
-                    <TableCell className="sticky left-0 bg-muted/40 font-bold">Total</TableCell>
-                    {activeMonths.map((m) => (
-                      <TableCell
-                        key={String(m)}
-                        className="text-right font-bold font-mono whitespace-nowrap text-primary"
-                      >
-                        {rupiah(columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0)}
+                      ))}
+                      <TableCell className="text-right font-black font-mono whitespace-nowrap text-emerald-700 text-sm">
+                        {rupiah(grandTotal)}
                       </TableCell>
-                    ))}
-                    <TableCell className="text-right font-bold font-mono whitespace-nowrap text-success text-base">
-                      {rupiah(grandTotal)}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
 
-        {/* TAB 4: RINCIAN TRANSAKSI */}
-        <TabsContent value="rincian">
-          <div className="panel overflow-x-auto">
-            {budgetId !== "semua" && (
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Mata anggaran terpilih:</span>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {selectedBudget?.code ?? "-"}
-                </Badge>
-                <span className="text-sm font-medium">{selectedBudget?.name}</span>
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setBudgetId("semua")}>
-                  <RotateCcw className="mr-1 size-3" /> Reset
-                </Button>
+          {/* TAB 4: RINCIAN TRANSAKSI DENGAN LIVE SEARCH */}
+          <TabsContent value="rincian">
+            <div className="panel space-y-3 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Cari voucher, kolom, keterangan…"
+                      value={searchRincian}
+                      onChange={(e) => setSearchRincian(e.target.value)}
+                      className="pl-8 h-8 text-xs bg-background"
+                    />
+                  </div>
+                  {searchRincian && (
+                    <Button variant="ghost" size="sm" onClick={() => setSearchRincian("")} className="h-8 px-2 text-xs">
+                      Reset cari
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Ditemukan <strong>{rows.length}</strong> transaksi</span>
+                  {budgetId !== "semua" && (
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {selectedBudget?.code}
+                    </Badge>
+                  )}
+                </div>
               </div>
-            )}
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="font-bold">Tanggal</TableHead>
-                  <TableHead className="font-bold">No. Bukti</TableHead>
-                  <TableHead className="font-bold">Kolom</TableHead>
-                  <TableHead className="font-bold">Bulan</TableHead>
-                  <TableHead className="font-bold">Mata Anggaran</TableHead>
-                  <TableHead className="font-bold">Keterangan</TableHead>
-                  <TableHead className="text-right font-bold">Nominal</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.slice(0, 500).map((t) => (
-                  <TableRow key={t.id} className="hover:bg-muted/10">
-                    <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
-                    <TableCell className="font-mono text-xs font-semibold text-primary">{t.voucher_no}</TableCell>
-                    <TableCell>
-                      <Badge variant={t.kolom === null ? "outline" : "secondary"} className="font-mono text-xs">
-                        {labelKolom(t.kolom)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{labelBulan(t.bulan)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {t.budget_line_id ? (
-                        <button
-                          className="text-left hover:text-foreground hover:underline"
-                          onClick={() => setBudgetId(t.budget_line_id)}
-                        >
-                          {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
-                        </button>
-                      ) : (
-                        t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-72 truncate text-sm">{t.description}</TableCell>
-                    <TableCell className="text-right font-mono font-medium text-success whitespace-nowrap">
-                      {rupiah(t.amount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {rows.length > 0 && (
-                  <TableRow className="bg-muted/40 font-bold">
-                    <TableCell colSpan={6} className="text-right font-bold">
-                      Total
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold whitespace-nowrap text-success text-base">
-                      {rupiah(grandTotal)}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                      {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi untuk filter ini."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            {rows.length > 500 && (
-              <p className="px-4 py-3 text-xs text-muted-foreground">
-                Menampilkan 500 dari {rows.length} transaksi — persempit filter untuk melihat sisanya.
-              </p>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+
+              <div className="overflow-x-auto border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="font-bold w-28">Tanggal</TableHead>
+                      <TableHead className="font-bold w-32">No. Bukti</TableHead>
+                      <TableHead className="font-bold w-24">Kolom</TableHead>
+                      <TableHead className="font-bold w-24">Bulan</TableHead>
+                      <TableHead className="font-bold w-60">Mata Anggaran</TableHead>
+                      <TableHead className="font-bold">Keterangan Transaksi</TableHead>
+                      <TableHead className="text-right font-bold w-32">Nominal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.slice(0, 500).map((t) => (
+                      <TableRow key={t.id} className="hover:bg-muted/10 text-xs">
+                        <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
+                        <TableCell className="font-mono font-semibold text-primary">{t.voucher_no}</TableCell>
+                        <TableCell>
+                          <Badge variant={t.kolom === null ? "outline" : "secondary"} className="font-mono text-[11px]">
+                            {labelKolom(t.kolom)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{labelBulan(t.bulan)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {t.budget_line_id ? (
+                            <button
+                              className="text-left hover:text-foreground hover:underline font-medium"
+                              onClick={() => setBudgetId(t.budget_line_id)}
+                            >
+                              {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
+                            </button>
+                          ) : (
+                            t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-muted-foreground">{t.description}</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                          {rupiah(t.amount)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {rows.length > 0 && (
+                      <TableRow className="bg-muted/50 font-bold border-t-2">
+                        <TableCell colSpan={6} className="text-right font-bold uppercase tracking-wider text-xs">
+                          TOTAL TERFILTER ({rows.length} Transaksi)
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-black text-emerald-700 text-sm whitespace-nowrap">
+                          {rupiah(grandTotal)}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {rows.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                          {trx.isLoading ? "Memuat data…" : "Tidak ada transaksi yang cocok dengan filter atau pencarian."}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              {rows.length > 500 && (
+                <p className="py-2 text-[11px] text-muted-foreground text-center">
+                  Menampilkan 500 dari {rows.length} transaksi. Gunakan filter atau kotak pencarian untuk mempersempit data.
+                </p>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
