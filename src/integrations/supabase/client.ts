@@ -4,6 +4,14 @@ export { insforge };
 
 export const supabase = {
   from(table: string) {
+    if (typeof window !== "undefined") {
+      try {
+        const storedToken = localStorage.getItem("insforge_auth_token");
+        if (storedToken) {
+          insforge.setAccessToken(storedToken);
+        }
+      } catch {}
+    }
     const postgrest = insforge.database.from(table);
     return new Proxy(postgrest, {
       get(target, prop, receiver) {
@@ -20,6 +28,14 @@ export const supabase = {
   },
 
   rpc(fnName: string, args?: Record<string, any>) {
+    if (typeof window !== "undefined") {
+      try {
+        const storedToken = localStorage.getItem("insforge_auth_token");
+        if (storedToken) {
+          insforge.setAccessToken(storedToken);
+        }
+      } catch {}
+    }
     return insforge.database.rpc(fnName, args);
   },
 

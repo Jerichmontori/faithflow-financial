@@ -20,7 +20,15 @@ export type AppRole =
   | "viewer";
 
 export function useSession() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("insforge_auth_user");
+        return raw ? JSON.parse(raw) : null;
+      } catch {}
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
