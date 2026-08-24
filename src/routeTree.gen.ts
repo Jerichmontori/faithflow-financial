@@ -21,6 +21,7 @@ import { Route as AuthenticatedLaporanRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedLaporanBankRouteImport } from './routes/_authenticated/laporan-bank'
 import { Route as AuthenticatedLaporanHarianRouteImport } from './routes/_authenticated/laporan-harian'
 import { Route as AuthenticatedPenerimaanRouteImport } from './routes/_authenticated/penerimaan'
+import { Route as AuthenticatedPengaturanRouteImport } from './routes/_authenticated/pengaturan'
 import { Route as AuthenticatedPengeluaranRouteImport } from './routes/_authenticated/pengeluaran'
 import { Route as AuthenticatedPenggunaRouteImport } from './routes/_authenticated/pengguna'
 import { Route as AuthenticatedRekapitulasiRouteImport } from './routes/_authenticated/rekapitulasi'
@@ -90,6 +91,11 @@ const AuthenticatedPenerimaanRoute = AuthenticatedPenerimaanRouteImport.update({
   path: '/penerimaan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPengaturanRoute = AuthenticatedPengaturanRouteImport.update({
+  id: '/pengaturan',
+  path: '/pengaturan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPengeluaranRoute =
   AuthenticatedPengeluaranRouteImport.update({
     id: '/pengeluaran',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/laporan-bank': typeof AuthenticatedLaporanBankRoute
   '/laporan-harian': typeof AuthenticatedLaporanHarianRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
+  '/pengaturan': typeof AuthenticatedPengaturanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/pengguna': typeof AuthenticatedPenggunaRoute
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/laporan-bank': typeof AuthenticatedLaporanBankRoute
   '/laporan-harian': typeof AuthenticatedLaporanHarianRoute
   '/penerimaan': typeof AuthenticatedPenerimaanRoute
+  '/pengaturan': typeof AuthenticatedPengaturanRoute
   '/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/pengguna': typeof AuthenticatedPenggunaRoute
   '/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_authenticated/laporan-bank': typeof AuthenticatedLaporanBankRoute
   '/_authenticated/laporan-harian': typeof AuthenticatedLaporanHarianRoute
   '/_authenticated/penerimaan': typeof AuthenticatedPenerimaanRoute
+  '/_authenticated/pengaturan': typeof AuthenticatedPengaturanRoute
   '/_authenticated/pengeluaran': typeof AuthenticatedPengeluaranRoute
   '/_authenticated/pengguna': typeof AuthenticatedPenggunaRoute
   '/_authenticated/rekapitulasi': typeof AuthenticatedRekapitulasiRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/laporan-bank'
     | '/laporan-harian'
     | '/penerimaan'
+    | '/pengaturan'
     | '/pengeluaran'
     | '/pengguna'
     | '/rekapitulasi'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/laporan-bank'
     | '/laporan-harian'
     | '/penerimaan'
+    | '/pengaturan'
     | '/pengeluaran'
     | '/pengguna'
     | '/rekapitulasi'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/_authenticated/laporan-bank'
     | '/_authenticated/laporan-harian'
     | '/_authenticated/penerimaan'
+    | '/_authenticated/pengaturan'
     | '/_authenticated/pengeluaran'
     | '/_authenticated/pengguna'
     | '/_authenticated/rekapitulasi'
@@ -336,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPenerimaanRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pengaturan': {
+      id: '/_authenticated/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/pengaturan'
+      preLoaderRoute: typeof AuthenticatedPengaturanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pengeluaran': {
       id: '/_authenticated/pengeluaran'
       path: '/pengeluaran'
@@ -391,6 +410,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLaporanBankRoute: typeof AuthenticatedLaporanBankRoute
   AuthenticatedLaporanHarianRoute: typeof AuthenticatedLaporanHarianRoute
   AuthenticatedPenerimaanRoute: typeof AuthenticatedPenerimaanRoute
+  AuthenticatedPengaturanRoute: typeof AuthenticatedPengaturanRoute
   AuthenticatedPengeluaranRoute: typeof AuthenticatedPengeluaranRoute
   AuthenticatedPenggunaRoute: typeof AuthenticatedPenggunaRoute
   AuthenticatedRekapitulasiRoute: typeof AuthenticatedRekapitulasiRoute
@@ -409,6 +429,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLaporanBankRoute: AuthenticatedLaporanBankRoute,
   AuthenticatedLaporanHarianRoute: AuthenticatedLaporanHarianRoute,
   AuthenticatedPenerimaanRoute: AuthenticatedPenerimaanRoute,
+  AuthenticatedPengaturanRoute: AuthenticatedPengaturanRoute,
   AuthenticatedPengeluaranRoute: AuthenticatedPengeluaranRoute,
   AuthenticatedPenggunaRoute: AuthenticatedPenggunaRoute,
   AuthenticatedRekapitulasiRoute: AuthenticatedRekapitulasiRoute,
