@@ -99,7 +99,6 @@ function DanaDukaPage() {
   const [formNama, setFormNama] = useState("");
   const [formTanggal, setFormTanggal] = useState("");
   const [formKolom, setFormKolom] = useState<string>("");
-  const [formTarif, setFormTarif] = useState<string>(String(DEFAULT_TARIF_DUKA));
   const [formKeterangan, setFormKeterangan] = useState("");
 
   // State Modal Aturan Tarif Dinamis
@@ -167,7 +166,6 @@ function DanaDukaPage() {
     setFormNama("");
     setFormTanggal(new Date().toISOString().slice(0, 10));
     setFormKolom("");
-    setFormTarif(String(DEFAULT_TARIF_DUKA));
     setFormKeterangan("");
     setDialogOpen(true);
   };
@@ -178,7 +176,6 @@ function DanaDukaPage() {
     setFormNama(item.nama);
     setFormTanggal(item.tanggal);
     setFormKolom(item.kolomKeluarga ? String(item.kolomKeluarga) : "");
-    setFormTarif(String(item.iuranPerKolom || DEFAULT_TARIF_DUKA));
     setFormKeterangan(item.keterangan || "");
     setDialogOpen(true);
   };
@@ -189,8 +186,8 @@ function DanaDukaPage() {
       return;
     }
 
-    const tarif = Number(formTarif.replace(/[^\d]/g, "")) || DEFAULT_TARIF_DUKA;
     const kolomKel = formKolom ? Number(formKolom) : null;
+    const tarif = editingDuka?.iuranPerKolom || DEFAULT_TARIF_DUKA;
 
     let updated: KasusDuka[];
     if (editingDuka) {
@@ -929,7 +926,7 @@ function DanaDukaPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="formKolom" className="font-semibold">
-                  Asal Kolom Keluarga
+                  Asal Kolom Keluarga (Opsional)
                 </Label>
                 <Input
                   id="formKolom"
@@ -944,31 +941,17 @@ function DanaDukaPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="formTarif" className="font-semibold">
-                  Tarif Dasar Tahap Ini (Rp)
+                <Label htmlFor="formKeterangan" className="font-semibold">
+                  Catatan / Keterangan
                 </Label>
                 <Input
-                  id="formTarif"
-                  type="number"
-                  value={formTarif}
-                  onChange={(e) => setFormTarif(e.target.value)}
-                  placeholder="50000"
-                  className="h-9 text-xs font-mono font-bold"
+                  id="formKeterangan"
+                  value={formKeterangan}
+                  onChange={(e) => setFormKeterangan(e.target.value)}
+                  placeholder="Contoh: Pemakaman di Ranomuut"
+                  className="h-9 text-xs"
                 />
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="formKeterangan" className="font-semibold">
-                Catatan / Keterangan
-              </Label>
-              <Input
-                id="formKeterangan"
-                value={formKeterangan}
-                onChange={(e) => setFormKeterangan(e.target.value)}
-                placeholder="Contoh: Pemakaman di Ranomuut"
-                className="h-9 text-xs"
-              />
             </div>
 
             {/* LIVE DYNAMIC TOTAL TARGET 29 KOLOM */}
@@ -978,7 +961,7 @@ function DanaDukaPage() {
                 urutan: formUrutan,
                 nama: formNama,
                 tanggal: formTanggal,
-                iuranPerKolom: Number(formTarif) || DEFAULT_TARIF_DUKA,
+                iuranPerKolom: DEFAULT_TARIF_DUKA,
               };
               const targetInfo = hitungTotalTargetDukaTahap(dummy, tarifRules);
               return (
