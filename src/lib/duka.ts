@@ -42,24 +42,18 @@ export type TunggakanTahunLaluMap = Record<number, TunggakanTahunLaluItem>;
 export type DukaMap = Record<string, string>;
 
 export const DEFAULT_KASUS_DUKA: KasusDuka[] = [
-  {
-    id: "duka-1",
-    urutan: 1,
-    nama: "Alm. Kel. Kawalo - Rumagit",
-    tanggal: "2026-01-12",
-    kolomKeluarga: 15,
-    iuranPerKolom: 50000,
-    keterangan: "Duka Jemaat Tahap 1",
-  },
-  {
-    id: "duka-2",
-    urutan: 2,
-    nama: "Alm. Kel. Sondakh - Pandeirot",
-    tanggal: "2026-02-05",
-    kolomKeluarga: 7,
-    iuranPerKolom: 50000,
-    keterangan: "Duka Jemaat Tahap 2",
-  },
+  { id: "duka-1", urutan: 1, nama: "Alm. Denny Polii", tanggal: "2026-01-15", kolomKeluarga: 15, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 1 (Kolom 15)" },
+  { id: "duka-2", urutan: 2, nama: "Alm. Marie Kontu", tanggal: "2026-02-03", kolomKeluarga: 24, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 2 (Kolom 24)" },
+  { id: "duka-3", urutan: 3, nama: "Alm. Jenap Salindeho", tanggal: "2026-02-23", kolomKeluarga: 4, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 3 (Kolom 4)" },
+  { id: "duka-4", urutan: 4, nama: "Alm. Anita Poluan", tanggal: "2026-03-05", kolomKeluarga: 26, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 4 (Kolom 26)" },
+  { id: "duka-5", urutan: 5, nama: "Alm. Filma Takashaeng", tanggal: "2026-03-20", kolomKeluarga: 26, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 5 (Kolom 26)" },
+  { id: "duka-6", urutan: 6, nama: "Alm. Novelia Wangka", tanggal: "2026-04-24", kolomKeluarga: 3, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 6 (Kolom 3)" },
+  { id: "duka-7", urutan: 7, nama: "Alma. Belladona Raitung", tanggal: "2026-06-05", kolomKeluarga: 1, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 7 (Kolom 1)" },
+  { id: "duka-8", urutan: 8, nama: "Alm. Juventio Pua", tanggal: "2026-06-05", kolomKeluarga: 10, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 8 (Kolom 10)" },
+  { id: "duka-9", urutan: 9, nama: "Alm. Natalio Peea", tanggal: "2026-06-11", kolomKeluarga: 12, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 9 (Kolom 12)" },
+  { id: "duka-10", urutan: 10, nama: "Alma. Donna Manoy", tanggal: "2026-06-20", kolomKeluarga: 9, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 10 (Kolom 9)" },
+  { id: "duka-11", urutan: 11, nama: "Alma. Pince Ate", tanggal: "2026-07-01", kolomKeluarga: 23, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 11 (Kolom 23)" },
+  { id: "duka-12", urutan: 12, nama: "Alm. Judson Sindar", tanggal: "2026-07-10", kolomKeluarga: 8, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 12 (Kolom 8)" },
 ];
 
 /** Standar default tarif 29 kolom */
