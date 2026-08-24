@@ -218,8 +218,8 @@ function LaporanPage() {
     () =>
       (budgets.data ?? [])
         .filter((b) => b.kind === "penerimaan" && b.grup !== "Mutasi Kas Internal")
-        .filter((b) => parsed.some((t) => t.budget_line_id === b.id)),
-    [budgets.data, parsed],
+        .sort((a, b) => a.code.localeCompare(b.code)),
+    [budgets.data],
   );
 
   function resetFilter() {
@@ -227,6 +227,8 @@ function LaporanPage() {
     setKolomFilter("semua");
     setBulanFilter("semua");
     setQuickKategori("semua");
+    setMonitoringKat("semua");
+    setMonitoringBulan("semua");
     setSearchRincian("");
     setDari("");
     setSampai("");
@@ -234,6 +236,7 @@ function LaporanPage() {
 
   const handleSelectQuickKategori = (catId: string) => {
     setQuickKategori(catId);
+    setMonitoringKat(catId);
     setBudgetId("semua");
   };
 
@@ -426,7 +429,9 @@ function LaporanPage() {
           if (trxMonth !== targetBulanIdx && trxDateMonth !== targetBulanIdx) return false;
         }
 
-        if (targetKatCode !== "semua") {
+        if (budgetId !== "semua") {
+          if (t.budget_line_id !== budgetId) return false;
+        } else if (targetKatCode !== "semua") {
           const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
           if (!cocokKategori(b?.code, b?.name || t.description, targetKatCode)) return false;
         }
@@ -446,7 +451,7 @@ function LaporanPage() {
         matches,
       };
     });
-  }, [parsed, monitoringBulan, monitoringKat, budgets.data]);
+  }, [parsed, monitoringBulan, monitoringKat, budgetId, budgets.data]);
 
   const monitoringFiltered = useMemo(() => {
     if (monitoringStatusFilter === "belum") return monitoringData.filter((d) => !d.sudahSetor);
@@ -725,38 +730,58 @@ function LaporanPage() {
                 <ChevronsUpDown className="size-3.5 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[380px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Cari kode atau nama…" />
-                <CommandList>
-                  <CommandEmpty>Tidak ditemukan.</CommandEmpty>
+            <PopoverContent className="w-[420px] p-0" align="start">
+              <Command className="max-h-80">
+                <CommandInput placeholder="Ketik kode, nama, atau grup anggaran…" />
+                <CommandList className="max-h-72 overflow-y-auto">
+                  <CommandEmpty>Mata anggaran tidak ditemukan.</CommandEmpty>
                   <CommandGroup>
                     <CommandItem
-                      value="semua"
+                      value="semua all Semua mata anggaran"
                       onSelect={() => {
                         setBudgetId("semua");
                         setQuickKategori("semua");
+                        setMonitoringKat("semua");
                         setOpenBudget(false);
                       }}
+                      className="cursor-pointer font-medium"
                     >
                       <Check
-                        className={cn("size-4", budgetId === "semua" ? "opacity-100" : "opacity-0")}
+                        className={cn(
+                          "mr-2 size-3.5",
+                          budgetId === "semua" ? "opacity-100" : "opacity-0",
+                        )}
                       />
-                      Semua mata anggaran
+                      <span>Semua mata anggaran</span>
                     </CommandItem>
                     {budgetOptions.map((b) => (
                       <CommandItem
                         key={b.id}
-                        value={`${b.code} ${b.name}`}
+                        value={`${b.code} ${b.name} ${b.grup || ""}`}
                         onSelect={() => {
                           setBudgetId(b.id);
+                          setQuickKategori("semua");
                           setOpenBudget(false);
                         }}
+                        className="flex items-start py-2 cursor-pointer"
                       >
                         <Check
-                          className={cn("size-4", budgetId === b.id ? "opacity-100" : "opacity-0")}
+                          className={cn(
+                            "mr-2 size-3.5 mt-0.5 shrink-0",
+                            budgetId === b.id ? "opacity-100" : "opacity-0",
+                          )}
                         />
-                        <span className="font-mono text-xs">{b.code}</span> {b.name}
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-primary">{b.code}</span>
+                            <span className="text-xs font-medium text-foreground">{b.name}</span>
+                          </div>
+                          {b.grup && (
+                            <span className="text-[11px] text-muted-foreground">
+                              {b.grup}
+                            </span>
+                          )}
+                        </div>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -926,7 +951,14 @@ function LaporanPage() {
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Pos Setoran / Kompelka</Label>
-                    <Select value={monitoringKat} onValueChange={setMonitoringKat}>
+                    <Select
+                      value={monitoringKat}
+                      onValueChange={(val) => {
+                        setMonitoringKat(val);
+                        setQuickKategori(val);
+                        setBudgetId("semua");
+                      }}
+                    >
                       <SelectTrigger className="h-9 text-xs bg-background">
                         <SelectValue />
                       </SelectTrigger>
