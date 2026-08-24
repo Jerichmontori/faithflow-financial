@@ -10,6 +10,7 @@ import { ImportMassalDialog } from "@/components/ImportMassalDialog";
 import { BackupDataDialog } from "@/components/BackupDataDialog";
 import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
+import { parseKolom } from "@/lib/kolom";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { DateInput, normalizeDateInput } from "@/components/ui/date-input";
@@ -86,7 +87,7 @@ function PenerimaanPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   const [q, setQ] = useState("");
-  const [tahun, setTahun] = useState("all");
+  const [kolom, setKolom] = useState("all");
   const [bulan, setBulan] = useState("all");
   const [budget, setBudget] = useState("all");
   const [openBudget, setOpenBudget] = useState(false);
@@ -97,7 +98,7 @@ function PenerimaanPage() {
 
   // Defer filter inputs to prevent blocking UI when typing
   const deferredQ = useDeferredValue(q);
-  const deferredTahun = useDeferredValue(tahun);
+  const deferredKolom = useDeferredValue(kolom);
   const deferredBulan = useDeferredValue(bulan);
   const deferredBudget = useDeferredValue(budget);
   const deferredDari = useDeferredValue(dari);
@@ -129,9 +130,14 @@ function PenerimaanPage() {
     const validSampai = isValidDate(deferredSampai) ? normalizeDateInput(deferredSampai) : "";
 
     return sortedPenerimaan.filter((t) => {
-      // Filter tahun
-      if (deferredTahun !== "all") {
-        if (!t.trx_date.startsWith(deferredTahun)) return false;
+      // Filter kolom
+      if (deferredKolom !== "all") {
+        const k = parseKolom(t.description) ?? parseKolom(t.category);
+        if (deferredKolom === "none") {
+          if (k !== null) return false;
+        } else {
+          if (k !== Number(deferredKolom)) return false;
+        }
       }
       // Filter bulan
       if (deferredBulan !== "all") {
@@ -156,7 +162,7 @@ function PenerimaanPage() {
   }, [
     sortedPenerimaan,
     deferredQ,
-    deferredTahun,
+    deferredKolom,
     deferredBulan,
     deferredBudget,
     deferredDari,
@@ -165,7 +171,7 @@ function PenerimaanPage() {
 
   const aktif =
     q !== "" ||
-    tahun !== "all" ||
+    kolom !== "all" ||
     bulan !== "all" ||
     budget !== "all" ||
     (dari !== "" && isValidDate(dari)) ||
@@ -173,7 +179,7 @@ function PenerimaanPage() {
 
   const reset = () => {
     setQ("");
-    setTahun("all");
+    setKolom("all");
     setBulan("all");
     setBudget("all");
     setDari("");
@@ -191,7 +197,7 @@ function PenerimaanPage() {
   // Reset limit display saat filter berubah
   useEffect(() => {
     setDisplayLimit(DEFAULT_LIMIT);
-  }, [q, tahun, bulan, budget, dari, sampai]);
+  }, [q, kolom, bulan, budget, dari, sampai]);
 
   // Mode Standar: Menampilkan transaksi hari ini secara default
   const rows = useMemo(() => {
@@ -243,17 +249,19 @@ function PenerimaanPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Tahun</Label>
-            <Select value={tahun} onValueChange={setTahun}>
+            <Label>Filter Kolom</Label>
+            <Select value={kolom} onValueChange={setKolom}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Semua Kolom" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Tahun</SelectItem>
-                <SelectItem value="2026">Tahun 2026</SelectItem>
-                <SelectItem value="2025">Tahun 2025</SelectItem>
-                <SelectItem value="2024">Tahun 2024</SelectItem>
-                <SelectItem value="2027">Tahun 2027</SelectItem>
+              <SelectContent className="max-h-72">
+                <SelectItem value="all">Semua Kolom (1-29)</SelectItem>
+                {Array.from({ length: 29 }, (_, i) => i + 1).map((k) => (
+                  <SelectItem key={k} value={String(k)}>
+                    Kolom {k}
+                  </SelectItem>
+                ))}
+                <SelectItem value="none">Tanpa Kolom (Ibadah/Pundi)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -442,7 +450,7 @@ function PenerimaanPage() {
               <TableRow className="bg-muted/30">
                 <TableHead className="w-28 font-bold">Tanggal</TableHead>
                 <TableHead className="w-36 font-bold">No. Bukti</TableHead>
-                <TableHead className="w-48 font-bold">Jenis / Kategori</TableHead>
+                <TableHead className="w-24 font-bold">Kolom</TableHead>
                 <TableHead className="font-bold">Mata Anggaran</TableHead>
                 <TableHead className="font-bold">Keterangan</TableHead>
                 <TableHead className="w-36 text-right font-bold">Nominal</TableHead>
@@ -450,34 +458,45 @@ function PenerimaanPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayedRows.map((t) => (
-                <TableRow key={t.id} className="hover:bg-muted/10">
-                  <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
-                  <TableCell className="font-mono text-xs font-semibold text-primary">{t.voucher_no}</TableCell>
-                  <TableCell className="text-xs">{t.category}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
-                  </TableCell>
-                  <TableCell className="max-w-72 truncate text-sm font-medium">{t.description}</TableCell>
-                  <TableCell className="text-right font-medium font-mono text-xs text-success">
-                    {rupiah(t.amount)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <CetakBuktiTransaksiDialog
-                        trx={t}
-                        trigger={
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Cetak Tanda Terima Setoran (F4 2-Rangkap)">
-                            <Printer className="size-3.5 text-primary" />
-                          </Button>
-                        }
-                      />
-                      <KoreksiDialog trx={t} />
-                      <HapusTransaksiDialog trx={t} />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {displayedRows.map((t) => {
+                const k = parseKolom(t.description) ?? parseKolom(t.category);
+                return (
+                  <TableRow key={t.id} className="hover:bg-muted/10">
+                    <TableCell className="whitespace-nowrap font-medium">{tanggal(t.trx_date)}</TableCell>
+                    <TableCell className="font-mono text-xs font-semibold text-primary">{t.voucher_no}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {k ? (
+                        <Badge variant="outline" className="text-xs font-semibold bg-primary/5 text-primary border-primary/30">
+                          Kolom {k}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"}
+                    </TableCell>
+                    <TableCell className="max-w-72 truncate text-sm font-medium">{t.description}</TableCell>
+                    <TableCell className="text-right font-medium font-mono text-xs text-success">
+                      {rupiah(t.amount)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <CetakBuktiTransaksiDialog
+                          trx={t}
+                          trigger={
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Cetak Tanda Terima Setoran (F4 2-Rangkap)">
+                              <Printer className="size-3.5 text-primary" />
+                            </Button>
+                          }
+                        />
+                        <KoreksiDialog trx={t} />
+                        <HapusTransaksiDialog trx={t} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
