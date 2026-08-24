@@ -126,10 +126,10 @@ function WartaPage() {
   const [bendahara, setBendahara] = useState(settings.namaBendahara || "Dkn. Jerich Montori");
   const [tempat, setTempat] = useState(settings.kotaSurat || "Manado");
   const [saldoAwalBank, setSaldoAwalBank] = useState(() => String(settings.saldoAwalBank ?? 0));
-  const [duka, setDuka] = useState<DukaMap>({});
-  const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>([]);
-  const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>([]);
-  const [tunggakanLaluMap, setTunggakanLaluMap] = useState<TunggakanTahunLaluMap>({});
+  const [duka, setDuka] = useState<DukaMap>(() => bacaDuka());
+  const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>(() => bacaDaftarDuka());
+  const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>(() => bacaTarifRules());
+  const [tunggakanLaluMap, setTunggakanLaluMap] = useState<TunggakanTahunLaluMap>(() => bacaTunggakanTahunLalu());
 
   // Layout Cetak 1/2 Halaman Landscape & Skala 62%
   const [layoutCetak, setLayoutCetak] = useState<"setengah" | "ganda" | "penuh">("setengah");

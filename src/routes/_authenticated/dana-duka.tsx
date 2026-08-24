@@ -91,10 +91,10 @@ function DanaDukaPage() {
   const trx = useQuery(transactionsQuery);
   const { isReadOnly, canManageFinance } = useSession();
 
-  const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>([]);
-  const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>([]);
-  const [tunggakanLaluMap, setTunggakanLaluMap] = useState<TunggakanTahunLaluMap>({});
-  const [overrideMap, setOverrideMap] = useState<DukaMap>({});
+  const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>(() => bacaDaftarDuka());
+  const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>(() => bacaTarifRules());
+  const [tunggakanLaluMap, setTunggakanLaluMap] = useState<TunggakanTahunLaluMap>(() => bacaTunggakanTahunLalu());
+  const [overrideMap, setOverrideMap] = useState<DukaMap>(() => bacaDuka());
   const [activeTab, setActiveTab] = useState("matriks");
   const [searchTerm, setSearchTerm] = useState("");
 
