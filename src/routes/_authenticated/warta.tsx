@@ -13,7 +13,16 @@ import {
 } from "@/lib/queries";
 import { rupiah } from "@/lib/format";
 import { exportAoa, type Cell } from "@/lib/xlsx";
-import { DUKA_KOLOM, bacaDuka, bacaDaftarDuka, hitungSemuaTunggakanDuka, type DukaMap, type KasusDuka } from "@/lib/duka";
+import {
+  DUKA_KOLOM,
+  bacaDuka,
+  bacaDaftarDuka,
+  bacaTarifRules,
+  hitungSemuaTunggakanDuka,
+  type DukaMap,
+  type KasusDuka,
+  type TarifKolomRule,
+} from "@/lib/duka";
 import { useAppSettings } from "@/lib/settings";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,6 +107,7 @@ function WartaPage() {
   const [saldoAwalBank, setSaldoAwalBank] = useState(() => String(settings.saldoAwalBank ?? 0));
   const [duka, setDuka] = useState<DukaMap>({});
   const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>([]);
+  const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>([]);
 
   useEffect(() => {
     setSaldoAwalBank(String(settings.saldoAwalBank ?? 0));
@@ -109,10 +119,12 @@ function WartaPage() {
   useEffect(() => {
     setDuka(bacaDuka());
     setDaftarDuka(bacaDaftarDuka());
+    setTarifRules(bacaTarifRules());
 
     const handleDukaUpdate = () => {
       setDuka(bacaDuka());
       setDaftarDuka(bacaDaftarDuka());
+      setTarifRules(bacaTarifRules());
     };
     window.addEventListener("bumotik_duka_updated", handleDukaUpdate);
     return () => window.removeEventListener("bumotik_duka_updated", handleDukaUpdate);
@@ -217,8 +229,8 @@ function WartaPage() {
   ];
 
   const ringkasanDuka = useMemo(() => {
-    return hitungSemuaTunggakanDuka(all, daftarDuka, duka);
-  }, [all, daftarDuka, duka]);
+    return hitungSemuaTunggakanDuka(all, daftarDuka, duka, tarifRules);
+  }, [all, daftarDuka, duka, tarifRules]);
 
   function exportExcel() {
     const data: (string | number)[][] = [

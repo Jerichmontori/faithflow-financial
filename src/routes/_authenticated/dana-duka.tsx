@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Clock,
   Printer,
-  FileSpreadsheet,
   Trash2,
   Edit2,
   Users,
@@ -18,18 +17,27 @@ import {
   Receipt,
   Search,
   RotateCcw,
+  SlidersHorizontal,
+  ChevronRight,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { transactionsQuery, type Transaction } from "@/lib/queries";
-import { rupiah, tanggal, tanggalPanjang } from "@/lib/format";
+import { transactionsQuery } from "@/lib/queries";
+import { rupiah, tanggal } from "@/lib/format";
 import {
   DUKA_KOLOM,
   bacaDaftarDuka,
   simpanDaftarDuka,
+  bacaTarifRules,
+  simpanTarifRules,
   bacaDuka,
   simpanDuka,
   hitungSemuaTunggakanDuka,
+  dapatkanTarifDukaKolom,
+  buatDefaultTarifKolom,
   type KasusDuka,
+  type TarifKolomRule,
   type DukaMap,
   type KolomDukaSummary,
   DEFAULT_TARIF_DUKA,
@@ -56,12 +64,12 @@ export const Route = createFileRoute("/_authenticated/dana-duka")({
       {
         name: "description",
         content:
-          "Daftar nama kasus duka, otomatisasi pelunasan setoran kolom, dan monitoring tunggakan dana duka Kolom 1 sampai 29 terintegrasi Warta Jemaat.",
+          "Daftar nama kasus duka, aturan tarif dinamis per kolom bertahap, dan monitoring tunggakan dana duka Kolom 1 sampai 29 terintegrasi Warta Jemaat.",
       },
       { property: "og:title", content: "Dana Diakonia Duka Jemaat — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Otomatisasi pencatatan setoran duka dan monitoring tunggakan setiap kolom jemaat.",
+        content: "Otomatisasi pencatatan setoran duka dan monitoring tunggakan setiap kolom jemaat secara dinamis.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -74,18 +82,29 @@ function DanaDukaPage() {
   const trx = useQuery(transactionsQuery);
 
   const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>([]);
+  const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>([]);
   const [overrideMap, setOverrideMap] = useState<DukaMap>({});
   const [activeTab, setActiveTab] = useState("matriks");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State Modal Tambah/Edit Duka
+  // State Modal Tambah/Edit Kasus Duka
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDuka, setEditingDuka] = useState<KasusDuka | null>(null);
+  const [formUrutan, setFormUrutan] = useState<number>(1);
   const [formNama, setFormNama] = useState("");
   const [formTanggal, setFormTanggal] = useState("");
   const [formKolom, setFormKolom] = useState<string>("");
   const [formTarif, setFormTarif] = useState<string>(String(DEFAULT_TARIF_DUKA));
   const [formKeterangan, setFormKeterangan] = useState("");
+
+  // State Modal Aturan Tarif Dinamis
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<TarifKolomRule | null>(null);
+  const [ruleNama, setRuleNama] = useState("");
+  const [ruleMulaiTahap, setRuleMulaiTahap] = useState(1);
+  const [ruleSampaiTahap, setRuleSampaiTahap] = useState<string>("");
+  const [ruleTarifMap, setRuleTarifMap] = useState<Record<number, number>>({});
+  const [ruleBatchNominal, setRuleBatchNominal] = useState<string>("50000");
 
   // State Modal Detail Kolom
   const [detailKolom, setDetailKolom] = useState<KolomDukaSummary | null>(null);
@@ -94,10 +113,12 @@ function DanaDukaPage() {
   // Load data on mount & event
   useEffect(() => {
     setDaftarDuka(bacaDaftarDuka());
+    setTarifRules(bacaTarifRules());
     setOverrideMap(bacaDuka());
 
     const handleUpdate = () => {
       setDaftarDuka(bacaDaftarDuka());
+      setTarifRules(bacaTarifRules());
       setOverrideMap(bacaDuka());
     };
 
@@ -105,15 +126,17 @@ function DanaDukaPage() {
     return () => window.removeEventListener("bumotik_duka_updated", handleUpdate);
   }, []);
 
-  // Hitung status tunggakan duka seluruh kolom 1-29 secara otomatis
+  // Hitung status tunggakan duka seluruh kolom 1-29 secara dinamis dan otomatis
   const ringkasanKolom = useMemo(() => {
-    return hitungSemuaTunggakanDuka(trx.data ?? [], daftarDuka, overrideMap);
-  }, [trx.data, daftarDuka, overrideMap]);
+    return hitungSemuaTunggakanDuka(trx.data ?? [], daftarDuka, overrideMap, tarifRules);
+  }, [trx.data, daftarDuka, overrideMap, tarifRules]);
 
   // Statistik Ringkas
   const stats = useMemo(() => {
     const list = Object.values(ringkasanKolom);
     const totalSetoranSemua = list.reduce((a, b) => a + b.totalSetorRp, 0);
+    const totalKewajibanSemua = list.reduce((a, b) => a + b.totalKewajibanRp, 0);
+    const totalTunggakanRpSemua = list.reduce((a, b) => a + b.totalSisaTunggakanRp, 0);
     const lunasCount = list.filter((k) => k.tunggakanJumlah === 0 || k.statusLabel.toLowerCase() === "lunas").length;
     const tertunggakCount = list.length - lunasCount;
     const totalKasus = daftarDuka.length;
@@ -122,6 +145,8 @@ function DanaDukaPage() {
     return {
       totalKasus,
       totalSetoranSemua,
+      totalKewajibanSemua,
+      totalTunggakanRpSemua,
       lunasCount,
       tertunggakCount,
       totalTunggakanKasus,
@@ -131,6 +156,7 @@ function DanaDukaPage() {
   // Handlers CRUD Kasus Duka
   const openAddDialog = () => {
     setEditingDuka(null);
+    setFormUrutan(daftarDuka.length + 1);
     setFormNama("");
     setFormTanggal(new Date().toISOString().slice(0, 10));
     setFormKolom("");
@@ -141,6 +167,7 @@ function DanaDukaPage() {
 
   const openEditDialog = (item: KasusDuka) => {
     setEditingDuka(item);
+    setFormUrutan(item.urutan);
     setFormNama(item.nama);
     setFormTanggal(item.tanggal);
     setFormKolom(item.kolomKeluarga ? String(item.kolomKeluarga) : "");
@@ -164,6 +191,7 @@ function DanaDukaPage() {
         d.id === editingDuka.id
           ? {
               ...d,
+              urutan: formUrutan,
               nama: formNama.trim(),
               tanggal: formTanggal,
               kolomKeluarga: kolomKel,
@@ -176,7 +204,7 @@ function DanaDukaPage() {
     } else {
       const newItem: KasusDuka = {
         id: `duka-${Date.now()}`,
-        urutan: daftarDuka.length + 1,
+        urutan: formUrutan,
         nama: formNama.trim(),
         tanggal: formTanggal,
         kolomKeluarga: kolomKel,
@@ -184,9 +212,11 @@ function DanaDukaPage() {
         keterangan: formKeterangan.trim(),
       };
       updated = [...daftarDuka, newItem];
-      toast.success("Nama duka baru berhasil ditambahkan! Status tunggakan kolom otomatis terhitung.");
+      toast.success("Peristiwa duka baru ditambahkan!");
     }
 
+    // Urutkan kembali
+    updated.sort((a, b) => a.urutan - b.urutan);
     setDaftarDuka(updated);
     simpanDaftarDuka(updated);
     setDialogOpen(false);
@@ -198,6 +228,90 @@ function DanaDukaPage() {
       setDaftarDuka(updated);
       simpanDaftarDuka(updated);
       toast.info("Peristiwa duka telah dihapus");
+    }
+  };
+
+  // Handlers Aturan Tarif Kolom Dinamis
+  const openAddRuleModal = () => {
+    setEditingRule(null);
+    setRuleNama(`Penyesuaian Tarif Tahap ${daftarDuka.length + 1}`);
+    setRuleMulaiTahap(daftarDuka.length + 1 > 0 ? daftarDuka.length + 1 : 1);
+    setRuleSampaiTahap("");
+    setRuleTarifMap(buatDefaultTarifKolom(50000));
+    setRuleBatchNominal("50000");
+    setRuleModalOpen(true);
+  };
+
+  const openEditRuleModal = (rule: TarifKolomRule) => {
+    setEditingRule(rule);
+    setRuleNama(rule.namaAturan);
+    setRuleMulaiTahap(rule.mulaiTahap);
+    setRuleSampaiTahap(rule.sampaiTahap ? String(rule.sampaiTahap) : "");
+    setRuleTarifMap({ ...rule.tarifPerKolom });
+    setRuleBatchNominal("50000");
+    setRuleModalOpen(true);
+  };
+
+  const handleApplyBatchTarif = () => {
+    const val = Number(ruleBatchNominal.replace(/[^\d]/g, "")) || DEFAULT_TARIF_DUKA;
+    const newMap: Record<number, number> = {};
+    for (const k of DUKA_KOLOM) {
+      newMap[k] = val;
+    }
+    setRuleTarifMap(newMap);
+    toast.success(`Tarif ${rupiah(val)} diterapkan ke seluruh Kolom 1 s/d 29`);
+  };
+
+  const handleSaveRule = () => {
+    if (!ruleNama.trim()) {
+      toast.error("Nama aturan wajib diisi");
+      return;
+    }
+
+    const sampai = ruleSampaiTahap.trim() ? Number(ruleSampaiTahap) : null;
+
+    let updated: TarifKolomRule[];
+    if (editingRule) {
+      updated = tarifRules.map((r) =>
+        r.id === editingRule.id
+          ? {
+              ...r,
+              namaAturan: ruleNama.trim(),
+              mulaiTahap: ruleMulaiTahap,
+              sampaiTahap: sampai,
+              tarifPerKolom: ruleTarifMap,
+            }
+          : r
+      );
+      toast.success("Aturan tarif kolom berhasil diperbarui");
+    } else {
+      const newRule: TarifKolomRule = {
+        id: `rule-${Date.now()}`,
+        namaAturan: ruleNama.trim(),
+        mulaiTahap: ruleMulaiTahap,
+        sampaiTahap: sampai,
+        tarifPerKolom: ruleTarifMap,
+        keterangan: `Mulai Duka Tahap ${ruleMulaiTahap}${sampai ? ` s/d ${sampai}` : " seterusnya"}`,
+      };
+      updated = [...tarifRules, newRule];
+      toast.success("Aturan tarif kolom baru berhasil ditambahkan!");
+    }
+
+    setTarifRules(updated);
+    simpanTarifRules(updated);
+    setRuleModalOpen(false);
+  };
+
+  const handleDeleteRule = (id: string, nama: string) => {
+    if (tarifRules.length <= 1) {
+      toast.error("Minimal harus ada 1 aturan tarif aktif");
+      return;
+    }
+    if (confirm(`Hapus aturan tarif "${nama}"?`)) {
+      const updated = tarifRules.filter((r) => r.id !== id);
+      setTarifRules(updated);
+      simpanTarifRules(updated);
+      toast.info("Aturan tarif telah dihapus");
     }
   };
 
@@ -229,7 +343,8 @@ function DanaDukaPage() {
       return (
         `kolom ${k}`.includes(q) ||
         info.statusLabel.toLowerCase().includes(q) ||
-        String(info.totalSetorRp).includes(q)
+        String(info.totalSetorRp).includes(q) ||
+        String(info.totalSisaTunggakanRp).includes(q)
       );
     });
   }, [ringkasanKolom, searchTerm]);
@@ -237,7 +352,7 @@ function DanaDukaPage() {
   return (
     <AppShell
       title="Dana Diakonia Duka Jemaat"
-      subtitle="Manajemen nama duka jemaat & otomatisasi perhitungan tunggakan per kolom"
+      subtitle="Manajemen nama duka, tarif dinamis per kolom, & otomatisasi perhitungan tunggakan"
       actions={
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
@@ -261,8 +376,8 @@ function DanaDukaPage() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-black text-foreground">{stats.totalKasus} Kasus</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Tercatat pada tahun buku berjalan</p>
+            <div className="text-2xl font-black text-foreground">{stats.totalKasus} Tahap</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Total peristiwa duka tercatat</p>
           </CardContent>
         </Card>
 
@@ -277,7 +392,9 @@ function DanaDukaPage() {
           </CardHeader>
           <CardContent className="p-4 pt-1">
             <div className="text-2xl font-black text-emerald-700">{rupiah(stats.totalSetoranSemua)}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Akumulasi penerimaan kas duka kolom</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Kewajiban: {rupiah(stats.totalKewajibanSemua)}
+            </p>
           </CardContent>
         </Card>
 
@@ -302,30 +419,33 @@ function DanaDukaPage() {
           <CardHeader className="p-4 pb-1">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                Kolom Tertunggak
+                Sisa Tunggakan Duka
               </span>
               <AlertCircle className="size-4 text-amber-600" />
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-1">
             <div className="text-2xl font-black text-amber-700">
-              {stats.tertunggakCount} <span className="text-sm font-normal text-muted-foreground">Kolom</span>
+              {rupiah(stats.totalTunggakanRpSemua)}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Total {stats.totalTunggakanKasus} tagihan kasus duka
+              {stats.tertunggakCount} Kolom ({stats.totalTunggakanKasus} tagihan tahap)
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs Utama: 1. Matriks Tunggakan, 2. Master Daftar Nama Duka */}
+      {/* Tabs Utama: 1. Matriks Tunggakan, 2. Master Daftar Nama Duka, 3. Pengaturan Tarif Dinamis */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:inline-flex">
+        <TabsList className="grid w-full sm:w-auto grid-cols-3 sm:inline-flex">
           <TabsTrigger value="matriks" className="text-xs">
-            <Users className="size-3.5 mr-1.5" /> Status Tunggakan 29 Kolom (Otomatis)
+            <Users className="size-3.5 mr-1.5" /> Status Tunggakan 29 Kolom
           </TabsTrigger>
           <TabsTrigger value="daftar-duka" className="text-xs">
-            <HeartHandshake className="size-3.5 mr-1.5" /> Master Daftar Nama Duka ({daftarDuka.length})
+            <HeartHandshake className="size-3.5 mr-1.5" /> Daftar Nama Duka ({daftarDuka.length})
+          </TabsTrigger>
+          <TabsTrigger value="tarif-dinamis" className="text-xs">
+            <SlidersHorizontal className="size-3.5 mr-1.5" /> Tarif Dinamis per Kolom ({tarifRules.length})
           </TabsTrigger>
         </TabsList>
 
@@ -348,7 +468,7 @@ function DanaDukaPage() {
               <span className="inline-flex items-center gap-1 text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
                 <Clock className="size-3" /> Tertunggak
               </span>
-              <span className="text-[11px] italic">Status otomatis terhitung dari data setoran kas masuk.</span>
+              <span className="text-[11px] italic">Kewajiban & tunggakan dihitung otomatis secara bertahap (FIFO).</span>
             </div>
           </div>
 
@@ -383,15 +503,27 @@ function DanaDukaPage() {
                       </Badge>
                     </div>
 
-                    <div className="space-y-1 text-xs text-muted-foreground mb-3">
+                    <div className="space-y-1.5 text-xs text-muted-foreground mb-3">
                       <div className="flex justify-between">
                         <span>Total Disetor:</span>
-                        <strong className="text-foreground">{rupiah(summary.totalSetorRp)}</strong>
+                        <strong className="text-foreground font-mono">{rupiah(summary.totalSetorRp)}</strong>
                       </div>
                       <div className="flex justify-between">
-                        <span>Duka Terbayar:</span>
+                        <span>Kewajiban:</span>
+                        <span className="font-semibold text-muted-foreground font-mono">
+                          {rupiah(summary.totalKewajibanRp)}
+                        </span>
+                      </div>
+                      {!isLunas && summary.totalSisaTunggakanRp > 0 && (
+                        <div className="flex justify-between text-amber-800 font-semibold bg-amber-100/60 px-1.5 py-0.5 rounded">
+                          <span>Sisa Kurang:</span>
+                          <span className="font-mono font-bold">{rupiah(summary.totalSisaTunggakanRp)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between pt-1 border-t text-[11px]">
+                        <span>Tahap Lunas:</span>
                         <span className="font-semibold text-primary">
-                          {summary.jumlahDukaTerbayar} dari {summary.totalKasusDuka} Kasus
+                          {summary.jumlahDukaTerbayar} dari {summary.totalKasusDuka} Tahap
                         </span>
                       </div>
                     </div>
@@ -437,11 +569,11 @@ function DanaDukaPage() {
                   <HeartHandshake className="size-4 text-primary" /> Daftar Peristiwa Duka Jemaat
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Nama almarhum dan keluarga duka yang menjadi dasar kewajiban iuran duka setiap kolom.
+                  Urutan tahap duka, nama almarhum/keluarga, tanggal, dan besaran iuran dasar.
                 </CardDescription>
               </div>
               <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold">
-                <Plus className="size-3.5" /> Tambah Nama Duka
+                <Plus className="size-3.5" /> Tambah Kasus Duka
               </Button>
             </CardHeader>
             <CardContent className="p-0">
@@ -449,11 +581,11 @@ function DanaDukaPage() {
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-muted/40 border-y text-muted-foreground font-semibold">
-                      <th className="py-2.5 px-4 w-12 text-center">No</th>
+                      <th className="py-2.5 px-4 w-16 text-center">Tahap</th>
                       <th className="py-2.5 px-4">Nama Almarhum / Keluarga Duka</th>
                       <th className="py-2.5 px-4 w-28">Tanggal Duka</th>
                       <th className="py-2.5 px-4 w-24">Asal Kolom</th>
-                      <th className="py-2.5 px-4 w-32 text-right">Iuran per Kolom</th>
+                      <th className="py-2.5 px-4 w-32 text-right">Tarif Dasar</th>
                       <th className="py-2.5 px-4">Keterangan</th>
                       <th className="py-2.5 px-4 w-24 text-center">Aksi</th>
                     </tr>
@@ -462,14 +594,14 @@ function DanaDukaPage() {
                     {daftarDuka.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                          Belum ada daftar nama duka yang ditambahkan. Klik <strong>"Tambah Nama Duka"</strong> untuk memulai.
+                          Belum ada daftar nama duka yang ditambahkan. Klik <strong>"Tambah Kasus Duka"</strong> untuk memulai.
                         </td>
                       </tr>
                     ) : (
-                      daftarDuka.map((item, idx) => (
+                      daftarDuka.map((item) => (
                         <tr key={item.id} className="hover:bg-muted/20">
-                          <td className="py-3 px-4 text-center font-bold text-muted-foreground">
-                            {idx + 1}
+                          <td className="py-3 px-4 text-center font-black text-primary">
+                            #{item.urutan}
                           </td>
                           <td className="py-3 px-4 font-bold text-foreground">
                             {item.nama}
@@ -521,6 +653,85 @@ function DanaDukaPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* TAB 3: PENGATURAN TARIF DINAMIS PER KOLOM */}
+        <TabsContent value="tarif-dinamis" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <SlidersHorizontal className="size-4 text-primary" /> Aturan Perubahan Tarif Iuran per Kolom
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Atur tarif iuran berbeda per kolom, dan tentukan penyesuaian tarif bertambah/berkurang mulai dari duka tahap ke-berapa.
+                </CardDescription>
+              </div>
+              <Button size="sm" onClick={openAddRuleModal} className="gap-1.5 text-xs font-semibold">
+                <Plus className="size-3.5" /> Tambah Aturan Perubahan Tarif
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
+                <Sparkles className="size-4 text-blue-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Fleksibel & Dinamis:</strong> Anda dapat menetapkan nilai iuran yang berbeda untuk setiap kolom (misal Kolom 1 = Rp 75.000, Kolom 2 = Rp 50.000). Jika di tengah jalan sidang memutuskan tarif berubah, Anda bisa menambahkan aturan baru terhitung mulai dari <strong>Duka Tahap ke-X</strong>.
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {tarifRules.map((rule, idx) => (
+                  <div key={rule.id} className="p-4 border rounded-xl bg-card shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <strong className="text-sm text-foreground">{rule.namaAturan}</strong>
+                          <Badge variant="secondary" className="text-[10px] font-bold">
+                            Mulai Duka Tahap #{rule.mulaiTahap}
+                            {rule.sampaiTahap ? ` s/d #${rule.sampaiTahap}` : " Seterusnya"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{rule.keterangan || "Aturan tarif berlaku"}</p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditRuleModal(rule)}
+                          className="h-8 text-xs gap-1 font-medium"
+                        >
+                          <Edit2 className="size-3" /> Edit Tarif Kolom
+                        </Button>
+                        {tarifRules.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteRule(rule.id, rule.namaAturan)}
+                            className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Preview Tarif 29 Kolom Mini Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-[11px]">
+                      {DUKA_KOLOM.map((k) => (
+                        <div key={k} className="p-1.5 rounded-lg border bg-muted/20 text-center">
+                          <span className="text-[10px] text-muted-foreground block font-medium">Kolom {k}</span>
+                          <strong className="font-mono text-foreground">
+                            {rupiah(rule.tarifPerKolom[k] ?? DEFAULT_TARIF_DUKA)}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* MODAL DIALOG TAMBAH / EDIT KASUS DUKA */}
@@ -532,11 +743,40 @@ function DanaDukaPage() {
               {editingDuka ? "Edit Peristiwa Duka Jemaat" : "Tambah Peristiwa / Nama Duka Baru"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Masukkan identitas keluarga duka. Status pelunasan kolom akan otomatis dihitung berdasarkan peristiwa ini.
+              Masukkan identitas keluarga duka. Status pelunasan kolom akan otomatis dihitung berdasarkan tahapan ini.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2 text-xs">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="formUrutan" className="font-semibold">
+                  Duka Tahap <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="formUrutan"
+                  type="number"
+                  min="1"
+                  value={formUrutan}
+                  onChange={(e) => setFormUrutan(Number(e.target.value))}
+                  className="h-9 text-xs font-bold text-primary"
+                />
+              </div>
+
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="formTanggal" className="font-semibold">
+                  Tanggal Duka <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="formTanggal"
+                  type="date"
+                  value={formTanggal}
+                  onChange={(e) => setFormTanggal(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="formNama" className="font-semibold">
                 Nama Almarhum / Keluarga Duka <span className="text-destructive">*</span>
@@ -552,19 +792,6 @@ function DanaDukaPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="formTanggal" className="font-semibold">
-                  Tanggal Duka <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="formTanggal"
-                  type="date"
-                  value={formTanggal}
-                  onChange={(e) => setFormTanggal(e.target.value)}
-                  className="h-9 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1.5">
                 <Label htmlFor="formKolom" className="font-semibold">
                   Asal Kolom Keluarga
                 </Label>
@@ -579,20 +806,20 @@ function DanaDukaPage() {
                   className="h-9 text-xs"
                 />
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="formTarif" className="font-semibold">
-                Target Iuran per Kolom (Rp) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="formTarif"
-                type="number"
-                value={formTarif}
-                onChange={(e) => setFormTarif(e.target.value)}
-                placeholder="50000"
-                className="h-9 text-xs font-mono font-bold"
-              />
+              <div className="space-y-1.5">
+                <Label htmlFor="formTarif" className="font-semibold">
+                  Tarif Dasar Tahap Ini (Rp)
+                </Label>
+                <Input
+                  id="formTarif"
+                  type="number"
+                  value={formTarif}
+                  onChange={(e) => setFormTarif(e.target.value)}
+                  placeholder="50000"
+                  className="h-9 text-xs font-mono font-bold"
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -603,7 +830,7 @@ function DanaDukaPage() {
                 id="formKeterangan"
                 value={formKeterangan}
                 onChange={(e) => setFormKeterangan(e.target.value)}
-                placeholder="Contoh: Tahap I / Pemakaman di Ranomuut"
+                placeholder="Contoh: Pemakaman di Ranomuut"
                 className="h-9 text-xs"
               />
             </div>
@@ -620,13 +847,117 @@ function DanaDukaPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL DIALOG DETAIL SETORAN KOLOM */}
+      {/* MODAL ATURAN TARIF DINAMIS PER KOLOM */}
+      <Dialog open={ruleModalOpen} onOpenChange={setRuleModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <SlidersHorizontal className="size-4 text-primary" />
+              {editingRule ? "Edit Aturan Tarif Kolom" : "Tambah Aturan Perubahan Tarif"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Atur nilai iuran berbeda untuk setiap kolom 1 s/d 29 dan tentukan mulai duka tahap ke-berapa perubahan ini berlaku.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label htmlFor="ruleNama" className="font-semibold">
+                  Nama Aturan / Dasar Keputusan <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="ruleNama"
+                  value={ruleNama}
+                  onChange={(e) => setRuleNama(e.target.value)}
+                  placeholder="Contoh: Penyesuaian Iuran Sidang Majelis Triwulan II"
+                  className="h-9 text-xs font-semibold"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="ruleMulaiTahap" className="font-semibold text-primary">
+                  Mulai Duka Tahap <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="ruleMulaiTahap"
+                  type="number"
+                  min="1"
+                  value={ruleMulaiTahap}
+                  onChange={(e) => setRuleMulaiTahap(Number(e.target.value))}
+                  className="h-9 text-xs font-bold text-primary"
+                />
+              </div>
+            </div>
+
+            {/* Quick Batch Set */}
+            <div className="p-3 bg-muted/40 rounded-lg border flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-[11px]">Set Cepat Seluruh Kolom:</span>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={ruleBatchNominal}
+                  onChange={(e) => setRuleBatchNominal(e.target.value)}
+                  placeholder="50000"
+                  className="h-8 w-28 text-xs font-mono font-bold"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleApplyBatchTarif}
+                  className="h-8 text-xs font-medium"
+                >
+                  Terapkan ke 29 Kolom
+                </Button>
+              </div>
+            </div>
+
+            {/* Grid 29 Kolom Inputs */}
+            <div className="space-y-2">
+              <Label className="font-semibold text-xs">Nilai Iuran Spesifik Masing-Masing Kolom (Rp):</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-64 overflow-y-auto p-2 border rounded-lg bg-background">
+                {DUKA_KOLOM.map((k) => (
+                  <div key={k} className="space-y-1 p-2 rounded border bg-muted/10">
+                    <Label htmlFor={`tarif-k-${k}`} className="text-[11px] font-bold text-foreground block">
+                      Kolom {k}
+                    </Label>
+                    <Input
+                      id={`tarif-k-${k}`}
+                      type="number"
+                      value={ruleTarifMap[k] ?? DEFAULT_TARIF_DUKA}
+                      onChange={(e) =>
+                        setRuleTarifMap((prev) => ({
+                          ...prev,
+                          [k]: Number(e.target.value),
+                        }))
+                      }
+                      className="h-7 text-xs font-mono font-bold"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setRuleModalOpen(false)} className="text-xs">
+              Batal
+            </Button>
+            <Button size="sm" onClick={handleSaveRule} className="text-xs font-semibold gap-1.5">
+              <Save className="size-3.5" /> Simpan Aturan Tarif
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DIALOG DETAIL SETORAN & TAHAPAN KOLOM */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Receipt className="size-4 text-primary" /> Rincian Setoran Duka — Kolom {detailKolom?.kolom}
+                <Receipt className="size-4 text-primary" /> Rincian Duka Kolom {detailKolom?.kolom}
               </span>
               <Badge
                 variant="outline"
@@ -640,41 +971,85 @@ function DanaDukaPage() {
               </Badge>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Riwayat transaksi kas masuk penerimaan dana duka yang tercatat dari Kolom {detailKolom?.kolom}.
+              Status pelunasan bertahap (FIFO) dan riwayat transaksi penerimaan kas duka Kolom {detailKolom?.kolom}.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-xs">
             {/* Box Ringkasan */}
-            <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-muted/30 border">
+            <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-muted/30 border text-center">
               <div>
-                <span className="text-muted-foreground block text-[11px]">Total Nominal Disetor:</span>
-                <span className="text-sm font-bold text-foreground font-mono">
+                <span className="text-muted-foreground block text-[10.5px]">Total Disetor</span>
+                <span className="text-xs sm:text-sm font-bold text-emerald-700 font-mono">
                   {rupiah(detailKolom?.totalSetorRp ?? 0)}
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground block text-[11px]">Pelunasan Kasus:</span>
-                <span className="text-sm font-bold text-primary">
-                  {detailKolom?.jumlahDukaTerbayar} dari {detailKolom?.totalKasusDuka} Duka
+                <span className="text-muted-foreground block text-[10.5px]">Total Kewajiban</span>
+                <span className="text-xs sm:text-sm font-bold text-foreground font-mono">
+                  {rupiah(detailKolom?.totalKewajibanRp ?? 0)}
                 </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10.5px]">Sisa Tunggakan</span>
+                <span className="text-xs sm:text-sm font-bold text-amber-700 font-mono">
+                  {rupiah(detailKolom?.totalSisaTunggakanRp ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* Status Pelunasan per Kasus / Tahap Duka */}
+            <div className="space-y-1.5">
+              <Label className="font-semibold text-xs flex items-center justify-between">
+                <span>Rincian Pelunasan per Tahap Duka:</span>
+                <span className="text-[10.5px] font-normal text-muted-foreground">
+                  Lunas: {detailKolom?.jumlahDukaTerbayar} dari {detailKolom?.totalKasusDuka} Tahap
+                </span>
+              </Label>
+
+              <div className="space-y-1.5 max-h-48 overflow-y-auto border rounded-lg p-2 bg-background divide-y">
+                {detailKolom?.detailTahap.map((tahap) => (
+                  <div key={tahap.kasusId} className="pt-1.5 pb-1 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-foreground">Tahap #{tahap.urutan}:</span>
+                        <span className="font-medium text-foreground truncate max-w-[200px]">{tahap.nama}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        Kewajiban: {rupiah(tahap.kewajibanRp)} · {tanggal(tahap.tanggal)}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      {tahap.lunas ? (
+                        <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                          <CheckCircle2 className="size-3" /> LUNAS
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                          <Clock className="size-3" /> Kurang {rupiah(tahap.sisaKurangRp)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Riwayat Transaksi */}
             <div className="space-y-1.5">
-              <Label className="font-semibold text-xs">Transaksi Penerimaan Tercatat:</Label>
+              <Label className="font-semibold text-xs">Transaksi Kas Penerimaan Tercatat:</Label>
               {(!detailKolom?.riwayatTrx || detailKolom.riwayatTrx.length === 0) ? (
-                <p className="text-muted-foreground italic text-center py-4 bg-muted/10 rounded border">
-                  Belum ada transaksi setoran dana duka yang tercatat untuk Kolom {detailKolom?.kolom}.
+                <p className="text-muted-foreground italic text-center py-3 bg-muted/10 rounded border">
+                  Belum ada transaksi setoran kas yang masuk untuk Kolom {detailKolom?.kolom}.
                 </p>
               ) : (
-                <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+                <div className="max-h-36 overflow-y-auto border rounded-lg divide-y">
                   {detailKolom.riwayatTrx.map((t) => (
-                    <div key={t.id} className="p-2.5 flex items-center justify-between hover:bg-muted/20">
+                    <div key={t.id} className="p-2 flex items-center justify-between hover:bg-muted/20">
                       <div>
                         <div className="font-bold text-foreground">{t.voucher_no} — {tanggal(t.trx_date)}</div>
-                        <div className="text-[11px] text-muted-foreground">{t.description}</div>
+                        <div className="text-[10.5px] text-muted-foreground">{t.description}</div>
                       </div>
                       <div className="font-mono font-bold text-emerald-700">
                         {rupiah(t.amount)}

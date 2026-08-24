@@ -3,23 +3,33 @@ import type { Transaction } from "@/lib/queries";
 
 export const DUKA_KEY = "bumotik.danaDuka";
 export const DAFTAR_DUKA_KEY = "bumotik.daftarKasusDuka_v1";
-export const DUKA_TARIF_KEY = "bumotik.tarifDukaPerKolom";
+export const DUKA_RULES_KEY = "bumotik.tarifDukaRules_v1";
 
 export const DUKA_KOLOM = Array.from({ length: 29 }, (_, i) => i + 1);
 
+export const DEFAULT_TARIF_DUKA = 50000;
+
 export interface KasusDuka {
   id: string;
-  urutan: number;
+  urutan: number; // Tahap 1, 2, 3, dst
   nama: string; // contoh: "Alm. Bpk. John Doe (Kel. Doe - Sumual)"
   tanggal: string; // YYYY-MM-DD
   kolomKeluarga?: number | null;
-  iuranPerKolom: number; // default: 50000 atau sesuai ketetapan sidang
+  iuranPerKolom: number; // Tarif standar/default untuk tahap ini
+  tarifKhususKolom?: Record<number, number>; // Override khusus kolom tertentu pada tahap ini
+  keterangan?: string;
+}
+
+export interface TarifKolomRule {
+  id: string;
+  namaAturan: string; // contoh: "Ketetapan Awal Tahun" atau "Penyesuaian Triwulan II"
+  mulaiTahap: number; // Mulai berlaku dari duka tahap ke-berapa
+  sampaiTahap?: number | null; // Berlaku sampai tahap ke-berapa (null = seterusnya)
+  tarifPerKolom: Record<number, number>; // Kolom 1: 50000, Kolom 2: 75000, dst
   keterangan?: string;
 }
 
 export type DukaMap = Record<string, string>;
-
-export const DEFAULT_TARIF_DUKA = 50000;
 
 export const DEFAULT_KASUS_DUKA: KasusDuka[] = [
   {
@@ -39,6 +49,26 @@ export const DEFAULT_KASUS_DUKA: KasusDuka[] = [
     kolomKeluarga: 7,
     iuranPerKolom: 50000,
     keterangan: "Duka Jemaat Tahap 2",
+  },
+];
+
+/** Standar default tarif 29 kolom */
+export const buatDefaultTarifKolom = (nominal = DEFAULT_TARIF_DUKA): Record<number, number> => {
+  const res: Record<number, number> = {};
+  for (const k of DUKA_KOLOM) {
+    res[k] = nominal;
+  }
+  return res;
+};
+
+export const DEFAULT_TARIF_RULES: TarifKolomRule[] = [
+  {
+    id: "rule-awal",
+    namaAturan: "Tarif Standar Awal Tahun",
+    mulaiTahap: 1,
+    sampaiTahap: null,
+    tarifPerKolom: buatDefaultTarifKolom(50000),
+    keterangan: "Berlaku mulai Duka Tahap 1",
   },
 ];
 
@@ -66,6 +96,30 @@ export const simpanDaftarDuka = (list: KasusDuka[]): void => {
   }
 };
 
+/** Membaca aturan tarif kolom dinamis */
+export const bacaTarifRules = (): TarifKolomRule[] => {
+  if (typeof window === "undefined") return DEFAULT_TARIF_RULES;
+  try {
+    const raw = localStorage.getItem(DUKA_RULES_KEY);
+    if (!raw) return DEFAULT_TARIF_RULES;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_TARIF_RULES;
+  } catch {
+    return DEFAULT_TARIF_RULES;
+  }
+};
+
+/** Menyimpan aturan tarif kolom dinamis */
+export const simpanTarifRules = (rules: TarifKolomRule[]): void => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DUKA_RULES_KEY, JSON.stringify(rules));
+    window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+  } catch (e) {
+    console.error("Gagal simpan aturan tarif:", e);
+  }
+};
+
 /** Membaca override manual status duka */
 export const bacaDuka = (): DukaMap => {
   if (typeof window === "undefined") return {};
@@ -82,6 +136,35 @@ export const simpanDuka = (data: DukaMap) => {
   localStorage.setItem(DUKA_KEY, JSON.stringify(data));
   window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
 };
+
+/**
+ * Menghitung nominal kewajiban iuran untuk suatu kolom pada kasus duka tertentu
+ */
+export function dapatkanTarifDukaKolom(
+  kasus: KasusDuka,
+  kolom: number,
+  rules: TarifKolomRule[] = []
+): number {
+  // 1. Cek jika kasus duka ini memiliki override spesifik per kolom
+  if (kasus.tarifKhususKolom && typeof kasus.tarifKhususKolom[kolom] === "number") {
+    return kasus.tarifKhususKolom[kolom];
+  }
+
+  // 2. Cek aturan tarif bertahap (diurutkan dari mulaiTahap terbesar yang sesuai)
+  const sortedRules = [...rules].sort((a, b) => b.mulaiTahap - a.mulaiTahap);
+  const matchedRule = sortedRules.find(
+    (r) =>
+      kasus.urutan >= r.mulaiTahap &&
+      (r.sampaiTahap === null || r.sampaiTahap === undefined || kasus.urutan <= r.sampaiTahap)
+  );
+
+  if (matchedRule && typeof matchedRule.tarifPerKolom[kolom] === "number") {
+    return matchedRule.tarifPerKolom[kolom];
+  }
+
+  // 3. Fallback ke tarif default kasus atau konstanta
+  return kasus.iuranPerKolom || DEFAULT_TARIF_DUKA;
+}
 
 /** Mengecek apakah suatu transaksi adalah setoran dana duka */
 export const isTransaksiDuka = (t: Transaction): boolean => {
@@ -100,24 +183,41 @@ export const isTransaksiDuka = (t: Transaction): boolean => {
   );
 };
 
+export interface TahapDukaKolomDetail {
+  kasusId: string;
+  urutan: number;
+  nama: string;
+  tanggal: string;
+  kewajibanRp: number;
+  terbayarRp: number;
+  lunas: boolean;
+  sisaKurangRp: number;
+}
+
 export interface KolomDukaSummary {
   kolom: number;
   totalSetorRp: number;
+  totalKewajibanRp: number;
+  totalSisaTunggakanRp: number;
   jumlahDukaTerbayar: number;
   totalKasusDuka: number;
-  tunggakanJumlah: number; // berapa duka yang belum dibayar
+  tunggakanJumlah: number; // berapa tahap duka yang belum lunas
   statusLabel: string; // "Lunas" atau "1 x Duka", "2 x Duka", dst
+  tahapTertunggak: number[]; // daftar nomor tahap yang belum lunas
+  detailTahap: TahapDukaKolomDetail[];
   riwayatTrx: Transaction[];
   terbayarDukaIds: string[];
 }
 
 /**
- * Otomatis menghitung status tunggakan duka per kolom berdasarkan transaksi riil dan daftar kasus duka
+ * Otomatis menghitung status tunggakan duka per kolom berdasarkan transaksi riil,
+ * daftar kasus duka, dan aturan tarif dinamis per kolom & per tahap.
  */
 export const hitungSemuaTunggakanDuka = (
   transactions: Transaction[],
   daftarDuka: KasusDuka[],
-  overrideMap: DukaMap = {}
+  overrideMap: DukaMap = {},
+  rules: TarifKolomRule[] = []
 ): Record<number, KolomDukaSummary> => {
   const result: Record<number, KolomDukaSummary> = {};
   const totalKasus = daftarDuka.length;
@@ -125,8 +225,8 @@ export const hitungSemuaTunggakanDuka = (
   // Filter semua transaksi duka
   const dukaTrx = transactions.filter(isTransaksiDuka);
 
-  // Default tarif per duka jika tidak ditentukan
-  const defaultTarif = daftarDuka[0]?.iuranPerKolom || DEFAULT_TARIF_DUKA;
+  // Urutkan kasus duka berdasarkan urutan tahap (1, 2, 3, ...)
+  const sortedKasus = [...daftarDuka].sort((a, b) => a.urutan - b.urutan);
 
   for (const k of DUKA_KOLOM) {
     // Cari transaksi untuk kolom k
@@ -137,17 +237,68 @@ export const hitungSemuaTunggakanDuka = (
 
     const totalSetorRp = trxKolom.reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
-    // Hitung berapa duka yang terbayar dari nominal atau jumlah transaksi
-    let terbayar = 0;
-    if (defaultTarif > 0) {
-      terbayar = Math.floor(totalSetorRp / defaultTarif);
-    } else {
-      terbayar = trxKolom.length;
+    let sisaSetoran = totalSetorRp;
+    let totalKewajibanRp = 0;
+    let countLunas = 0;
+    const detailTahap: TahapDukaKolomDetail[] = [];
+    const tahapTertunggak: number[] = [];
+    const terbayarDukaIds: string[] = [];
+
+    for (const kasus of sortedKasus) {
+      const kewajiban = dapatkanTarifDukaKolom(kasus, k, rules);
+      totalKewajibanRp += kewajiban;
+
+      if (kewajiban === 0) {
+        // Jika kewajiban 0 (dibebaskan), otomatis lunas
+        countLunas++;
+        terbayarDukaIds.push(kasus.id);
+        detailTahap.push({
+          kasusId: kasus.id,
+          urutan: kasus.urutan,
+          nama: kasus.nama,
+          tanggal: kasus.tanggal,
+          kewajibanRp: 0,
+          terbayarRp: 0,
+          lunas: true,
+          sisaKurangRp: 0,
+        });
+        continue;
+      }
+
+      if (sisaSetoran >= kewajiban) {
+        sisaSetoran -= kewajiban;
+        countLunas++;
+        terbayarDukaIds.push(kasus.id);
+        detailTahap.push({
+          kasusId: kasus.id,
+          urutan: kasus.urutan,
+          nama: kasus.nama,
+          tanggal: kasus.tanggal,
+          kewajibanRp: kewajiban,
+          terbayarRp: kewajiban,
+          lunas: true,
+          sisaKurangRp: 0,
+        });
+      } else {
+        const terbayarParsial = sisaSetoran;
+        const kurang = kewajiban - terbayarParsial;
+        sisaSetoran = 0;
+        tahapTertunggak.push(kasus.urutan);
+        detailTahap.push({
+          kasusId: kasus.id,
+          urutan: kasus.urutan,
+          nama: kasus.nama,
+          tanggal: kasus.tanggal,
+          kewajibanRp: kewajiban,
+          terbayarRp: terbayarParsial,
+          lunas: false,
+          sisaKurangRp: kurang,
+        });
+      }
     }
 
-    if (terbayar > totalKasus) terbayar = totalKasus;
-
-    const sisaTunggakan = Math.max(0, totalKasus - terbayar);
+    const sisaTunggakanTahap = totalKasus - countLunas;
+    const totalSisaTunggakanRp = Math.max(0, totalKewajibanRp - totalSetorRp);
 
     let statusLabel = "";
     // Cek apakah ada override manual
@@ -155,22 +306,26 @@ export const hitungSemuaTunggakanDuka = (
     if (ov && ov.trim() !== "") {
       statusLabel = ov.trim();
     } else {
-      if (totalKasus === 0 || sisaTunggakan === 0) {
+      if (totalKasus === 0 || sisaTunggakanTahap <= 0) {
         statusLabel = "Lunas";
       } else {
-        statusLabel = `${sisaTunggakan} x Duka`;
+        statusLabel = `${sisaTunggakanTahap} x Duka`;
       }
     }
 
     result[k] = {
       kolom: k,
       totalSetorRp,
-      jumlahDukaTerbayar: terbayar,
+      totalKewajibanRp,
+      totalSisaTunggakanRp,
+      jumlahDukaTerbayar: countLunas,
       totalKasusDuka: totalKasus,
-      tunggakanJumlah: sisaTunggakan,
+      tunggakanJumlah: sisaTunggakanTahap,
       statusLabel,
+      tahapTertunggak,
+      detailTahap,
       riwayatTrx: trxKolom,
-      terbayarDukaIds: daftarDuka.slice(0, terbayar).map((d) => d.id),
+      terbayarDukaIds,
     };
   }
 
