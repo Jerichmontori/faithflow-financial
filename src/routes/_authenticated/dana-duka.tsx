@@ -138,7 +138,11 @@ function DanaDukaPage() {
     };
 
     window.addEventListener("bumotik_duka_updated", handleUpdate);
-    return () => window.removeEventListener("bumotik_duka_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("bumotik_duka_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
 
   // Hitung status tunggakan duka seluruh kolom 1-29 secara dinamis dan otomatis (termasuk tahun lalu)

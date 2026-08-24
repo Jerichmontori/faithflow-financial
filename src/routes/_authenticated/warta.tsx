@@ -161,7 +161,11 @@ function WartaPage() {
       setTunggakanLaluMap(bacaTunggakanTahunLalu());
     };
     window.addEventListener("bumotik_duka_updated", handleDukaUpdate);
-    return () => window.removeEventListener("bumotik_duka_updated", handleDukaUpdate);
+    window.addEventListener("storage", handleDukaUpdate);
+    return () => {
+      window.removeEventListener("bumotik_duka_updated", handleDukaUpdate);
+      window.removeEventListener("storage", handleDukaUpdate);
+    };
   }, []);
 
   const simpanSaldoBank = (v: string) => {
