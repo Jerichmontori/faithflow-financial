@@ -19,7 +19,11 @@ import {
   Layers,
   Sparkles,
   ArrowUpDown,
+  Copy,
+  MessageCircle,
+  Share2,
 } from "lucide-react";
+import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
 import { AppShell } from "@/components/AppShell";
 import { budgetLinesQuery, transactionsQuery, isInternalCash } from "@/lib/queries";
@@ -671,6 +675,66 @@ function LaporanPage() {
     URL.revokeObjectURL(url);
   }
 
+  const generateWhatsAppSummary = () => {
+    const isSpecificKolom =
+      kolomFilter !== "semua" &&
+      !kolomFilter.startsWith("nama:") &&
+      kolomFilter !== "tanpa";
+    const judul = isSpecificKolom
+      ? `KOLOM ${kolomFilter}`
+      : quickKategori !== "semua"
+        ? QUICK_KATEGORI.find((k) => k.id === quickKategori)?.label?.toUpperCase() || "LAPORAN KEUANGAN"
+        : "SEMUA KOLOM & BIPRA";
+
+    let text = `📊 *REKAP KONTRIBUSI KEUANGAN GMIM BUMOTIK*\n`;
+    text += `📍 *${judul}*\n`;
+    text += `🗓️ Periode: ${bulanFilter !== "semua" ? labelBulan(Number(bulanFilter)) : "Sepanjang Tahun 2026"}\n`;
+    text += `💰 *Total Kontribusi Disetor:* ${rupiah(grandTotal)} (${rows.length} Transaksi)\n\n`;
+
+    if (perAnggaran.length > 0) {
+      text += `📋 *Rincian per Pos Ibadah & Kompelka:*\n`;
+      perAnggaran.slice(0, 10).forEach((p) => {
+        text += `• ${p.label}: ${rupiah(p.total)}\n`;
+      });
+      if (perAnggaran.length > 10) {
+        text += `• ...dan ${perAnggaran.length - 10} pos lainnya\n`;
+      }
+      text += `\n`;
+    }
+
+    const setoranBulan = activeMonths.filter((m) => (columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0) > 0);
+    if (setoranBulan.length > 0) {
+      text += `📅 *Rincian Setoran per Bulan:*\n`;
+      setoranBulan.forEach((m) => {
+        const tot = columnTotals.get(m === null ? "tanpa" : String(m)) ?? 0;
+        text += `• ${labelBulan(m)}: ${rupiah(tot)}\n`;
+      });
+      text += `\n`;
+    }
+
+    text += `_Laporan resmi Kas Jemaat GMIM Bumotik_\n`;
+    text += `🌐 https://keuanganbumotik.my.id/laporan`;
+    return text;
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = generateWhatsAppSummary();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+    toast.success("Membuka WhatsApp dan menyalin teks rekap!");
+  };
+
+  const handleCopyWhatsApp = () => {
+    const text = generateWhatsAppSummary();
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      toast.success("Teks rekap WhatsApp berhasil disalin ke clipboard!");
+    }
+  };
+
   const selectedBudget = budgetOptions.find((b) => b.id === budgetId);
 
   return (
@@ -681,6 +745,24 @@ function LaporanPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={resetFilter} className="h-8 gap-1 text-xs">
             <RotateCcw className="size-3.5" /> Reset filter
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShareWhatsApp}
+            className="h-8 gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:text-emerald-300 border-emerald-300 font-semibold"
+          >
+            <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            Bagikan ke WA
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyWhatsApp}
+            className="h-8 gap-1.5 text-xs bg-background hover:bg-muted font-medium"
+          >
+            <Copy className="size-3.5" />
+            Salin Teks
           </Button>
           {!isReadOnly && (
             <>
@@ -974,6 +1056,78 @@ function LaporanPage() {
             {dari && sampai ? ` · periode ${tanggal(dari)} s.d. ${tanggal(sampai)}` : ""}
           </p>
         </div>
+
+        {/* KARTU KONTRIBUSI & TRANSPARANSI KOLOM TERPILIH */}
+        {kolomFilter !== "semua" && !kolomFilter.startsWith("nama:") && kolomFilter !== "tanpa" && (
+          <div className="no-print mb-5 p-4 rounded-xl border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-background shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5">
+                    KOLOM {kolomFilter}
+                  </Badge>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Rekap Kontribusi & Setoran Kas Kolom {kolomFilter}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black font-mono text-primary">
+                    {rupiah(grandTotal)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({rows.length} transaksi disetor sepanjang tahun)
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleShareWhatsApp}
+                  className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                >
+                  <MessageCircle className="size-3.5" />
+                  Kirim Rekap Kolom {kolomFilter} ke Grup WA
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyWhatsApp}
+                  className="h-8 gap-1.5 text-xs bg-background"
+                >
+                  <Copy className="size-3.5" />
+                  Salin Teks
+                </Button>
+              </div>
+            </div>
+
+            {/* Mini monthly contribution badges */}
+            <div className="mt-3 pt-3 border-t border-primary/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
+                Setoran Bulan:
+              </span>
+              {MONTH_KEYS.map((m) => {
+                if (m === null) return null;
+                const nominal = columnTotals.get(String(m)) ?? 0;
+                const hasSetor = nominal > 0;
+                return (
+                  <div
+                    key={String(m)}
+                    className={cn(
+                      "px-2 py-1 rounded-md text-xs font-mono shrink-0 flex items-center gap-1 border",
+                      hasSetor
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold dark:bg-emerald-950/50 dark:text-emerald-300"
+                        : "bg-muted/30 text-muted-foreground/50 border-transparent",
+                    )}
+                  >
+                    <span className="font-sans text-[10px] uppercase font-bold">{(labelBulan(m) || "").slice(0, 3)}:</span>
+                    <span>{hasSetor ? rupiah(nominal) : "—"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="no-print mb-4 grid grid-cols-2 sm:grid-cols-4 h-auto p-1 gap-1">
