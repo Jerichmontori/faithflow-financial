@@ -133,6 +133,44 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    // 1. BroadcastChannel synchronization across open browser tabs
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        bc = new BroadcastChannel("bumotik_realtime_sync");
+        bc.onmessage = (event) => {
+          if (event.data?.type === "duka_updated") {
+            window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+            queryClient.invalidateQueries();
+          } else if (event.data?.type === "settings_updated") {
+            window.dispatchEvent(new CustomEvent("bumotik_settings_updated", { detail: event.data.settings }));
+          } else if (event.data?.type === "data_updated") {
+            queryClient.invalidateQueries();
+          }
+        };
+      } catch (err) {
+        console.error("BroadcastChannel sync error:", err);
+      }
+    }
+
+    // 2. Storage event listener across browser windows
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key?.startsWith("bumotik.")) {
+        window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+        window.dispatchEvent(new CustomEvent("bumotik_settings_updated"));
+        queryClient.invalidateQueries();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

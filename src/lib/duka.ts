@@ -82,6 +82,18 @@ export const DEFAULT_TARIF_RULES: TarifKolomRule[] = [
   },
 ];
 
+export const notifyDukaChanged = () => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+  if (typeof BroadcastChannel !== "undefined") {
+    try {
+      const bc = new BroadcastChannel("bumotik_realtime_sync");
+      bc.postMessage({ type: "duka_updated" });
+      bc.close();
+    } catch {}
+  }
+};
+
 /** Membaca daftar nama/peristiwa duka */
 export const bacaDaftarDuka = (): KasusDuka[] => {
   if (typeof window === "undefined") return DEFAULT_KASUS_DUKA;
@@ -100,7 +112,7 @@ export const simpanDaftarDuka = (list: KasusDuka[]): void => {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(DAFTAR_DUKA_KEY, JSON.stringify(list));
-    window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+    notifyDukaChanged();
   } catch (e) {
     console.error("Gagal simpan daftar duka:", e);
   }
@@ -124,7 +136,7 @@ export const simpanTarifRules = (rules: TarifKolomRule[]): void => {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(DUKA_RULES_KEY, JSON.stringify(rules));
-    window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+    notifyDukaChanged();
   } catch (e) {
     console.error("Gagal simpan aturan tarif:", e);
   }
@@ -147,7 +159,7 @@ export const simpanTunggakanTahunLalu = (data: TunggakanTahunLaluMap): void => {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(DUKA_TAHUN_LALU_KEY, JSON.stringify(data));
-    window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+    notifyDukaChanged();
   } catch (e) {
     console.error("Gagal simpan tunggakan tahun lalu:", e);
   }
@@ -167,7 +179,7 @@ export const bacaDuka = (): DukaMap => {
 export const simpanDuka = (data: DukaMap) => {
   if (typeof window === "undefined") return;
   localStorage.setItem(DUKA_KEY, JSON.stringify(data));
-  window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+  notifyDukaChanged();
 };
 
 /**

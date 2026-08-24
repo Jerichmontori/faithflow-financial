@@ -148,12 +148,24 @@ export function getStoredSettings(): AppSettings {
   }
 }
 
+export const notifySettingsChanged = (settings: AppSettings) => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("bumotik_settings_updated", { detail: settings }));
+  if (typeof BroadcastChannel !== "undefined") {
+    try {
+      const bc = new BroadcastChannel("bumotik_realtime_sync");
+      bc.postMessage({ type: "settings_updated", settings });
+      bc.close();
+    } catch {}
+  }
+};
+
 export function saveStoredSettings(settings: AppSettings): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     localStorage.setItem("bumotik.saldoAwalBank", String(settings.saldoAwalBank ?? 0));
-    window.dispatchEvent(new CustomEvent("bumotik_settings_updated", { detail: settings }));
+    notifySettingsChanged(settings);
   } catch (err) {
     console.error("Gagal menyimpan ke localStorage:", err);
   }
@@ -176,12 +188,17 @@ export function useAppSettings() {
       }
     };
 
-    window.addEventListener("bumotik_settings_updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY || e.key === "bumotik.saldoAwalBank") {
+        setSettings(getStoredSettings());
+      }
+    };
 
+    window.addEventListener("bumotik_settings_updated", handleUpdate);
+    window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("bumotik_settings_updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 
