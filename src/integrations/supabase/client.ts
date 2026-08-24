@@ -29,6 +29,14 @@ export const supabase = {
         email: credentials.email,
         password: credentials.password,
       });
+      if (res.data?.accessToken) {
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("insforge_auth_token", res.data.accessToken);
+          } catch {}
+        }
+        insforge.setAccessToken(res.data.accessToken);
+      }
       return {
         data: res.data
           ? {
@@ -56,6 +64,14 @@ export const supabase = {
         password: credentials.password,
         name: credentials.options?.data?.full_name || credentials.options?.data?.name,
       });
+      if ((res.data as any)?.accessToken) {
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("insforge_auth_token", (res.data as any).accessToken);
+          } catch {}
+        }
+        insforge.setAccessToken((res.data as any).accessToken);
+      }
       return {
         data: res.data
           ? {
@@ -73,10 +89,22 @@ export const supabase = {
     },
 
     async signOut() {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("insforge_auth_token");
+        } catch {}
+      }
+      insforge.setAccessToken(undefined as any);
       return insforge.auth.signOut();
     },
 
     async getUser() {
+      if (typeof window !== "undefined") {
+        const storedToken = localStorage.getItem("insforge_auth_token");
+        if (storedToken) {
+          insforge.setAccessToken(storedToken);
+        }
+      }
       const res = await insforge.auth.getCurrentUser();
       return {
         data: { user: res.data?.user ?? null },
@@ -85,12 +113,19 @@ export const supabase = {
     },
 
     async getSession() {
+      if (typeof window !== "undefined") {
+        const storedToken = localStorage.getItem("insforge_auth_token");
+        if (storedToken) {
+          insforge.setAccessToken(storedToken);
+        }
+      }
       const res = await insforge.auth.getCurrentUser();
       const user = res.data?.user ?? null;
       const accessToken =
-        typeof (insforge as any).tokenManager?.getAccessToken === "function"
+        (typeof window !== "undefined" ? localStorage.getItem("insforge_auth_token") : null) ||
+        (typeof (insforge as any).tokenManager?.getAccessToken === "function"
           ? (insforge as any).tokenManager.getAccessToken()
-          : null;
+          : null);
       return {
         data: {
           session: user
@@ -106,6 +141,11 @@ export const supabase = {
 
     async setSession(tokens: { access_token?: string; refresh_token?: string }) {
       if (tokens.access_token) {
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("insforge_auth_token", tokens.access_token);
+          } catch {}
+        }
         insforge.setAccessToken(tokens.access_token);
       }
       return { data: { session: null }, error: null };
