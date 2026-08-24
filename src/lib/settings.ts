@@ -183,28 +183,34 @@ export function useAppSettings() {
     // 1. Segera muat pengaturan tersimpan dari cache lokal
     setSettings(getStoredSettings());
 
-    // 2. Tarik pengaturan resmi dari Database PostgreSQL
-    supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "general_settings")
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!error && data?.value) {
-          const dbSettings = data.value as Partial<AppSettings>;
-          const current = getStoredSettings();
-          const merged: AppSettings = {
-            ...current,
-            ...dbSettings,
-          };
-          setSettings(merged);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-            localStorage.setItem("bumotik.saldoAwalBank", String(merged.saldoAwalBank ?? 0));
-          } catch {}
-          notifySettingsChanged(merged);
-        }
-      });
+    const fetchFromDB = () => {
+      supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "general_settings")
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (!error && data?.value) {
+            const dbSettings = data.value as Partial<AppSettings>;
+            const current = getStoredSettings();
+            const merged: AppSettings = {
+              ...current,
+              ...dbSettings,
+            };
+            setSettings(merged);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+              localStorage.setItem("bumotik.saldoAwalBank", String(merged.saldoAwalBank ?? 0));
+            } catch {}
+            notifySettingsChanged(merged);
+          }
+        });
+    };
+
+    // 2. Tarik pengaturan resmi dari Database PostgreSQL segera & berkala
+    fetchFromDB();
+    const interval = setInterval(fetchFromDB, 10000);
+    window.addEventListener("focus", fetchFromDB);
 
     const handleUpdate = (e: Event) => {
       const custom = e as CustomEvent<AppSettings>;
@@ -224,6 +230,8 @@ export function useAppSettings() {
     window.addEventListener("bumotik_settings_updated", handleUpdate);
     window.addEventListener("storage", handleStorage);
     return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", fetchFromDB);
       window.removeEventListener("bumotik_settings_updated", handleUpdate);
       window.removeEventListener("storage", handleStorage);
     };

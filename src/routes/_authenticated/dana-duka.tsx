@@ -131,6 +131,9 @@ function DanaDukaPage() {
 
     // Tarik versi terkini dari database cloud
     tarikDukaDariDatabase();
+    const interval = setInterval(tarikDukaDariDatabase, 10000);
+    const handleFocus = () => tarikDukaDariDatabase();
+    window.addEventListener("focus", handleFocus);
 
     const handleUpdate = () => {
       setDaftarDuka(bacaDaftarDuka());
@@ -142,6 +145,8 @@ function DanaDukaPage() {
     window.addEventListener("bumotik_duka_updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
       window.removeEventListener("bumotik_duka_updated", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };

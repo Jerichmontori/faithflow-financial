@@ -153,6 +153,9 @@ function WartaPage() {
 
     // Tarik versi terkini dari cloud database
     tarikDukaDariDatabase();
+    const interval = setInterval(tarikDukaDariDatabase, 10000);
+    const handleFocus = () => tarikDukaDariDatabase();
+    window.addEventListener("focus", handleFocus);
 
     const handleDukaUpdate = () => {
       setDuka(bacaDuka());
@@ -163,6 +166,8 @@ function WartaPage() {
     window.addEventListener("bumotik_duka_updated", handleDukaUpdate);
     window.addEventListener("storage", handleDukaUpdate);
     return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
       window.removeEventListener("bumotik_duka_updated", handleDukaUpdate);
       window.removeEventListener("storage", handleDukaUpdate);
     };
