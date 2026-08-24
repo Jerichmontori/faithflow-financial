@@ -31,6 +31,14 @@ export interface AppSettings {
   bannerBerandaUrl: string;
   bannerOpacity: number; // 0 to 100
   warnaBackgroundBeranda: string; // hex / gradient color
+
+  // Pengaturan Tampilan Halaman Login (/auth)
+  judulLogin: string;
+  deskripsiLogin: string;
+  mottoAyatLogin: string;
+  bannerLoginUrl: string;
+  bannerLoginOpacity: number; // 0 to 100
+  warnaBackgroundLogin: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -62,6 +70,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bannerBerandaUrl: "",
   bannerOpacity: 45,
   warnaBackgroundBeranda: "#0b192c",
+
+  judulLogin: "Kelola kas jemaat dengan tertib, transparan, dan terpercaya.",
+  deskripsiLogin: "Monitoring saldo realtime, mata anggaran, approval pengeluaran berjenjang, serta laporan harian hingga tahunan dalam satu tempat.",
+  mottoAyatLogin: "Amsal 3:9 — 'Muliakanlah TUHAN dengan hartamu dan dengan hasil pertama dari segala penghasilanmu.'",
+  bannerLoginUrl: "",
+  bannerLoginOpacity: 40,
+  warnaBackgroundLogin: "#0b192c",
 };
 
 const STORAGE_KEY = "bumotik.app_settings_v1";
@@ -88,6 +103,12 @@ export function getStoredSettings(): AppSettings {
       bannerBerandaUrl: parsed.bannerBerandaUrl ?? DEFAULT_SETTINGS.bannerBerandaUrl,
       bannerOpacity: typeof parsed.bannerOpacity === "number" ? parsed.bannerOpacity : DEFAULT_SETTINGS.bannerOpacity,
       warnaBackgroundBeranda: parsed.warnaBackgroundBeranda || DEFAULT_SETTINGS.warnaBackgroundBeranda,
+      judulLogin: parsed.judulLogin || DEFAULT_SETTINGS.judulLogin,
+      deskripsiLogin: parsed.deskripsiLogin || DEFAULT_SETTINGS.deskripsiLogin,
+      mottoAyatLogin: parsed.mottoAyatLogin ?? DEFAULT_SETTINGS.mottoAyatLogin,
+      bannerLoginUrl: parsed.bannerLoginUrl ?? DEFAULT_SETTINGS.bannerLoginUrl,
+      bannerLoginOpacity: typeof parsed.bannerLoginOpacity === "number" ? parsed.bannerLoginOpacity : DEFAULT_SETTINGS.bannerLoginOpacity,
+      warnaBackgroundLogin: parsed.warnaBackgroundLogin || DEFAULT_SETTINGS.warnaBackgroundLogin,
     };
   } catch {
     return DEFAULT_SETTINGS;

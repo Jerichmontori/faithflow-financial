@@ -23,6 +23,8 @@ import {
   Palette,
   Trash2,
   ImageIcon,
+  LogIn,
+  Lock,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAppSettings, DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
@@ -42,12 +44,12 @@ export const Route = createFileRoute("/_authenticated/pengaturan")({
       {
         name: "description",
         content:
-          "Pengaturan nama gereja, wilayah, alamat, logo aplikasi, background beranda, serta penandatangan kuitansi dan laporan keuangan.",
+          "Pengaturan nama gereja, wilayah, alamat, logo aplikasi, background beranda, tampilan login, serta penandatangan kuitansi dan laporan keuangan.",
       },
       { property: "og:title", content: "Pengaturan Awal — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Kelola profil jemaat, logo aplikasi, gambar background beranda, dan nama penandatangan kwitansi.",
+        content: "Kelola profil jemaat, logo aplikasi, gambar background beranda, tampilan login, dan nama penandatangan kwitansi.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -68,6 +70,7 @@ function PengaturanPage() {
   const { canManageFinance } = useSession();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const loginBannerInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<AppSettings>({ ...settings });
   const [logoPreview, setLogoPreview] = useState<string>(settings.logoUrl || "/favicon.png");
@@ -114,9 +117,27 @@ function PengaturanPage() {
     reader.readAsDataURL(file);
   };
 
+  const handleLoginBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Ukuran gambar background maksimal 3MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setForm((prev) => ({ ...prev, bannerLoginUrl: result }));
+      toast.success("Gambar background login berhasil dipilih.");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = () => {
     updateSettings(form);
-    toast.success("Pengaturan berhasil disimpan dan langsung diterapkan ke seluruh aplikasi & beranda!");
+    toast.success("Pengaturan berhasil disimpan dan langsung diterapkan ke seluruh aplikasi, beranda & halaman login!");
   };
 
   const handleReset = () => {
@@ -128,10 +149,14 @@ function PengaturanPage() {
     }
   };
 
+  const currentLoginBgImage = form.bannerLoginUrl || form.bannerBerandaUrl || "";
+  const currentLoginBgOpacity = (form.bannerLoginOpacity ?? 40) / 100;
+  const currentLoginBgColor = form.warnaBackgroundLogin || form.warnaBackgroundBeranda || "#0b192c";
+
   return (
     <AppShell
       title="Pengaturan Awal & Profil Gereja"
-      subtitle="Kelola identitas jemaat, logo, gambar latar beranda, dan nama pejabat penandatangan kuitansi"
+      subtitle="Kelola identitas jemaat, logo, tampilan beranda, halaman login, dan nama penandatangan kuitansi"
       actions={
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleReset} className="gap-1.5 text-xs">
@@ -147,18 +172,21 @@ function PengaturanPage() {
         {/* Kolom Kiri: Form Input Pengaturan */}
         <div className="lg:col-span-7 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="profil" className="text-xs">
-                <Church className="size-3.5 mr-1" /> Profil
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="profil" className="text-[11px] sm:text-xs px-1">
+                <Church className="size-3 sm:size-3.5 mr-1" /> Profil
               </TabsTrigger>
-              <TabsTrigger value="aplikasi" className="text-xs">
-                <Settings className="size-3.5 mr-1" /> Logo
+              <TabsTrigger value="aplikasi" className="text-[11px] sm:text-xs px-1">
+                <Settings className="size-3 sm:size-3.5 mr-1" /> Logo
               </TabsTrigger>
-              <TabsTrigger value="beranda" className="text-xs">
-                <Home className="size-3.5 mr-1" /> Beranda
+              <TabsTrigger value="beranda" className="text-[11px] sm:text-xs px-1">
+                <Home className="size-3 sm:size-3.5 mr-1" /> Beranda
               </TabsTrigger>
-              <TabsTrigger value="ttd" className="text-xs">
-                <PenTool className="size-3.5 mr-1" /> Pejabat
+              <TabsTrigger value="login" className="text-[11px] sm:text-xs px-1">
+                <LogIn className="size-3 sm:size-3.5 mr-1" /> Login
+              </TabsTrigger>
+              <TabsTrigger value="ttd" className="text-[11px] sm:text-xs px-1">
+                <PenTool className="size-3 sm:size-3.5 mr-1" /> Pejabat
               </TabsTrigger>
             </TabsList>
 
@@ -320,7 +348,7 @@ function PengaturanPage() {
               </Card>
             </TabsContent>
 
-            {/* TAB 3: PENGATURAN TAMPILAN BERANDA & GAMBAR LATAR */}
+            {/* TAB 3: PENGATURAN TAMPILAN BERANDA */}
             <TabsContent value="beranda" className="space-y-4 pt-3">
               {/* Card Gambar Background Hero & Opacity */}
               <Card>
@@ -562,7 +590,196 @@ function PengaturanPage() {
               </Card>
             </TabsContent>
 
-            {/* TAB 4: PENANDATANGAN KWITANSI */}
+            {/* TAB 4: PENGATURAN TAMPILAN LOGIN */}
+            <TabsContent value="login" className="space-y-4 pt-3">
+              {/* Card Background Latar Panel Login */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <LogIn className="size-4 text-primary" /> Gambar Background & Warna Panel Login (/auth)
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Atur foto latar dan nuansa warna yang tampil di sisi kiri halaman masuk (portal login) pengguna.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-xs">
+                  {/* Upload Gambar Khusus Login */}
+                  <div className="space-y-2">
+                    <Label className="font-semibold">Foto Background Khusus Login (Opsional)</Label>
+                    <input
+                      type="file"
+                      ref={loginBannerInputRef}
+                      onChange={handleLoginBannerUpload}
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                    />
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      {currentLoginBgImage ? (
+                        <div className="relative h-20 w-36 rounded-lg border overflow-hidden shadow-xs shrink-0 bg-slate-900">
+                          <img
+                            src={currentLoginBgImage}
+                            alt="Login BG Preview"
+                            className="size-full object-cover"
+                            style={{ opacity: currentLoginBgOpacity }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-1">
+                            <span className="text-[9px] text-white font-bold">
+                              Opacity {form.bannerLoginOpacity}%
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-20 w-36 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 shrink-0">
+                          <Lock className="size-5 mb-1" />
+                          <span className="text-[9.5px]">Warna Polos</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => loginBannerInputRef.current?.click()}
+                            className="gap-1.5 text-xs h-8 font-semibold"
+                          >
+                            <Upload className="size-3.5 text-primary" />
+                            {form.bannerLoginUrl ? "Ganti Foto Login" : "Unggah Foto Khusus Login"}
+                          </Button>
+
+                          {form.bannerBerandaUrl && !form.bannerLoginUrl && (
+                            <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md font-medium">
+                              ✓ Mengikuti Foto Beranda
+                            </span>
+                          )}
+
+                          {form.bannerLoginUrl && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setForm((prev) => ({ ...prev, bannerLoginUrl: "" }))}
+                              className="text-xs h-8 text-destructive gap-1"
+                            >
+                              <Trash2 className="size-3.5" /> Gunakan Foto Beranda
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Jika tidak diunggah, halaman login akan otomatis memakai foto background beranda Anda.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Slider Opacity Login */}
+                  {currentLoginBgImage && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="bannerLoginOpacity" className="font-semibold flex items-center gap-1.5">
+                          <Sliders className="size-3.5 text-primary" /> Transparansi Background Login (Opacity)
+                        </Label>
+                        <span className="text-xs font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">
+                          {form.bannerLoginOpacity}%
+                        </span>
+                      </div>
+                      <input
+                        id="bannerLoginOpacity"
+                        type="range"
+                        min="10"
+                        max="100"
+                        step="5"
+                        value={form.bannerLoginOpacity ?? 40}
+                        onChange={(e) => handleChange("bannerLoginOpacity", Number(e.target.value))}
+                        className="w-full accent-primary cursor-pointer h-2 bg-muted rounded-lg"
+                      />
+                    </div>
+                  )}
+
+                  {/* Warna Latar Login */}
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="font-semibold flex items-center gap-1.5">
+                      <Palette className="size-3.5 text-primary" /> Nuansa Warna Panel Login
+                    </Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {WARNA_BACKGROUND_PRESET.map((preset) => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => handleChange("warnaBackgroundLogin", preset.value)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all ${
+                            form.warnaBackgroundLogin === preset.value
+                              ? "border-primary ring-2 ring-primary/20 font-bold bg-primary/5"
+                              : "hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          <div className={`size-4 rounded-full ${preset.bgClass} border shadow-xs`} />
+                          <span className="text-[11px] truncate">{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card Teks Sambutan & Ayat Halaman Login */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="size-4 text-primary" /> Teks Sambutan & Firman di Halaman Login
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Kalimat motivasi dan ayat firman yang tampil di sisi kiri form login.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-xs">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="judulLogin" className="font-semibold">
+                      Judul Sambutan Login <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="judulLogin"
+                      value={form.judulLogin}
+                      onChange={(e) => handleChange("judulLogin", e.target.value)}
+                      placeholder="Contoh: Kelola kas jemaat dengan tertib, transparan, dan terpercaya."
+                      rows={2}
+                      className="text-xs font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="deskripsiLogin" className="font-semibold">
+                      Paragraf Penjelasan
+                    </Label>
+                    <Textarea
+                      id="deskripsiLogin"
+                      value={form.deskripsiLogin}
+                      onChange={(e) => handleChange("deskripsiLogin", e.target.value)}
+                      placeholder="Contoh: Monitoring saldo realtime, mata anggaran, approval pengeluaran..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="mottoAyatLogin" className="font-semibold text-primary flex items-center gap-1.5">
+                      <BookOpen className="size-3.5" /> Ayat Firman Tuhan di Halaman Login
+                    </Label>
+                    <Input
+                      id="mottoAyatLogin"
+                      value={form.mottoAyatLogin}
+                      onChange={(e) => handleChange("mottoAyatLogin", e.target.value)}
+                      placeholder="Contoh: Amsal 3:9 — 'Muliakanlah TUHAN dengan hartamu...'"
+                      className="h-9 text-xs italic"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB 5: PENANDATANGAN KWITANSI */}
             <TabsContent value="ttd" className="space-y-4 pt-3">
               <Card>
                 <CardHeader className="pb-3">
@@ -680,8 +897,96 @@ function PengaturanPage() {
 
         {/* Kolom Kanan: Pratinjau Langsung (Live Preview) */}
         <div className="lg:col-span-5 space-y-3">
-          {activeTab === "beranda" ? (
-            /* LIVE PREVIEW TAMPILAN BERANDA DENGAN BACKGROUND GAMBAR */
+          {activeTab === "login" ? (
+            /* LIVE PREVIEW HALAMAN LOGIN */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <LogIn className="size-3.5 text-primary" /> Live Pratinjau Halaman Login
+                </h3>
+                <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                  Real-time
+                </span>
+              </div>
+
+              <div className="rounded-xl border overflow-hidden shadow-lg grid grid-cols-12 text-xs">
+                {/* Panel Kiri Simulasi */}
+                <div
+                  className="col-span-7 relative p-4 text-white flex flex-col justify-between overflow-hidden min-h-[260px]"
+                  style={{ backgroundColor: currentLoginBgColor }}
+                >
+                  {currentLoginBgImage && (
+                    <div
+                      className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+                      style={{
+                        backgroundImage: `url("${currentLoginBgImage}")`,
+                        opacity: currentLoginBgOpacity,
+                      }}
+                    />
+                  )}
+                  <div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(180deg, rgba(11, 25, 44, 0.75) 0%, rgba(11, 25, 44, 0.92) 100%)",
+                    }}
+                  />
+
+                  <div className="relative z-10 flex items-center gap-2">
+                    <img
+                      src={logoPreview || "/favicon.png"}
+                      alt="Logo"
+                      className="size-6 object-contain rounded-sm border p-0.5 bg-white/10"
+                    />
+                    <div>
+                      <strong className="block text-[10px] leading-tight font-bold">{form.namaAplikasi}</strong>
+                      <span className="text-[8px] text-amber-300 font-semibold uppercase block">{form.namaJemaat}</span>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 my-2 space-y-1.5">
+                    <span className="inline-block text-[7.5px] font-bold text-white bg-white/15 px-2 py-0.5 rounded-full uppercase">
+                      Portal Keuangan
+                    </span>
+                    <h4 className="text-[11px] font-extrabold leading-tight text-white">
+                      {form.judulLogin || "Judul Login"}
+                    </h4>
+                    <p className="text-[8.5px] text-gray-200 leading-snug line-clamp-2">
+                      {form.deskripsiLogin || "Deskripsi..."}
+                    </p>
+                    {form.mottoAyatLogin && (
+                      <div className="p-1.5 rounded-md bg-white/10 border border-white/20 text-[8px] italic text-amber-200">
+                        "{form.mottoAyatLogin}"
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="relative z-10 text-[7.5px] text-gray-400">
+                    &copy; {new Date().getFullYear()} {form.namaAplikasi}
+                  </p>
+                </div>
+
+                {/* Form Simulasi */}
+                <div className="col-span-5 bg-card p-3 flex flex-col justify-center space-y-2">
+                  <strong className="text-[10.5px] font-bold">Masuk</strong>
+                  <div className="space-y-1">
+                    <div className="h-5 rounded bg-muted/60 border px-1.5 text-[8px] flex items-center text-muted-foreground">
+                      email@gereja.org
+                    </div>
+                    <div className="h-5 rounded bg-muted/60 border px-1.5 text-[8px] flex items-center text-muted-foreground">
+                      ••••••••
+                    </div>
+                  </div>
+                  <div className="h-6 rounded bg-primary text-primary-foreground font-bold text-[8.5px] flex items-center justify-center shadow-xs">
+                    Masuk ke Akun
+                  </div>
+                  <div className="text-[7.5px] text-center text-muted-foreground underline">
+                    Masuk dengan Google
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeTab === "beranda" ? (
+            /* LIVE PREVIEW TAMPILAN BERANDA */
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -716,18 +1021,16 @@ function PengaturanPage() {
                   className="relative text-center py-6 px-4 text-white overflow-hidden"
                   style={{ backgroundColor: form.warnaBackgroundBeranda || "#0b192c" }}
                 >
-                  {/* Layer Gambar Background */}
                   {form.bannerBerandaUrl && (
                     <div
                       className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
                       style={{
-                        backgroundImage: `url('${form.bannerBerandaUrl}')`,
+                        backgroundImage: `url("${form.bannerBerandaUrl}")`,
                         opacity: (form.bannerOpacity ?? 45) / 100,
                       }}
                     />
                   )}
 
-                  {/* Gradient Overlay */}
                   <div
                     className="absolute inset-0 z-0 pointer-events-none"
                     style={{
@@ -737,7 +1040,6 @@ function PengaturanPage() {
                     }}
                   />
 
-                  {/* Konten Hero Live */}
                   <div className="relative z-10 space-y-2">
                     <span className="inline-block text-[8.5px] font-bold text-white bg-white/15 border border-white/25 px-2.5 py-0.5 rounded-full uppercase backdrop-blur-xs">
                       {form.subjudulBeranda || "TAGLINE BERANDA"}
@@ -899,7 +1201,7 @@ function PengaturanPage() {
           <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-2">
             <CheckCircle2 className="size-4 text-blue-600 shrink-0 mt-0.5" />
             <span>
-              Perubahan pada menu ini otomatis tersinkronisasi ke seluruh kuitansi, laporan kas, dan halaman depan (beranda) website <strong>https://keuanganbumotik.my.id</strong>.
+              Perubahan pada menu ini otomatis tersinkronisasi ke seluruh kuitansi, laporan kas, halaman depan (beranda), dan portal login <strong>https://keuanganbumotik.my.id/auth</strong>.
             </span>
           </div>
         </div>
