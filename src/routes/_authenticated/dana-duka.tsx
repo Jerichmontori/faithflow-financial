@@ -515,7 +515,7 @@ function DanaDukaPage() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-black text-foreground">{stats.totalKasus} Tahap</div>
+            <div className="text-2xl font-black text-foreground">{stats.totalKasus} Duka</div>
             <p className="text-[11px] text-muted-foreground mt-0.5">Total peristiwa duka tahun berjalan</p>
           </CardContent>
         </Card>
@@ -677,7 +677,7 @@ function DanaDukaPage() {
                       <div className="flex justify-between pt-1 border-t text-[11px]">
                         <span>Duka Thn Ini Lunas:</span>
                         <span className="font-semibold text-primary">
-                          {summary.jumlahDukaTerbayar} dari {summary.totalKasusDuka} Tahap
+                          {summary.jumlahDukaTerbayar} dari {summary.totalKasusDuka} Duka
                         </span>
                       </div>
                     </div>
@@ -1454,7 +1454,7 @@ function DanaDukaPage() {
               <Label className="font-semibold text-xs flex items-center justify-between">
                 <span>Rincian Pelunasan Tahap Duka Tahun Berjalan:</span>
                 <span className="text-[10.5px] font-normal text-muted-foreground">
-                  Lunas: {detailKolom?.jumlahDukaTerbayar} dari {detailKolom?.totalKasusDuka} Tahap
+                  Lunas: {detailKolom?.jumlahDukaTerbayar} dari {detailKolom?.totalKasusDuka} Duka
                 </span>
               </Label>
 
