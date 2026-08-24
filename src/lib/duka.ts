@@ -196,6 +196,26 @@ export function dapatkanTarifDukaKolom(
   return kasus.iuranPerKolom || DEFAULT_TARIF_DUKA;
 }
 
+/**
+ * Menghitung total target penerimaan duka dari seluruh 29 kolom untuk suatu kasus duka
+ */
+export function hitungTotalTargetDukaTahap(
+  kasus: KasusDuka,
+  rules: TarifKolomRule[] = []
+): { totalTargetRp: number; rataRataPerKolom: number; detailPerKolom: Record<number, number> } {
+  let totalTargetRp = 0;
+  const detailPerKolom: Record<number, number> = {};
+
+  for (const k of DUKA_KOLOM) {
+    const tarifK = dapatkanTarifDukaKolom(kasus, k, rules);
+    detailPerKolom[k] = tarifK;
+    totalTargetRp += tarifK;
+  }
+
+  const rataRataPerKolom = DUKA_KOLOM.length > 0 ? Math.round(totalTargetRp / DUKA_KOLOM.length) : 0;
+  return { totalTargetRp, rataRataPerKolom, detailPerKolom };
+}
+
 /** Mengecek apakah suatu transaksi adalah setoran dana duka */
 export const isTransaksiDuka = (t: Transaction): boolean => {
   if (t.kind !== "penerimaan" || t.status === "rejected" || t.status === "draft") return false;

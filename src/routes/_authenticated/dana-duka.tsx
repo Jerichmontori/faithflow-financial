@@ -37,6 +37,7 @@ import {
   bacaDuka,
   simpanDuka,
   hitungSemuaTunggakanDuka,
+  hitungTotalTargetDukaTahap,
   buatDefaultTarifKolom,
   type KasusDuka,
   type TarifKolomRule,
@@ -619,7 +620,7 @@ function DanaDukaPage() {
                       <th className="py-2.5 px-4">Nama Almarhum / Keluarga Duka</th>
                       <th className="py-2.5 px-4 w-28">Tanggal Duka</th>
                       <th className="py-2.5 px-4 w-24">Asal Kolom</th>
-                      <th className="py-2.5 px-4 w-32 text-right">Tarif Dasar</th>
+                      <th className="py-2.5 px-4 w-40 text-right">Target Dinamis (29 Kolom)</th>
                       <th className="py-2.5 px-4">Keterangan</th>
                       <th className="py-2.5 px-4 w-24 text-center">Aksi</th>
                     </tr>
@@ -632,54 +633,62 @@ function DanaDukaPage() {
                         </td>
                       </tr>
                     ) : (
-                      daftarDuka.map((item) => (
-                        <tr key={item.id} className="hover:bg-muted/20">
-                          <td className="py-3 px-4 text-center font-black text-primary">
-                            #{item.urutan}
-                          </td>
-                          <td className="py-3 px-4 font-bold text-foreground">
-                            {item.nama}
-                          </td>
-                          <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
-                            {tanggal(item.tanggal)}
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.kolomKeluarga ? (
-                              <Badge variant="outline" className="text-[10px] font-semibold">
-                                Kolom {item.kolomKeluarga}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-foreground">
-                            {rupiah(item.iuranPerKolom || DEFAULT_TARIF_DUKA)}
-                          </td>
-                          <td className="py-3 px-4 text-muted-foreground">
-                            {item.keterangan || "-"}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditDialog(item)}
-                                className="size-7 p-0 text-muted-foreground hover:text-primary"
-                              >
-                                <Edit2 className="size-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteKasusDuka(item.id, item.nama)}
-                                className="size-7 p-0 text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                      daftarDuka.map((item) => {
+                        const targetInfo = hitungTotalTargetDukaTahap(item, tarifRules);
+                        return (
+                          <tr key={item.id} className="hover:bg-muted/20">
+                            <td className="py-3 px-4 text-center font-black text-primary">
+                              #{item.urutan}
+                            </td>
+                            <td className="py-3 px-4 font-bold text-foreground">
+                              {item.nama}
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
+                              {tanggal(item.tanggal)}
+                            </td>
+                            <td className="py-3 px-4">
+                              {item.kolomKeluarga ? (
+                                <Badge variant="outline" className="text-[10px] font-semibold">
+                                  Kolom {item.kolomKeluarga}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <strong className="font-mono font-bold text-foreground block">
+                                {rupiah(targetInfo.totalTargetRp)}
+                              </strong>
+                              <span className="text-[10px] text-muted-foreground block">
+                                Rata-rata {rupiah(targetInfo.rataRataPerKolom)} / kolom
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground">
+                              {item.keterangan || "-"}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditDialog(item)}
+                                  className="size-7 p-0 text-muted-foreground hover:text-primary"
+                                >
+                                  <Edit2 className="size-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteKasusDuka(item.id, item.nama)}
+                                  className="size-7 p-0 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -961,6 +970,33 @@ function DanaDukaPage() {
                 className="h-9 text-xs"
               />
             </div>
+
+            {/* LIVE DYNAMIC TOTAL TARGET 29 KOLOM */}
+            {(() => {
+              const dummy: KasusDuka = {
+                id: "temp",
+                urutan: formUrutan,
+                nama: formNama,
+                tanggal: formTanggal,
+                iuranPerKolom: Number(formTarif) || DEFAULT_TARIF_DUKA,
+              };
+              const targetInfo = hitungTotalTargetDukaTahap(dummy, tarifRules);
+              return (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-primary flex items-center gap-1.5 text-[11px]">
+                      <Sparkles className="size-3.5" /> Target Akumulasi Dinamis (29 Kolom):
+                    </span>
+                    <strong className="font-mono text-xs text-foreground font-bold">
+                      {rupiah(targetInfo.totalTargetRp)}
+                    </strong>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Dihitung otomatis mengikuti jumlah & matriks tarif spesifik masing-masing kolom pada Tahap #{formUrutan} (Rata-rata {rupiah(targetInfo.rataRataPerKolom)} / kolom).
+                  </p>
+                </div>
+              );
+            })()}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
