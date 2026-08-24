@@ -4,6 +4,7 @@ import type { Transaction } from "@/lib/queries";
 export const DUKA_KEY = "bumotik.danaDuka";
 export const DAFTAR_DUKA_KEY = "bumotik.daftarKasusDuka_v1";
 export const DUKA_RULES_KEY = "bumotik.tarifDukaRules_v1";
+export const DUKA_TAHUN_LALU_KEY = "bumotik.tunggakanDukaTahunLalu_v1";
 
 export const DUKA_KOLOM = Array.from({ length: 29 }, (_, i) => i + 1);
 
@@ -28,6 +29,15 @@ export interface TarifKolomRule {
   tarifPerKolom: Record<number, number>; // Kolom 1: 50000, Kolom 2: 75000, dst
   keterangan?: string;
 }
+
+export interface TunggakanTahunLaluItem {
+  kolom: number;
+  nominalRp: number; // Besaran rupiah tunggakan dari tahun lalu
+  jumlahKasus: number; // Berapa x duka tahun lalu yang belum dibayar
+  keterangan?: string; // Catatan, misal "Sisa duka Nov-Des 2025"
+}
+
+export type TunggakanTahunLaluMap = Record<number, TunggakanTahunLaluItem>;
 
 export type DukaMap = Record<string, string>;
 
@@ -120,6 +130,29 @@ export const simpanTarifRules = (rules: TarifKolomRule[]): void => {
   }
 };
 
+/** Membaca data tunggakan dari tahun lalu per kolom */
+export const bacaTunggakanTahunLalu = (): TunggakanTahunLaluMap => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(DUKA_TAHUN_LALU_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as TunggakanTahunLaluMap;
+  } catch {
+    return {};
+  }
+};
+
+/** Menyimpan data tunggakan dari tahun lalu per kolom */
+export const simpanTunggakanTahunLalu = (data: TunggakanTahunLaluMap): void => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DUKA_TAHUN_LALU_KEY, JSON.stringify(data));
+    window.dispatchEvent(new CustomEvent("bumotik_duka_updated"));
+  } catch (e) {
+    console.error("Gagal simpan tunggakan tahun lalu:", e);
+  }
+};
+
 /** Membaca override manual status duka */
 export const bacaDuka = (): DukaMap => {
   if (typeof window === "undefined") return {};
@@ -145,12 +178,10 @@ export function dapatkanTarifDukaKolom(
   kolom: number,
   rules: TarifKolomRule[] = []
 ): number {
-  // 1. Cek jika kasus duka ini memiliki override spesifik per kolom
   if (kasus.tarifKhususKolom && typeof kasus.tarifKhususKolom[kolom] === "number") {
     return kasus.tarifKhususKolom[kolom];
   }
 
-  // 2. Cek aturan tarif bertahap (diurutkan dari mulaiTahap terbesar yang sesuai)
   const sortedRules = [...rules].sort((a, b) => b.mulaiTahap - a.mulaiTahap);
   const matchedRule = sortedRules.find(
     (r) =>
@@ -162,7 +193,6 @@ export function dapatkanTarifDukaKolom(
     return matchedRule.tarifPerKolom[kolom];
   }
 
-  // 3. Fallback ke tarif default kasus atau konstanta
   return kasus.iuranPerKolom || DEFAULT_TARIF_DUKA;
 }
 
@@ -194,6 +224,15 @@ export interface TahapDukaKolomDetail {
   sisaKurangRp: number;
 }
 
+export interface DetailTahunLaluKolom {
+  kewajibanTahunLaluRp: number;
+  kasusTahunLalu: number;
+  terbayarTahunLaluRp: number;
+  sisaTunggakanTahunLaluRp: number;
+  lunas: boolean;
+  keterangan?: string;
+}
+
 export interface KolomDukaSummary {
   kolom: number;
   totalSetorRp: number;
@@ -201,9 +240,10 @@ export interface KolomDukaSummary {
   totalSisaTunggakanRp: number;
   jumlahDukaTerbayar: number;
   totalKasusDuka: number;
-  tunggakanJumlah: number; // berapa tahap duka yang belum lunas
+  tunggakanJumlah: number; // berapa duka yang tertunggak (tahun lalu + tahun berjalan)
   statusLabel: string; // "Lunas" atau "1 x Duka", "2 x Duka", dst
-  tahapTertunggak: number[]; // daftar nomor tahap yang belum lunas
+  tahapTertunggak: number[]; // daftar nomor tahap tahun berjalan yang belum lunas
+  detailTahunLalu: DetailTahunLaluKolom;
   detailTahap: TahapDukaKolomDetail[];
   riwayatTrx: Transaction[];
   terbayarDukaIds: string[];
@@ -211,13 +251,14 @@ export interface KolomDukaSummary {
 
 /**
  * Otomatis menghitung status tunggakan duka per kolom berdasarkan transaksi riil,
- * daftar kasus duka, dan aturan tarif dinamis per kolom & per tahap.
+ * tunggakan tahun lalu, daftar kasus duka, dan aturan tarif dinamis bertahap.
  */
 export const hitungSemuaTunggakanDuka = (
   transactions: Transaction[],
   daftarDuka: KasusDuka[],
   overrideMap: DukaMap = {},
-  rules: TarifKolomRule[] = []
+  rules: TarifKolomRule[] = [],
+  tunggakanLaluMap: TunggakanTahunLaluMap = {}
 ): Record<number, KolomDukaSummary> => {
   const result: Record<number, KolomDukaSummary> = {};
   const totalKasus = daftarDuka.length;
@@ -237,20 +278,52 @@ export const hitungSemuaTunggakanDuka = (
 
     const totalSetorRp = trxKolom.reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
+    // 1. Alokasikan setoran ke Tunggakan Tahun Lalu terlebih dahulu (FIFO)
+    const infoLalu = tunggakanLaluMap[k] || { kolom: k, nominalRp: 0, jumlahKasus: 0, keterangan: "" };
+    const kewajibanLaluRp = Number(infoLalu.nominalRp || 0);
+    const kasusLalu = Number(infoLalu.jumlahKasus || (kewajibanLaluRp > 0 ? 1 : 0));
+
+    let terbayarLaluRp = 0;
+    let sisaLaluKurangRp = 0;
+    let lunasLalu = true;
     let sisaSetoran = totalSetorRp;
-    let totalKewajibanRp = 0;
-    let countLunas = 0;
+
+    if (kewajibanLaluRp > 0) {
+      if (sisaSetoran >= kewajibanLaluRp) {
+        terbayarLaluRp = kewajibanLaluRp;
+        sisaSetoran -= kewajibanLaluRp;
+        lunasLalu = true;
+        sisaLaluKurangRp = 0;
+      } else {
+        terbayarLaluRp = sisaSetoran;
+        sisaLaluKurangRp = kewajibanLaluRp - sisaSetoran;
+        sisaSetoran = 0;
+        lunasLalu = false;
+      }
+    }
+
+    const detailTahunLalu: DetailTahunLaluKolom = {
+      kewajibanTahunLaluRp: kewajibanLaluRp,
+      kasusTahunLalu: kasusLalu,
+      terbayarTahunLaluRp: terbayarLaluRp,
+      sisaTunggakanTahunLaluRp: sisaLaluKurangRp,
+      lunas: lunasLalu,
+      keterangan: infoLalu.keterangan || "",
+    };
+
+    // 2. Alokasikan sisa setoran ke Kasus Duka Tahun Berjalan
+    let totalKewajibanTahunIniRp = 0;
+    let countLunasTahunIni = 0;
     const detailTahap: TahapDukaKolomDetail[] = [];
     const tahapTertunggak: number[] = [];
     const terbayarDukaIds: string[] = [];
 
     for (const kasus of sortedKasus) {
       const kewajiban = dapatkanTarifDukaKolom(kasus, k, rules);
-      totalKewajibanRp += kewajiban;
+      totalKewajibanTahunIniRp += kewajiban;
 
       if (kewajiban === 0) {
-        // Jika kewajiban 0 (dibebaskan), otomatis lunas
-        countLunas++;
+        countLunasTahunIni++;
         terbayarDukaIds.push(kasus.id);
         detailTahap.push({
           kasusId: kasus.id,
@@ -267,7 +340,7 @@ export const hitungSemuaTunggakanDuka = (
 
       if (sisaSetoran >= kewajiban) {
         sisaSetoran -= kewajiban;
-        countLunas++;
+        countLunasTahunIni++;
         terbayarDukaIds.push(kasus.id);
         detailTahap.push({
           kasusId: kasus.id,
@@ -297,8 +370,12 @@ export const hitungSemuaTunggakanDuka = (
       }
     }
 
-    const sisaTunggakanTahap = totalKasus - countLunas;
-    const totalSisaTunggakanRp = Math.max(0, totalKewajibanRp - totalSetorRp);
+    const sisaTunggakanTahapTahunIni = totalKasus - countLunasTahunIni;
+    const sisaKasusLaluTertunggak = lunasLalu ? 0 : (kasusLalu || 1);
+    const totalTunggakanJumlah = sisaKasusLaluTertunggak + sisaTunggakanTahapTahunIni;
+
+    const totalKewajibanSemuaRp = kewajibanLaluRp + totalKewajibanTahunIniRp;
+    const totalSisaTunggakanSemuaRp = Math.max(0, totalKewajibanSemuaRp - totalSetorRp);
 
     let statusLabel = "";
     // Cek apakah ada override manual
@@ -306,23 +383,24 @@ export const hitungSemuaTunggakanDuka = (
     if (ov && ov.trim() !== "") {
       statusLabel = ov.trim();
     } else {
-      if (totalKasus === 0 || sisaTunggakanTahap <= 0) {
+      if (totalSisaTunggakanSemuaRp === 0) {
         statusLabel = "Lunas";
       } else {
-        statusLabel = `${sisaTunggakanTahap} x Duka`;
+        statusLabel = `${totalTunggakanJumlah} x Duka`;
       }
     }
 
     result[k] = {
       kolom: k,
       totalSetorRp,
-      totalKewajibanRp,
-      totalSisaTunggakanRp,
-      jumlahDukaTerbayar: countLunas,
+      totalKewajibanRp: totalKewajibanSemuaRp,
+      totalSisaTunggakanRp: totalSisaTunggakanSemuaRp,
+      jumlahDukaTerbayar: countLunasTahunIni,
       totalKasusDuka: totalKasus,
-      tunggakanJumlah: sisaTunggakanTahap,
+      tunggakanJumlah: totalTunggakanJumlah,
       statusLabel,
       tahapTertunggak,
+      detailTahunLalu,
       detailTahap,
       riwayatTrx: trxKolom,
       terbayarDukaIds,
