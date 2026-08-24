@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/laporan-harian")({
   head: () => ({
@@ -49,11 +50,15 @@ const BULAN = [
 
 const todayStr = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 function LaporanHarianPage() {
   const trx = useQuery(transactionsQuery);
+  const { isReadOnly } = useSession();
   const [date, setDate] = useState(todayStr);
   const [q, setQ] = useState("");
 
@@ -158,14 +163,16 @@ function LaporanHarianPage() {
       title="Laporan Harian Kas"
       subtitle={`Buku Kas Tanggal ${d} ${bulanNama} ${y} · ${harian.length} transaksi`}
       actions={
-        <div className="no-print flex gap-2">
-          <Button variant="outline" onClick={exportExcel}>
-            <FileDown className="mr-2 size-4" /> Export Excel (BUKU KAS)
-          </Button>
-          <Button onClick={() => window.print()}>
-            <Printer className="mr-2 size-4" /> Cetak
-          </Button>
-        </div>
+        !isReadOnly ? (
+          <div className="no-print flex gap-2">
+            <Button variant="outline" onClick={exportExcel}>
+              <FileDown className="mr-2 size-4" /> Export Excel (BUKU KAS)
+            </Button>
+            <Button onClick={() => window.print()}>
+              <Printer className="mr-2 size-4" /> Cetak
+            </Button>
+          </div>
+        ) : null
       }
     >
       <div className="panel no-print mb-5 flex flex-wrap items-end gap-4 p-4">

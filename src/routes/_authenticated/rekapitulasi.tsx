@@ -38,20 +38,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSession } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/rekapitulasi")({
   head: () => ({
     meta: [
-      { title: "RAB Pendapatan & Belanja — BUMOTIK FINANCIAL" },
+      { title: "Rekapitulasi RAB & Bulanan — BUMOTIK FINANCIAL" },
       {
         name: "description",
         content:
-          "Rekapitulasi anggaran format 5 kolom RAB Pendapatan dan RAB Belanja resmi BUMOTIK: filter realisasi di atas 100%, penetapan anggaran, realisasi nominal, dan selisih.",
+          "Rekapitulasi realisasi anggaran penerimaan dan pengeluaran gereja per pos dan per bulan.",
       },
-      { property: "og:title", content: "RAB Pendapatan & Belanja — BUMOTIK FINANCIAL" },
+      { property: "og:title", content: "Rekapitulasi RAB & Bulanan — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Laporan RAB Pendapatan dan RAB Belanja format 5 kolom resmi BUMOTIK siap ekspor dan cetak.",
+        content: "Laporan rekapitulasi RAB penerimaan, belanja, dan keuangan per bulan.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -77,7 +78,7 @@ const BULAN = [
 
 interface GroupRekap {
   grup: string;
-  parentCode: string;
+  parentCode?: string;
   pagu: number;
   realisasi: number;
   selisih: number;
@@ -97,6 +98,7 @@ interface GroupRekap {
 function RekapitulasiPage() {
   const budgets = useQuery(budgetLinesQuery);
   const trx = useQuery(transactionsQuery);
+  const { isReadOnly } = useSession();
   const [tab, setTab] = useState<"pendapatan" | "belanja" | "bulanan" | "grafik">("pendapatan");
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [start, setStart] = useState("");
@@ -449,26 +451,28 @@ function RekapitulasiPage() {
       title="Rekapitulasi RAB & Bulanan"
       subtitle={`Tahun ${currentYear} · Pendapatan: ${rupiah(totalRealPendapatan)} (${persenTotalPendapatan.toFixed(1)}%) · Belanja: ${rupiah(totalRealBelanja)} (${persenTotalBelanja.toFixed(1)}%)`}
       actions={
-        <div className="no-print flex flex-wrap gap-2">
-          {tab === "pendapatan" && (
-            <Button variant="outline" onClick={exportPendapatanExcel}>
-              <FileDown className="mr-2 size-4" /> Export Excel (RAB PENDAPATAN)
+        !isReadOnly ? (
+          <div className="no-print flex flex-wrap gap-2">
+            {tab === "pendapatan" && (
+              <Button variant="outline" onClick={exportPendapatanExcel}>
+                <FileDown className="mr-2 size-4" /> Export Excel (RAB PENDAPATAN)
+              </Button>
+            )}
+            {tab === "belanja" && (
+              <Button variant="outline" onClick={exportBelanjaExcel}>
+                <FileDown className="mr-2 size-4" /> Export Excel (RAB BELANJA)
+              </Button>
+            )}
+            {tab === "bulanan" && (
+              <Button variant="outline" onClick={exportBulananExcel}>
+                <FileDown className="mr-2 size-4" /> Export Excel (REKAP PERBULAN)
+              </Button>
+            )}
+            <Button onClick={() => window.print()}>
+              <Printer className="mr-2 size-4" /> Cetak
             </Button>
-          )}
-          {tab === "belanja" && (
-            <Button variant="outline" onClick={exportBelanjaExcel}>
-              <FileDown className="mr-2 size-4" /> Export Excel (RAB BELANJA)
-            </Button>
-          )}
-          {tab === "bulanan" && (
-            <Button variant="outline" onClick={exportBulananExcel}>
-              <FileDown className="mr-2 size-4" /> Export Excel (REKAP PERBULAN)
-            </Button>
-          )}
-          <Button onClick={() => window.print()}>
-            <Printer className="mr-2 size-4" /> Cetak
-          </Button>
-        </div>
+          </div>
+        ) : null
       }
     >
       <div className="panel no-print mb-4 p-4">

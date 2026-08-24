@@ -45,21 +45,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/laporan")({
   head: () => ({
     meta: [
-      { title: "Laporan Penerimaan per Kolom — BUMOTIK FINANCIAL" },
+      { title: "Laporan Kolom & BIPRA — BUMOTIK FINANCIAL" },
       {
         name: "description",
         content:
-          "Laporan penerimaan gereja per kolom dan per bulan yang diekstrak otomatis dari keterangan transaksi.",
+          "Matriks penerimaan kas per kolom jemaat dan BIPRA berdasarkan bulan, filter pos anggaran, siap cetak dan ekspor CSV.",
       },
-      { property: "og:title", content: "Laporan Penerimaan per Kolom — BUMOTIK FINANCIAL" },
+      { property: "og:title", content: "Laporan Kolom & BIPRA — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Matriks penerimaan kolom × bulan beserta monitoring setoran belum setor.",
+        content: "Laporan penerimaan kas kolom 1 sampai 29 dan BIPRA per bulan.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LaporanPage,
@@ -98,6 +101,7 @@ const GRUP_NAMA_KOLOM = "Persembahan Ibd Kompelka BIPRA";
 function LaporanPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
+  const { isReadOnly } = useSession();
 
   const [budgetId, setBudgetId] = useState("semua");
   const [kolomFilter, setKolomFilter] = useState("semua");
@@ -394,18 +398,22 @@ function LaporanPage() {
           <Button variant="ghost" size="sm" onClick={resetFilter}>
             <RotateCcw className="size-4" /> Reset filter
           </Button>
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="size-4" /> Ekspor CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadPdf}
-            disabled={isGeneratingPdf}
-          >
-            <FileDown className="size-4" />
-            {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
-          </Button>
+          {!isReadOnly && (
+            <>
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="size-4" /> Ekspor CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadPdf}
+                disabled={isGeneratingPdf}
+              >
+                <FileDown className="size-4" />
+                {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -671,11 +679,13 @@ function LaporanPage() {
                   </Select>
                 </div>
 
-                <div className="flex items-end">
-                  <Button variant="outline" onClick={exportMonitoringExcel} className="w-full gap-1.5">
-                    <Download className="size-4" /> Ekspor Status Excel
-                  </Button>
-                </div>
+                {!isReadOnly && (
+                  <div className="flex items-end">
+                    <Button variant="outline" onClick={exportMonitoringExcel} className="w-full gap-1.5">
+                      <Download className="size-4" /> Ekspor Status Excel
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Stat Card Ringkasan Monitoring */}

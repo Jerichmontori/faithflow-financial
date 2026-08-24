@@ -436,14 +436,16 @@ function DanaDukaPage() {
       title="Dana Diakonia Duka Jemaat"
       subtitle="Manajemen nama duka, tunggakan tahun lalu, tarif dinamis, & pelunasan otomatis"
       actions={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
-            <Printer className="size-3.5" /> Cetak Rekap
-          </Button>
-          <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold shadow-sm">
-            <Plus className="size-3.5" /> Tambah Kasus Duka
-          </Button>
-        </div>
+        !isReadOnly && canManageFinance ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
+              <Printer className="size-3.5" /> Cetak Rekap
+            </Button>
+            <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold shadow-sm">
+              <Plus className="size-3.5" /> Tambah Kasus Duka
+            </Button>
+          </div>
+        ) : null
       }
     >
       {/* 4 Stat Cards Ringkasan */}

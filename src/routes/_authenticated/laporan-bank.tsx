@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAppSettings } from "@/lib/settings";
+import { useSession } from "@/hooks/use-session";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/laporan-bank")({
@@ -57,6 +58,7 @@ const isBankOut = (t: Transaction) =>
 function LaporanBankPage() {
   const trx = useQuery(transactionsQuery);
   const { settings, updateSettings } = useAppSettings();
+  const { isReadOnly } = useSession();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [q, setQ] = useState("");
@@ -69,6 +71,7 @@ function LaporanBankPage() {
   const saldoAwalNum = Number(saldoAwal.replace(/[^\d-]/g, "")) || 0;
 
   function onSaldoAwalChange(v: string) {
+    if (isReadOnly) return;
     setSaldoAwal(v);
     const num = Number(v.replace(/[^\d-]/g, "")) || 0;
     updateSettings({ saldoAwalBank: num });
@@ -100,19 +103,25 @@ function LaporanBankPage() {
   const totalIn = rows.filter(isBankIn).reduce((a, t) => a + Number(t.amount), 0);
   const totalOut = rows.filter(isBankOut).reduce((a, t) => a + Number(t.amount), 0);
 
-  const chart = useMemo(() => {
-    const map = new Map<string, { name: string; masuk: number; keluar: number }>();
+  const byMonth = useMemo(() => {
+    const map = new Map<number, { in: number; out: number }>();
+    for (let i = 0; i < 12; i++) map.set(i, { in: 0, out: 0 });
     for (const t of rows) {
       const d = new Date(t.trx_date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const item =
-        map.get(key) ?? { name: `${BULAN[d.getMonth()]} ${d.getFullYear()}`, masuk: 0, keluar: 0 };
-      if (isBankIn(t)) item.masuk += Number(t.amount);
-      if (isBankOut(t)) item.keluar += Number(t.amount);
-      map.set(key, item);
+      const m = d.getMonth();
+      const cur = map.get(m) ?? { in: 0, out: 0 };
+      if (isBankIn(t)) cur.in += Number(t.amount);
+      if (isBankOut(t)) cur.out += Number(t.amount);
+      map.set(m, cur);
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
+    return map;
   }, [rows]);
+
+  const chart = BULAN.map((nama, idx) => ({
+    bulan: nama,
+    Pemasukan: byMonth.get(idx)?.in ?? 0,
+    Pengeluaran: byMonth.get(idx)?.out ?? 0,
+  }));
 
   let saldo = saldoAwalNum;
   const ledger = rows.map((t) => {
@@ -123,15 +132,15 @@ function LaporanBankPage() {
   });
 
   function exportCsv() {
-    const head = ["Tanggal", "No Bukti", "Mata Anggaran", "Keterangan", "Pemasukan Bank", "Pengeluaran Bank", "Saldo"];
-    const body = ledger.map((r) => [
-      r.t.trx_date,
-      r.t.voucher_no,
-      `${r.t.budget_lines?.code ?? ""} ${r.t.budget_lines?.name ?? ""}`,
-      (r.t.description ?? "").replace(/"/g, "'"),
-      r.masuk,
-      r.keluar,
-      r.saldo,
+    const head = ["No. Bukti", "Tanggal", "Tipe", "Mata Anggaran", "Keterangan", "Pemasukan", "Pengeluaran"];
+    const body = rows.map((t) => [
+      t.voucher_no,
+      t.trx_date,
+      t.kind,
+      t.budget_lines ? `${t.budget_lines.code} - ${t.budget_lines.name}` : "-",
+      t.description || "-",
+      isBankIn(t) ? t.amount : 0,
+      isBankOut(t) ? t.amount : 0,
     ]);
     const csv = [head, ...body].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
@@ -145,18 +154,18 @@ function LaporanBankPage() {
   return (
     <AppShell
       title="Laporan Bank"
-      subtitle="Kas Masuk dicatat sebagai pengeluaran bank, Kas Keluar sebagai pemasukan bank"
+      subtitle="Mutasi rekening: kas keluar (setoran 2.2.22.22 / transfer) = masuk bank, kas masuk (tarikan 1.1.11.11 / belanja transfer) = keluar bank"
     >
-      <div className="panel mb-5 flex flex-wrap items-end gap-4 p-4">
+      <div className="panel no-print mb-5 flex flex-wrap items-end gap-4 p-4">
         <div className="space-y-1.5">
-          <Label htmlFor="start">Dari tanggal</Label>
+          <Label htmlFor="start">Dari Tanggal</Label>
           <Input id="start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="end">Sampai tanggal</Label>
+          <Label htmlFor="end">Sampai Tanggal</Label>
           <Input id="end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
         </div>
-        <div className="min-w-[220px] flex-1 space-y-1.5">
+        <div className="min-w-[200px] flex-1 space-y-1.5">
           <Label htmlFor="q">Cari</Label>
           <Input
             id="q"
@@ -171,14 +180,17 @@ function LaporanBankPage() {
             id="saldo-awal"
             inputMode="numeric"
             placeholder="0"
-            className="w-[180px] text-right"
+            className="w-[180px] text-right disabled:opacity-75"
             value={saldoAwal}
+            disabled={isReadOnly}
             onChange={(e) => onSaldoAwalChange(e.target.value)}
           />
         </div>
-        <button type="button" className="text-sm text-muted-foreground underline" onClick={exportCsv}>
-          Ekspor CSV
-        </button>
+        {!isReadOnly && (
+          <button type="button" className="text-sm text-muted-foreground underline" onClick={exportCsv}>
+            Ekspor CSV
+          </button>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

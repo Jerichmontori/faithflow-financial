@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
+import { useSession } from "@/hooks/use-session";
+
 export const Route = createFileRoute("/_authenticated/buku-pembantu")({
   head: () => ({
     meta: [
@@ -60,6 +62,7 @@ export const Route = createFileRoute("/_authenticated/buku-pembantu")({
 function BukuPembantuPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
+  const { isReadOnly } = useSession();
 
   const [budgetId, setBudgetId] = useState<string>("semua");
   const [kolom, setKolom] = useState<string>("semua");
@@ -208,15 +211,15 @@ function BukuPembantuPage() {
       }
       actions={
         <div className="no-print flex flex-wrap gap-2">
-          {harusTampilkan && rows.length > 0 && (
-            <Button variant="outline" onClick={exportExcel}>
-              <FileDown className="mr-2 size-4" /> Export Excel (Transaksi)
-            </Button>
-          )}
-          {harusTampilkan && rows.length > 0 && (
-            <Button onClick={() => window.print()}>
-              <Printer className="mr-2 size-4" /> Cetak
-            </Button>
+          {!isReadOnly && harusTampilkan && rows.length > 0 && (
+            <>
+              <Button variant="outline" onClick={exportExcel}>
+                <FileDown className="mr-2 size-4" /> Export Excel (Transaksi)
+              </Button>
+              <Button onClick={() => window.print()}>
+                <Printer className="mr-2 size-4" /> Cetak
+              </Button>
+            </>
           )}
           {adaFilter && (
             <Button variant="ghost" size="sm" onClick={reset}>

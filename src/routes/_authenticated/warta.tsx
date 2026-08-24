@@ -357,14 +357,16 @@ function WartaPage() {
       title="Warta Keuangan Mingguan"
       subtitle={`${tglPanjang(dari)} s/d ${tglPanjang(sampai)}`}
       actions={
-        <div className="no-print flex gap-2">
-          <Button variant="outline" onClick={exportExcel}>
-            <FileDown className="mr-2 h-4 w-4" /> Export Excel (Warta)
-          </Button>
-          <Button onClick={() => window.print()}>
-            <Printer className="mr-2 h-4 w-4" /> Cetak Warta
-          </Button>
-        </div>
+        !isReadOnly ? (
+          <div className="no-print flex gap-2">
+            <Button variant="outline" onClick={exportExcel}>
+              <FileDown className="mr-2 h-4 w-4" /> Export Excel (Warta)
+            </Button>
+            <Button onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" /> Cetak Warta
+            </Button>
+          </div>
+        ) : null
       }
     >
       <div className="panel no-print mb-4 p-4 space-y-3">
