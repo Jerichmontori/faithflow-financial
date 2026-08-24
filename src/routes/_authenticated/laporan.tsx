@@ -99,7 +99,6 @@ const GRUP_LAPORAN = [
   "SAMPUL - SAMPUL",
   "PERSEMBAHAN IBADAH KHUSUS",
   "Diakonia Dana Duka",
-  "HASIL PENGGALANGAN DANA PEMBANGUNAN DARI KOLOM",
 ];
 
 const QUICK_KATEGORI = [
@@ -110,8 +109,15 @@ const QUICK_KATEGORI = [
   { id: "1.3.53.04", label: "Pemuda", icon: "🏃" },
   { id: "1.3.53.05", label: "Remaja", icon: "🧒" },
   { id: "1.3.53.06", label: "ASM", icon: "👶" },
+  { id: "1.3.53.11", label: "Pemuda & Remaja Gabungan", icon: "👥" },
   { id: "1.3.55.01", label: "Dana Duka", icon: "🕊️" },
-  { id: "1.3.57.01", label: "Pembangunan", icon: "🏗️" },
+  { id: "1.3.66.14", label: "Sampul PBTK", icon: "✉️" },
+  { id: "1.3.66.12", label: "Sampul Syukur", icon: "🙏" },
+  { id: "1.3.66.01", label: "Sampul HUT Pribadi", icon: "🎂" },
+  { id: "1.3.66.02", label: "Sampul HUT Perkawinan", icon: "💍" },
+  { id: "1.3.66.16", label: "Persembahan Perpuluhan", icon: "🪙" },
+  { id: "2.3.50.08", label: "Persembahan TK Bumotik", icon: "🏫" },
+  { id: "2.3.50.07", label: "Persembahan SD GMIM V", icon: "🎓" },
 ];
 
 const KATEGORI_MONITORING = [
@@ -122,9 +128,52 @@ const KATEGORI_MONITORING = [
   { id: "1.3.53.04", label: "Pemuda Kolom" },
   { id: "1.3.53.05", label: "Remaja Kolom" },
   { id: "1.3.53.06", label: "Anak Sekolah Minggu (ASM) Kolom" },
+  { id: "1.3.53.11", label: "Pemuda & Remaja Gabungan" },
   { id: "1.3.55.01", label: "Diakonia Dana Duka Kolom" },
-  { id: "1.3.57.01", label: "Pembangunan dari Kolom" },
+  { id: "1.3.66.14", label: "Sampul PBTK" },
+  { id: "1.3.66.12", label: "Sampul Syukur" },
+  { id: "1.3.66.01", label: "Sampul HUT Pribadi" },
+  { id: "1.3.66.02", label: "Sampul HUT Perkawinan" },
+  { id: "1.3.66.16", label: "Persembahan Perpuluhan" },
+  { id: "2.3.50.08", label: "Persembahan TK Bumotik" },
+  { id: "2.3.50.07", label: "Persembahan SD GMIM V" },
 ];
+
+const cocokKategori = (code: string | undefined, name: string | undefined, targetId: string): boolean => {
+  if (targetId === "semua") return true;
+  if (!code && !name) return false;
+  const c = code || "";
+  const n = (name || "").toLowerCase();
+
+  if (targetId === "1.3.66.12") {
+    return c === "1.3.66.12" || c === "1.3.66.13" || c === "1.3.66.15" || c === "1.3.53.09" || n.includes("syukur");
+  }
+  if (targetId === "1.3.66.01") {
+    return c === "1.3.66.01" || c === "1.3.53.07" || n.includes("kelahiran") || n.includes("hut pribadi");
+  }
+  if (targetId === "1.3.66.02") {
+    return c === "1.3.66.02" || c === "1.3.66.03" || c === "1.3.53.08" || n.includes("pernikahan") || n.includes("perkawinan");
+  }
+  if (targetId === "1.3.66.16") {
+    return c === "1.3.66.16" || n.includes("perpuluhan");
+  }
+  if (targetId === "1.3.66.14") {
+    return c === "1.3.66.14" || n.includes("pbtk");
+  }
+  if (targetId === "1.3.53.11") {
+    return c === "1.3.53.11" || (n.includes("pemuda") && n.includes("remaja"));
+  }
+  if (targetId === "2.3.50.08") {
+    return c === "2.3.50.08" || n.includes("tk bumotik");
+  }
+  if (targetId === "2.3.50.07") {
+    return c === "2.3.50.07" || n.includes("sd gmim");
+  }
+  if (targetId === "1.3.55.01") {
+    return c === "1.3.55.01" || c === "3.3.03.01" || n.includes("dana duka");
+  }
+  return c === targetId;
+};
 
 /** Nama kolom hasil ekstraksi keterangan hanya berlaku untuk grup ini */
 const GRUP_NAMA_KOLOM = "Persembahan Ibd Kompelka BIPRA";
@@ -186,16 +235,7 @@ function LaporanPage() {
 
   const handleSelectQuickKategori = (catId: string) => {
     setQuickKategori(catId);
-    if (catId === "semua") {
-      setBudgetId("semua");
-    } else {
-      const match = (budgets.data ?? []).find((b) => b.code === catId);
-      if (match) {
-        setBudgetId(match.id);
-      } else {
-        setBudgetId("semua");
-      }
-    }
+    setBudgetId("semua");
   };
 
   async function downloadPdf() {
@@ -223,7 +263,9 @@ function LaporanPage() {
         
         // Filter Pos Anggaran / Quick Kategori
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
-        if (quickKategori !== "semua" && b?.code !== quickKategori) return false;
+        if (quickKategori !== "semua") {
+          if (!cocokKategori(b?.code, b?.name, quickKategori)) return false;
+        }
 
         // Filter Kolom
         if (kolomFilter !== "semua") {
@@ -384,7 +426,7 @@ function LaporanPage() {
 
         if (targetKatCode !== "semua") {
           const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
-          if (b?.code !== targetKatCode) return false;
+          if (!cocokKategori(b?.code, b?.name, targetKatCode)) return false;
         }
         return true;
       });
