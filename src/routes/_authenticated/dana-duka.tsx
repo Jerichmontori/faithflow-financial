@@ -107,6 +107,8 @@ function DanaDukaPage() {
   const [ruleNama, setRuleNama] = useState("");
   const [ruleMulaiTahap, setRuleMulaiTahap] = useState(1);
   const [ruleSampaiTahap, setRuleSampaiTahap] = useState<string>("");
+  const [ruleMode, setRuleMode] = useState<"terpilih" | "semua">("terpilih");
+  const [selectedKolomList, setSelectedKolomList] = useState<number[]>([1]);
   const [ruleTarifMap, setRuleTarifMap] = useState<Record<number, number>>({});
   const [ruleBatchNominal, setRuleBatchNominal] = useState<string>("50000");
 
@@ -240,7 +242,9 @@ function DanaDukaPage() {
     setRuleNama(`Penyesuaian Tarif Tahap ${daftarDuka.length + 1}`);
     setRuleMulaiTahap(daftarDuka.length + 1 > 0 ? daftarDuka.length + 1 : 1);
     setRuleSampaiTahap("");
-    setRuleTarifMap(buatDefaultTarifKolom(50000));
+    setRuleMode("terpilih");
+    setSelectedKolomList([1]); // default pilih kolom 1
+    setRuleTarifMap({ 1: 50000 });
     setRuleBatchNominal("50000");
     setRuleModalOpen(true);
   };
@@ -250,19 +254,55 @@ function DanaDukaPage() {
     setRuleNama(rule.namaAturan);
     setRuleMulaiTahap(rule.mulaiTahap);
     setRuleSampaiTahap(rule.sampaiTahap ? String(rule.sampaiTahap) : "");
+    const keys = Object.keys(rule.tarifPerKolom).map(Number);
+    const isAll = keys.length >= 29;
+    setRuleMode(isAll ? "semua" : "terpilih");
+    setSelectedKolomList(keys.length > 0 ? keys : [1]);
     setRuleTarifMap({ ...rule.tarifPerKolom });
     setRuleBatchNominal("50000");
     setRuleModalOpen(true);
   };
 
+  const toggleSelectKolom = (k: number) => {
+    if (selectedKolomList.includes(k)) {
+      setSelectedKolomList(selectedKolomList.filter((x) => x !== k));
+    } else {
+      setSelectedKolomList([...selectedKolomList, k].sort((a, b) => a - b));
+      if (!ruleTarifMap[k]) {
+        setRuleTarifMap((prev) => ({ ...prev, [k]: Number(ruleBatchNominal) || DEFAULT_TARIF_DUKA }));
+      }
+    }
+  };
+
+  const handleSelectAllKolom = () => {
+    setSelectedKolomList([...DUKA_KOLOM]);
+    const newMap = { ...ruleTarifMap };
+    const val = Number(ruleBatchNominal) || DEFAULT_TARIF_DUKA;
+    for (const k of DUKA_KOLOM) {
+      if (!newMap[k]) newMap[k] = val;
+    }
+    setRuleTarifMap(newMap);
+  };
+
+  const handleClearSelectedKolom = () => {
+    setSelectedKolomList([]);
+  };
+
   const handleApplyBatchTarif = () => {
     const val = Number(ruleBatchNominal.replace(/[^\d]/g, "")) || DEFAULT_TARIF_DUKA;
-    const newMap: Record<number, number> = {};
-    for (const k of DUKA_KOLOM) {
+    const targetCols = ruleMode === "semua" ? DUKA_KOLOM : selectedKolomList;
+
+    if (targetCols.length === 0) {
+      toast.error("Pilih minimal 1 kolom terlebih dahulu");
+      return;
+    }
+
+    const newMap: Record<number, number> = { ...ruleTarifMap };
+    for (const k of targetCols) {
       newMap[k] = val;
     }
     setRuleTarifMap(newMap);
-    toast.success(`Tarif ${rupiah(val)} diterapkan ke seluruh Kolom 1 s/d 29`);
+    toast.success(`Tarif ${rupiah(val)} diterapkan ke ${targetCols.length} kolom`);
   };
 
   const handleSaveRule = () => {
@@ -273,6 +313,27 @@ function DanaDukaPage() {
 
     const sampai = ruleSampaiTahap.trim() ? Number(ruleSampaiTahap) : null;
 
+    // Filter tarif map sesuai mode: semua vs hanya kolom terpilih
+    const finalTarifMap: Record<number, number> = {};
+    if (ruleMode === "semua") {
+      for (const k of DUKA_KOLOM) {
+        finalTarifMap[k] = ruleTarifMap[k] || DEFAULT_TARIF_DUKA;
+      }
+    } else {
+      if (selectedKolomList.length === 0) {
+        toast.error("Pilih minimal 1 kolom yang mengalami perubahan tarif");
+        return;
+      }
+      for (const k of selectedKolomList) {
+        finalTarifMap[k] = ruleTarifMap[k] || DEFAULT_TARIF_DUKA;
+      }
+    }
+
+    const colCount = Object.keys(finalTarifMap).length;
+    const keteranganStr = colCount >= 29
+      ? `Mulai Tahap ${ruleMulaiTahap}: Berlaku untuk semua 29 Kolom`
+      : `Mulai Tahap ${ruleMulaiTahap}: Khusus Kolom ${selectedKolomList.sort((a,b)=>a-b).join(", ")}`;
+
     let updated: TarifKolomRule[];
     if (editingRule) {
       updated = tarifRules.map((r) =>
@@ -282,7 +343,8 @@ function DanaDukaPage() {
               namaAturan: ruleNama.trim(),
               mulaiTahap: ruleMulaiTahap,
               sampaiTahap: sampai,
-              tarifPerKolom: ruleTarifMap,
+              tarifPerKolom: finalTarifMap,
+              keterangan: keteranganStr,
             }
           : r
       );
@@ -293,11 +355,11 @@ function DanaDukaPage() {
         namaAturan: ruleNama.trim(),
         mulaiTahap: ruleMulaiTahap,
         sampaiTahap: sampai,
-        tarifPerKolom: ruleTarifMap,
-        keterangan: `Mulai Duka Tahap ${ruleMulaiTahap}${sampai ? ` s/d ${sampai}` : " seterusnya"}`,
+        tarifPerKolom: finalTarifMap,
+        keterangan: keteranganStr,
       };
       updated = [...tarifRules, newRule];
-      toast.success("Aturan tarif kolom baru berhasil ditambahkan!");
+      toast.success("Aturan tarif khusus kolom berhasil ditambahkan!");
     }
 
     setTarifRules(updated);
@@ -812,55 +874,77 @@ function DanaDukaPage() {
               </div>
 
               <div className="space-y-3">
-                {tarifRules.map((rule) => (
-                  <div key={rule.id} className="p-4 border rounded-xl bg-card shadow-xs">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <strong className="text-sm text-foreground">{rule.namaAturan}</strong>
-                          <Badge variant="secondary" className="text-[10px] font-bold">
-                            Mulai Duka Tahap #{rule.mulaiTahap}
-                            {rule.sampaiTahap ? ` s/d #${rule.sampaiTahap}` : " Seterusnya"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{rule.keterangan || "Aturan tarif berlaku"}</p>
-                      </div>
+                {tarifRules.map((rule) => {
+                  const ruleCols = Object.keys(rule.tarifPerKolom).map(Number);
+                  const isAllCols = ruleCols.length >= 29;
 
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditRuleModal(rule)}
-                          className="h-8 text-xs gap-1 font-medium"
-                        >
-                          <Edit2 className="size-3" /> Edit Tarif Kolom
-                        </Button>
-                        {tarifRules.length > 1 && (
+                  return (
+                    <div key={rule.id} className="p-4 border rounded-xl bg-card shadow-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <strong className="text-sm text-foreground">{rule.namaAturan}</strong>
+                            <Badge variant="secondary" className="text-[10px] font-bold">
+                              Mulai Duka Tahap #{rule.mulaiTahap}
+                              {rule.sampaiTahap ? ` s/d #${rule.sampaiTahap}` : " Seterusnya"}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] font-bold ${
+                                isAllCols
+                                  ? "bg-blue-50 text-blue-700 border-blue-300"
+                                  : "bg-purple-50 text-purple-700 border-purple-300"
+                              }`}
+                            >
+                              {isAllCols ? "Semua 29 Kolom" : `Khusus ${ruleCols.length} Kolom Terpilih`}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{rule.keterangan || "Aturan tarif berlaku"}</p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteRule(rule.id, rule.namaAturan)}
-                            className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                            onClick={() => openEditRuleModal(rule)}
+                            className="h-8 text-xs gap-1 font-medium"
                           >
-                            <Trash2 className="size-3" />
+                            <Edit2 className="size-3" /> Edit Tarif
                           </Button>
-                        )}
+                          {tarifRules.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteRule(rule.id, rule.namaAturan)}
+                              className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Preview Tarif Kolom yang Terpengaruh */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10.5px] font-semibold text-muted-foreground block">
+                          {isAllCols
+                            ? "Tarif Iuran Seluruh Kolom 1 s/d 29:"
+                            : `Daftar ${ruleCols.length} Kolom yang Mengalami Perubahan Tarif (Kolom lainnya mengikuti aturan sebelumnya):`}
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-[11px]">
+                          {(isAllCols ? DUKA_KOLOM : ruleCols.sort((a, b) => a - b)).map((k) => (
+                            <div key={k} className="p-1.5 rounded-lg border bg-muted/20 text-center">
+                              <span className="text-[10px] text-muted-foreground block font-medium">Kolom {k}</span>
+                              <strong className="font-mono text-foreground">
+                                {rupiah(rule.tarifPerKolom[k] ?? DEFAULT_TARIF_DUKA)}
+                              </strong>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-
-                    {/* Preview Tarif 29 Kolom Mini Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-[11px]">
-                      {DUKA_KOLOM.map((k) => (
-                        <div key={k} className="p-1.5 rounded-lg border bg-muted/20 text-center">
-                          <span className="text-[10px] text-muted-foreground block font-medium">Kolom {k}</span>
-                          <strong className="font-mono text-foreground">
-                            {rupiah(rule.tarifPerKolom[k] ?? DEFAULT_TARIF_DUKA)}
-                          </strong>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -1036,9 +1120,108 @@ function DanaDukaPage() {
               </div>
             </div>
 
+            {/* Pilihan Cakupan Mode Kolom */}
+            <div className="space-y-1.5">
+              <Label className="font-semibold text-xs">Pilih Cakupan Kolom yang Mengalami Perubahan:</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRuleMode("terpilih")}
+                  className={`p-2.5 rounded-lg border text-left flex items-start gap-2.5 transition-all ${
+                    ruleMode === "terpilih"
+                      ? "bg-purple-50/80 border-purple-400 text-purple-950 font-bold shadow-xs ring-1 ring-purple-400"
+                      : "bg-card border-border text-muted-foreground hover:bg-muted/40"
+                  }`}
+                >
+                  <Users className={`size-4 shrink-0 mt-0.5 ${ruleMode === "terpilih" ? "text-purple-700" : ""}`} />
+                  <div>
+                    <span className="text-xs block font-bold">Hanya Kolom Tertentu yang Berubah</span>
+                    <span className="text-[10px] font-normal opacity-80 block mt-0.5">
+                      Pilih kolom spesifik (misal Kolom 3 & 5). Kolom lain tetap mengikuti aturan sebelumnya.
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRuleMode("semua");
+                    handleSelectAllKolom();
+                  }}
+                  className={`p-2.5 rounded-lg border text-left flex items-start gap-2.5 transition-all ${
+                    ruleMode === "semua"
+                      ? "bg-blue-50/80 border-blue-400 text-blue-950 font-bold shadow-xs ring-1 ring-blue-400"
+                      : "bg-card border-border text-muted-foreground hover:bg-muted/40"
+                  }`}
+                >
+                  <SlidersHorizontal className={`size-4 shrink-0 mt-0.5 ${ruleMode === "semua" ? "text-blue-700" : ""}`} />
+                  <div>
+                    <span className="text-xs block font-bold">Semua 29 Kolom Sekaligus</span>
+                    <span className="text-[10px] font-normal opacity-80 block mt-0.5">
+                      Berlaku umum dan menetapkan tarif ke seluruh 29 kolom.
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Jika mode "Hanya Kolom Tertentu", tampilkan chips pemilih kolom */}
+            {ruleMode === "terpilih" && (
+              <div className="p-3 bg-muted/30 rounded-xl border space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                    <CheckCircle2 className="size-3.5 text-purple-600" />
+                    Pilih Kolom yang Berubah ({selectedKolomList.length} dipilih):
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSelectAllKolom}
+                      className="h-6 text-[11px] px-2 text-primary"
+                    >
+                      Pilih Semua
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearSelectedKolom}
+                      className="h-6 text-[11px] px-2 text-muted-foreground hover:text-destructive"
+                    >
+                      Batal Pilih
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-background rounded-lg border">
+                  {DUKA_KOLOM.map((k) => {
+                    const isSelected = selectedKolomList.includes(k);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => toggleSelectKolom(k)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all border ${
+                          isSelected
+                            ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                            : "bg-muted/30 text-muted-foreground border-transparent hover:bg-muted"
+                        }`}
+                      >
+                        Kolom {k} {isSelected ? "✓" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Quick Batch Set */}
             <div className="p-3 bg-muted/40 rounded-lg border flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold text-[11px]">Set Cepat Seluruh Kolom:</span>
+              <span className="font-semibold text-[11px] text-foreground">
+                Set Nominal Cepat untuk {ruleMode === "semua" ? "29 Kolom" : `${selectedKolomList.length} Kolom Terpilih`}:
+              </span>
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
@@ -1054,35 +1237,43 @@ function DanaDukaPage() {
                   onClick={handleApplyBatchTarif}
                   className="h-8 text-xs font-medium"
                 >
-                  Terapkan ke 29 Kolom
+                  Terapkan ke {ruleMode === "semua" ? "29 Kolom" : "Kolom Terpilih"}
                 </Button>
               </div>
             </div>
 
-            {/* Grid 29 Kolom Inputs */}
+            {/* Grid Inputs Khusus Kolom Terpilih */}
             <div className="space-y-2">
-              <Label className="font-semibold text-xs">Nilai Iuran Spesifik Masing-Masing Kolom (Rp):</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-64 overflow-y-auto p-2 border rounded-lg bg-background">
-                {DUKA_KOLOM.map((k) => (
-                  <div key={k} className="space-y-1 p-2 rounded border bg-muted/10">
-                    <Label htmlFor={`tarif-k-${k}`} className="text-[11px] font-bold text-foreground block">
-                      Kolom {k}
-                    </Label>
-                    <Input
-                      id={`tarif-k-${k}`}
-                      type="number"
-                      value={ruleTarifMap[k] ?? DEFAULT_TARIF_DUKA}
-                      onChange={(e) =>
-                        setRuleTarifMap((prev) => ({
-                          ...prev,
-                          [k]: Number(e.target.value),
-                        }))
-                      }
-                      className="h-7 text-xs font-mono font-bold"
-                    />
-                  </div>
-                ))}
-              </div>
+              <Label className="font-semibold text-xs">
+                Tarif Iuran Kolom yang Disetel (Rp):
+              </Label>
+              {((ruleMode === "semua" ? DUKA_KOLOM : selectedKolomList).length === 0) ? (
+                <div className="p-4 border rounded-lg text-center text-muted-foreground bg-muted/20">
+                  Belum ada kolom yang dipilih. Klik tombol kolom di atas untuk menentukan kolom yang berubah.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-2 border rounded-lg bg-background">
+                  {(ruleMode === "semua" ? DUKA_KOLOM : selectedKolomList.sort((a, b) => a - b)).map((k) => (
+                    <div key={k} className="space-y-1 p-2 rounded border bg-muted/10">
+                      <Label htmlFor={`tarif-k-${k}`} className="text-[11px] font-bold text-foreground block">
+                        Kolom {k}
+                      </Label>
+                      <Input
+                        id={`tarif-k-${k}`}
+                        type="number"
+                        value={ruleTarifMap[k] ?? DEFAULT_TARIF_DUKA}
+                        onChange={(e) =>
+                          setRuleTarifMap((prev) => ({
+                            ...prev,
+                            [k]: Number(e.target.value),
+                          }))
+                        }
+                        className="h-7 text-xs font-mono font-bold"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

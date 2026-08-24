@@ -183,14 +183,15 @@ export function dapatkanTarifDukaKolom(
   }
 
   const sortedRules = [...rules].sort((a, b) => b.mulaiTahap - a.mulaiTahap);
-  const matchedRule = sortedRules.find(
-    (r) =>
+  for (const r of sortedRules) {
+    if (
       kasus.urutan >= r.mulaiTahap &&
       (r.sampaiTahap === null || r.sampaiTahap === undefined || kasus.urutan <= r.sampaiTahap)
-  );
-
-  if (matchedRule && typeof matchedRule.tarifPerKolom[kolom] === "number") {
-    return matchedRule.tarifPerKolom[kolom];
+    ) {
+      if (typeof r.tarifPerKolom[kolom] === "number" && r.tarifPerKolom[kolom] > 0) {
+        return r.tarifPerKolom[kolom];
+      }
+    }
   }
 
   return kasus.iuranPerKolom || DEFAULT_TARIF_DUKA;
