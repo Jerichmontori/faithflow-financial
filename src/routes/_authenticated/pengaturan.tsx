@@ -25,6 +25,7 @@ import {
   ImageIcon,
   LogIn,
   Lock,
+  Move,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAppSettings, DEFAULT_SETTINGS, type AppSettings } from "@/lib/settings";
@@ -63,6 +64,14 @@ const WARNA_BACKGROUND_PRESET = [
   { label: "Royal Deep Blue", value: "#1e3a8a", bgClass: "bg-[#1e3a8a]" },
   { label: "Midnight Blue", value: "#0f172a", bgClass: "bg-[#0f172a]" },
   { label: "Ocean Blue", value: "#0369a1", bgClass: "bg-[#0369a1]" },
+];
+
+const POSISI_GAMBAR_PRESET = [
+  { label: "Tengah (Center)", value: "center" },
+  { label: "Atas (Fokus Menara/Salib)", value: "center top" },
+  { label: "Bawah (Bottom)", value: "center bottom" },
+  { label: "Kiri (Left)", value: "left center" },
+  { label: "Kanan (Right)", value: "right center" },
 ];
 
 function PengaturanPage() {
@@ -112,7 +121,7 @@ function PengaturanPage() {
     reader.onload = () => {
       const result = reader.result as string;
       setForm((prev) => ({ ...prev, bannerBerandaUrl: result }));
-      toast.success("Gambar background beranda berhasil dipilih. Silakan atur opacity dan klik Simpan.");
+      toast.success("Gambar background beranda berhasil dipilih. Silakan atur letak & opacity lalu klik Simpan.");
     };
     reader.readAsDataURL(file);
   };
@@ -152,6 +161,7 @@ function PengaturanPage() {
   const currentLoginBgImage = form.bannerLoginUrl || form.bannerBerandaUrl || "";
   const currentLoginBgOpacity = (form.bannerLoginOpacity ?? 40) / 100;
   const currentLoginBgColor = form.warnaBackgroundLogin || form.warnaBackgroundBeranda || "#0b192c";
+  const currentLoginBgPosition = form.bannerLoginPosition || form.bannerPosition || "center";
 
   return (
     <AppShell
@@ -350,14 +360,14 @@ function PengaturanPage() {
 
             {/* TAB 3: PENGATURAN TAMPILAN BERANDA */}
             <TabsContent value="beranda" className="space-y-4 pt-3">
-              {/* Card Gambar Background Hero & Opacity */}
+              {/* Card Gambar Background Hero, Posisi & Opacity */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <ImageIcon className="size-4 text-primary" /> Gambar Background & Warna Latar Hero
+                    <ImageIcon className="size-4 text-primary" /> Gambar Background, Letak & Warna Latar Beranda
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Tambahkan foto gedung gereja / jemaat sebagai latar belakang hero dan atur tingkat transparansinya (*opacity*).
+                    Tambahkan foto gedung gereja, atur posisi fokus gambar (*center/top/bottom*), dan tingkat transparansinya (*opacity*).
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs">
@@ -378,8 +388,11 @@ function PengaturanPage() {
                           <img
                             src={form.bannerBerandaUrl}
                             alt="Background Preview"
-                            className="size-full object-cover"
-                            style={{ opacity: (form.bannerOpacity ?? 45) / 100 }}
+                            className="size-full object-cover transition-all"
+                            style={{
+                              opacity: (form.bannerOpacity ?? 45) / 100,
+                              objectPosition: form.bannerPosition || "center",
+                            }}
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-1">
                             <span className="text-[9px] text-white font-bold">
@@ -425,6 +438,31 @@ function PengaturanPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Pengaturan Letak / Posisi Gambar Beranda */}
+                  {form.bannerBerandaUrl && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <Label className="font-semibold flex items-center gap-1.5">
+                        <Move className="size-3.5 text-primary" /> Letak / Posisi Fokus Gambar (Alignment)
+                      </Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {POSISI_GAMBAR_PRESET.map((pos) => (
+                          <button
+                            key={pos.value}
+                            type="button"
+                            onClick={() => handleChange("bannerPosition", pos.value)}
+                            className={`p-2 rounded-lg border text-xs text-left transition-all ${
+                              (form.bannerPosition || "center") === pos.value
+                                ? "border-primary ring-2 ring-primary/20 font-bold bg-primary/10 text-primary"
+                                : "hover:border-muted-foreground/40 text-muted-foreground"
+                            }`}
+                          >
+                            {pos.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Slider Opacity (Transparansi Gambar) */}
                   {form.bannerBerandaUrl && (
@@ -596,10 +634,10 @@ function PengaturanPage() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <LogIn className="size-4 text-primary" /> Gambar Background & Warna Panel Login (/auth)
+                    <LogIn className="size-4 text-primary" /> Gambar Background, Letak & Opacity Panel Login (/auth)
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Atur foto latar dan nuansa warna yang tampil di sisi kiri halaman masuk (portal login) pengguna.
+                    Atur foto latar, posisi letak fokus gambar (*center/top/bottom*), dan tingkat transparansinya (*opacity*).
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs">
@@ -620,8 +658,11 @@ function PengaturanPage() {
                           <img
                             src={currentLoginBgImage}
                             alt="Login BG Preview"
-                            className="size-full object-cover"
-                            style={{ opacity: currentLoginBgOpacity }}
+                            className="size-full object-cover transition-all"
+                            style={{
+                              opacity: currentLoginBgOpacity,
+                              objectPosition: currentLoginBgPosition,
+                            }}
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-1">
                             <span className="text-[9px] text-white font-bold">
@@ -673,6 +714,31 @@ function PengaturanPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Pengaturan Letak / Posisi Gambar Login */}
+                  {currentLoginBgImage && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <Label className="font-semibold flex items-center gap-1.5">
+                        <Move className="size-3.5 text-primary" /> Letak / Posisi Fokus Gambar Login (Alignment)
+                      </Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {POSISI_GAMBAR_PRESET.map((pos) => (
+                          <button
+                            key={pos.value}
+                            type="button"
+                            onClick={() => handleChange("bannerLoginPosition", pos.value)}
+                            className={`p-2 rounded-lg border text-xs text-left transition-all ${
+                              (form.bannerLoginPosition || "center") === pos.value
+                                ? "border-primary ring-2 ring-primary/20 font-bold bg-primary/10 text-primary"
+                                : "hover:border-muted-foreground/40 text-muted-foreground"
+                            }`}
+                          >
+                            {pos.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Slider Opacity Login */}
                   {currentLoginBgImage && (
@@ -898,7 +964,7 @@ function PengaturanPage() {
         {/* Kolom Kanan: Pratinjau Langsung (Live Preview) */}
         <div className="lg:col-span-5 space-y-3">
           {activeTab === "login" ? (
-            /* LIVE PREVIEW HALAMAN LOGIN */
+            /* LIVE PREVIEW HALAMAN LOGIN DENGAN POSISI & OPACITY */
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -917,10 +983,11 @@ function PengaturanPage() {
                 >
                   {currentLoginBgImage && (
                     <div
-                      className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+                      className="absolute inset-0 z-0 bg-cover pointer-events-none transition-all"
                       style={{
                         backgroundImage: `url("${currentLoginBgImage}")`,
                         opacity: currentLoginBgOpacity,
+                        backgroundPosition: currentLoginBgPosition,
                       }}
                     />
                   )}
@@ -986,7 +1053,7 @@ function PengaturanPage() {
               </div>
             </div>
           ) : activeTab === "beranda" ? (
-            /* LIVE PREVIEW TAMPILAN BERANDA */
+            /* LIVE PREVIEW TAMPILAN BERANDA DENGAN POSISI & OPACITY */
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -1023,10 +1090,11 @@ function PengaturanPage() {
                 >
                   {form.bannerBerandaUrl && (
                     <div
-                      className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+                      className="absolute inset-0 z-0 bg-cover pointer-events-none transition-all"
                       style={{
                         backgroundImage: `url("${form.bannerBerandaUrl}")`,
                         opacity: (form.bannerOpacity ?? 45) / 100,
+                        backgroundPosition: form.bannerPosition || "center",
                       }}
                     />
                   )}

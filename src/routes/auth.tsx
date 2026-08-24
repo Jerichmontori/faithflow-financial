@@ -86,6 +86,7 @@ function AuthPage() {
   const bgImage = settings.bannerLoginUrl || settings.bannerBerandaUrl || "";
   const bgOpacity = (settings.bannerLoginOpacity ?? 40) / 100;
   const bgColor = settings.warnaBackgroundLogin || settings.warnaBackgroundBeranda || "#0b192c";
+  const bgPosition = settings.bannerLoginPosition || "center";
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2 bg-background">
@@ -94,13 +95,14 @@ function AuthPage() {
         className="relative hidden flex-col justify-between p-12 text-white lg:flex overflow-hidden transition-colors duration-300"
         style={{ backgroundColor: bgColor }}
       >
-        {/* Layer Gambar Background dengan Opacity */}
+        {/* Layer Gambar Background dengan Opacity & Posisi Custom */}
         {bgImage && (
           <div
-            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-opacity duration-300 pointer-events-none"
+            className="absolute inset-0 z-0 bg-cover bg-no-repeat transition-all duration-300 pointer-events-none"
             style={{
               backgroundImage: `url("${bgImage}")`,
               opacity: bgOpacity,
+              backgroundPosition: bgPosition,
             }}
           />
         )}

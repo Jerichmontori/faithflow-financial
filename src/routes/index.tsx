@@ -57,6 +57,7 @@ function Index() {
 
   const bgOpacity = ((settings.bannerOpacity ?? 45) / 100);
   const bgColor = settings.warnaBackgroundBeranda || "#0b192c";
+  const bgPosition = settings.bannerPosition || "center";
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-between">
@@ -95,13 +96,14 @@ function Index() {
           className="relative overflow-hidden px-6 pt-16 pb-24 text-center text-white lg:pt-24 lg:pb-32 transition-colors duration-300"
           style={{ backgroundColor: bgColor }}
         >
-          {/* Layer Gambar Background dengan Opacity yang dapat diatur */}
+          {/* Layer Gambar Background dengan Opacity & Posisi Custom */}
           {settings.bannerBerandaUrl && (
             <div
-              className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-opacity duration-300 pointer-events-none"
+              className="absolute inset-0 z-0 bg-cover bg-no-repeat transition-all duration-300 pointer-events-none"
               style={{
                 backgroundImage: `url("${settings.bannerBerandaUrl}")`,
                 opacity: bgOpacity,
+                backgroundPosition: bgPosition,
               }}
             />
           )}

@@ -30,6 +30,7 @@ export interface AppSettings {
   jadwalIbadahSingkat: string;
   bannerBerandaUrl: string;
   bannerOpacity: number; // 0 to 100
+  bannerPosition: string; // "center" | "top" | "bottom" | "left" | "right" | etc
   warnaBackgroundBeranda: string; // hex / gradient color
 
   // Pengaturan Tampilan Halaman Login (/auth)
@@ -38,6 +39,7 @@ export interface AppSettings {
   mottoAyatLogin: string;
   bannerLoginUrl: string;
   bannerLoginOpacity: number; // 0 to 100
+  bannerLoginPosition: string; // "center" | "top" | "bottom" | "left" | "right" | etc
   warnaBackgroundLogin: string;
 }
 
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   jadwalIbadahSingkat: "Ibadah Minggu: Subuh 05.30 | Pagi 09.00 | Sore 17.00 WITA",
   bannerBerandaUrl: "",
   bannerOpacity: 45,
+  bannerPosition: "center",
   warnaBackgroundBeranda: "#0b192c",
 
   judulLogin: "Kelola kas jemaat dengan tertib, transparan, dan terpercaya.",
@@ -76,6 +79,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   mottoAyatLogin: "Amsal 3:9 — 'Muliakanlah TUHAN dengan hartamu dan dengan hasil pertama dari segala penghasilanmu.'",
   bannerLoginUrl: "",
   bannerLoginOpacity: 40,
+  bannerLoginPosition: "center",
   warnaBackgroundLogin: "#0b192c",
 };
 
@@ -102,12 +106,14 @@ export function getStoredSettings(): AppSettings {
       namaJemaat,
       bannerBerandaUrl: parsed.bannerBerandaUrl ?? DEFAULT_SETTINGS.bannerBerandaUrl,
       bannerOpacity: typeof parsed.bannerOpacity === "number" ? parsed.bannerOpacity : DEFAULT_SETTINGS.bannerOpacity,
+      bannerPosition: parsed.bannerPosition || DEFAULT_SETTINGS.bannerPosition,
       warnaBackgroundBeranda: parsed.warnaBackgroundBeranda || DEFAULT_SETTINGS.warnaBackgroundBeranda,
       judulLogin: parsed.judulLogin || DEFAULT_SETTINGS.judulLogin,
       deskripsiLogin: parsed.deskripsiLogin || DEFAULT_SETTINGS.deskripsiLogin,
       mottoAyatLogin: parsed.mottoAyatLogin ?? DEFAULT_SETTINGS.mottoAyatLogin,
       bannerLoginUrl: parsed.bannerLoginUrl ?? DEFAULT_SETTINGS.bannerLoginUrl,
       bannerLoginOpacity: typeof parsed.bannerLoginOpacity === "number" ? parsed.bannerLoginOpacity : DEFAULT_SETTINGS.bannerLoginOpacity,
+      bannerLoginPosition: parsed.bannerLoginPosition || DEFAULT_SETTINGS.bannerLoginPosition,
       warnaBackgroundLogin: parsed.warnaBackgroundLogin || DEFAULT_SETTINGS.warnaBackgroundLogin,
     };
   } catch {
