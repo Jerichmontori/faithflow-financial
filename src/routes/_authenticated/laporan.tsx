@@ -459,6 +459,14 @@ function LaporanPage() {
       string,
       { label: string; kolom: number | null; cells: Map<string, number>; total: number }
     >();
+
+    // Pre-populate all 29 Kolom agar tabel selalu menyajikan gambaran utuh kolom 1 - 29
+    if (kolomFilter === "semua") {
+      DAFTAR_29_KOLOM.forEach((k) => {
+        map.set(`kolom:${k}`, { label: labelKolom(k), kolom: k, cells: new Map(), total: 0 });
+      });
+    }
+
     for (const t of rows) {
       let key: string;
       let label: string;
@@ -485,7 +493,7 @@ function LaporanPage() {
       if (b.kolom !== null) return 1;
       return a.label.localeCompare(b.label);
     });
-  }, [rows]);
+  }, [rows, kolomFilter]);
 
   const columnTotals = useMemo(() => {
     const totals = new Map<string, number>();
@@ -497,6 +505,19 @@ function LaporanPage() {
   }, [rows]);
 
   const grandTotal = rows.reduce((a, t) => a + Number(t.amount), 0);
+
+  /** Data Pos Anggaran yang Sedang Aktif (untuk kartu gambaran utuh APB vs Realisasi) */
+  const activeBudgetLine = useMemo(() => {
+    if (budgetId !== "semua") {
+      return (budgets.data ?? []).find((b) => b.id === budgetId);
+    }
+    if (quickKategori !== "semua") {
+      return (budgets.data ?? []).find(
+        (b) => b.code === quickKategori || cocokKategori(b.code, b.name, "", quickKategori),
+      );
+    }
+    return null;
+  }, [budgets.data, budgetId, quickKategori]);
 
   /** Statistik Ringkas untuk Tampilan Klien */
   const clientStats = useMemo(() => {
@@ -1125,6 +1146,145 @@ function LaporanPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* KARTU GAMBARAN UTUH POS ANGGARAN (TARGET APB VS REALISASI & PARTISIPASI KOLOM) */}
+        {activeBudgetLine && (
+          <div className="no-print mb-5 p-4 sm:p-5 rounded-xl border border-primary/30 bg-card shadow-xs space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-xs font-bold border-primary text-primary bg-primary/5">
+                    {activeBudgetLine.code}
+                  </Badge>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    {activeBudgetLine.grup || "Penerimaan Jemaat"}
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-foreground">
+                  {activeBudgetLine.name}
+                </h2>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShareWhatsApp}
+                  className="h-8 gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 font-semibold"
+                >
+                  <MessageCircle className="size-3.5 text-emerald-600" />
+                  Bagikan Rekap Pos ke WA
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadPdf}
+                  className="h-8 gap-1.5 text-xs bg-primary/5 hover:bg-primary/10 text-primary border-primary/20 font-semibold"
+                >
+                  <FileDown className="size-3.5" />
+                  Download PDF Pos Ini
+                </Button>
+              </div>
+            </div>
+
+            {/* 4 Stat Cards Rencana vs Realisasi Pos */}
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+              <div className="panel p-3 bg-muted/20 border">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Target Anggaran (APB)
+                </span>
+                <span className="text-lg font-black font-mono text-foreground mt-0.5 block">
+                  {activeBudgetLine.planned_amount ? rupiah(activeBudgetLine.planned_amount) : "Belum dianggarkan"}
+                </span>
+                <span className="text-[11px] text-muted-foreground block">
+                  Tahun Anggaran 2026
+                </span>
+              </div>
+
+              <div className="panel p-3 bg-emerald-50/70 border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider flex items-center justify-between">
+                  <span>Total Realisasi</span>
+                  {activeBudgetLine.planned_amount ? (
+                    <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-200/60 px-1.5 py-0.5 rounded">
+                      {((grandTotal / activeBudgetLine.planned_amount) * 100).toFixed(1)}%
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-lg font-black font-mono text-emerald-700 mt-0.5 block">
+                  {rupiah(grandTotal)}
+                </span>
+                <span className="text-[11px] text-emerald-700/80 block">
+                  Dari {rows.length} transaksi penerimaan
+                </span>
+              </div>
+
+              <div className="panel p-3 bg-blue-50/70 border border-blue-200">
+                <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">
+                  Partisipasi Kolom
+                </span>
+                <span className="text-lg font-black font-mono text-blue-700 mt-0.5 block">
+                  {matrix.filter((m) => m.kolom !== null && m.total > 0).length} dari 29 Kolom
+                </span>
+                <span className="text-[11px] text-blue-700/80 block">
+                  {29 - matrix.filter((m) => m.kolom !== null && m.total > 0).length > 0
+                    ? `${29 - matrix.filter((m) => m.kolom !== null && m.total > 0).length} Kolom belum menyetor`
+                    : "100% Kolom berpartisipasi"}
+                </span>
+              </div>
+
+              <div className="panel p-3 bg-amber-50/70 border border-amber-200">
+                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+                  Sisa Target APB
+                </span>
+                <span className="text-lg font-black font-mono text-amber-700 mt-0.5 block">
+                  {activeBudgetLine.planned_amount
+                    ? rupiah(Math.max(0, activeBudgetLine.planned_amount - grandTotal))
+                    : "—"}
+                </span>
+                <span className="text-[11px] text-amber-700/80 block">
+                  Kekurangan pencapaian APB
+                </span>
+              </div>
+            </div>
+
+            {/* Monthly Trend Strip for this Pos */}
+            <div className="pt-1">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+                Distribusi Realisasi Pos per Bulan (Januari — Desember):
+              </span>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-1.5">
+                {MONTH_KEYS.map((m) => {
+                  if (m === null) return null;
+                  const nom = columnTotals.get(String(m)) ?? 0;
+                  const hasNom = nom > 0;
+                  return (
+                    <div
+                      key={String(m)}
+                      className={cn(
+                        "p-2 rounded-lg text-center border transition-all",
+                        hasNom
+                          ? "bg-primary/5 border-primary/30 shadow-2xs font-semibold"
+                          : "bg-muted/10 border-border/40 text-muted-foreground/40",
+                      )}
+                    >
+                      <span className="text-[10px] font-bold uppercase block text-muted-foreground">
+                        {(labelBulan(m) || "").slice(0, 3)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-mono font-bold block mt-0.5 truncate",
+                          hasNom ? "text-primary" : "text-muted-foreground/40",
+                        )}
+                      >
+                        {hasNom ? rupiah(nom) : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
