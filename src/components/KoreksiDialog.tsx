@@ -36,11 +36,13 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const nominal = Number(amount);
-      if (!Number.isFinite(nominal) || nominal <= 0) throw new Error("Nominal harus lebih dari 0");
+      const cleanNominal = Number(String(amount).replace(/[^0-9.-]+/g, ""));
+      if (!Number.isFinite(cleanNominal) || cleanNominal <= 0) {
+        throw new Error("Nominal harus berupa angka lebih dari 0");
+      }
       const { error } = await supabase
         .from("transactions")
-        .update({ amount: nominal, description, payment_method: paymentMethod })
+        .update({ amount: cleanNominal, description, payment_method: paymentMethod })
         .eq("id", trx.id);
       if (error) throw error;
     },

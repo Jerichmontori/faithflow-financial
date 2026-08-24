@@ -59,6 +59,9 @@ function KoreksiPage() {
   const [pilih, setPilih] = useState<Transaction | null>(null);
   const [keterangan, setKeterangan] = useState("");
   const [lineId, setLineId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [trxDate, setTrxDate] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [cariLine, setCariLine] = useState("");
   const [alasan, setAlasan] = useState("");
 
@@ -100,6 +103,9 @@ function KoreksiPage() {
     setPilih(t);
     setKeterangan(t.description ?? "");
     setLineId(t.budget_line_id);
+    setAmount(String(t.amount));
+    setTrxDate(t.trx_date);
+    setPaymentMethod(t.payment_method || "cash");
     setCariLine("");
     setAlasan("");
   }
@@ -107,14 +113,34 @@ function KoreksiPage() {
   const simpan = useMutation({
     mutationFn: async () => {
       if (!pilih) throw new Error("Pilih transaksi terlebih dahulu");
-      if (!alasan.trim()) throw new Error("Alasan koreksi wajib diisi");
+      const alasanClean = alasan.trim() || "Penyesuaian data transaksi";
+      const cleanNominal = Number(String(amount).replace(/[^0-9.-]+/g, ""));
+      if (!Number.isFinite(cleanNominal) || cleanNominal <= 0) {
+        throw new Error("Nominal harus berupa angka lebih dari 0");
+      }
+
       const perubahan: { field: string; old_value: string; new_value: string }[] = [];
-      if (keterangan !== (pilih.description ?? ""))
+      if (keterangan !== (pilih.description ?? "")) {
         perubahan.push({
           field: "description",
           old_value: pilih.description ?? "",
           new_value: keterangan,
         });
+      }
+      if (cleanNominal !== Number(pilih.amount)) {
+        perubahan.push({
+          field: "amount",
+          old_value: rupiah(pilih.amount),
+          new_value: rupiah(cleanNominal),
+        });
+      }
+      if (trxDate && trxDate !== pilih.trx_date) {
+        perubahan.push({
+          field: "trx_date",
+          old_value: tanggal(pilih.trx_date),
+          new_value: tanggal(trxDate),
+        });
+      }
       if (lineId !== pilih.budget_line_id) {
         const lama = (lines.data ?? []).find((l) => l.id === pilih.budget_line_id);
         const baru = (lines.data ?? []).find((l) => l.id === lineId);
@@ -124,35 +150,55 @@ function KoreksiPage() {
           new_value: baru ? `${baru.code} ${baru.name}` : lineId,
         });
       }
-      if (perubahan.length === 0) throw new Error("Tidak ada perubahan untuk disimpan");
+      if (paymentMethod !== (pilih.payment_method || "cash")) {
+        perubahan.push({
+          field: "payment_method",
+          old_value: pilih.payment_method || "cash",
+          new_value: paymentMethod,
+        });
+      }
 
-      const catatan = `Koreksi ${perubahan.map((p) => FIELD_LABEL[p.field] ?? p.field).join(" & ")}: ${alasan.trim()}`;
+      if (perubahan.length === 0) throw new Error("Tidak ada perubahan data untuk disimpan");
+
+      const catatan = `Koreksi ${perubahan.map((p) => FIELD_LABEL[p.field] ?? p.field).join(" & ")}: ${alasanClean}`;
       const { error } = await supabase
         .from("transactions")
         .update({
+          amount: cleanNominal,
+          trx_date: trxDate || pilih.trx_date,
           description: keterangan,
           budget_line_id: lineId,
+          payment_method: paymentMethod,
           koreksi_dari: pilih.voucher_no,
           koreksi_catatan: catatan,
         })
         .eq("id", pilih.id);
       if (error) throw error;
 
-      const { error: e2 } = await supabase.from("transaction_corrections").insert(
-        perubahan.map((p) => ({
-          transaction_id: pilih.id,
-          voucher_no: pilih.voucher_no,
-          field: p.field,
-          old_value: p.old_value,
-          new_value: p.new_value,
-          reason: alasan.trim(),
-          corrected_by: user?.id ?? null,
-        })),
-      );
-      if (e2) throw e2;
+      // Safe UUID verification for corrected_by
+      const validUserId =
+        user?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id)
+          ? user.id
+          : null;
+
+      try {
+        await supabase.from("transaction_corrections").insert(
+          perubahan.map((p) => ({
+            transaction_id: pilih.id,
+            voucher_no: pilih.voucher_no,
+            field: p.field,
+            old_value: p.old_value,
+            new_value: p.new_value,
+            reason: alasanClean,
+            corrected_by: validUserId,
+          })),
+        );
+      } catch (logErr) {
+        console.warn("Gagal menyimpan log riwayat koreksi:", logErr);
+      }
     },
     onSuccess: () => {
-      toast.success("Koreksi tersimpan beserta riwayatnya");
+      toast.success("Koreksi berhasil disimpan");
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["transaction_corrections"] });
       setPilih(null);
@@ -173,7 +219,7 @@ function KoreksiPage() {
   return (
     <AppShell
       title="Koreksi Transaksi"
-      subtitle="Perbaiki keterangan atau mata anggaran yang salah input, lengkap dengan alasan dan riwayat"
+      subtitle="Perbaiki tanggal, nominal, keterangan, atau mata anggaran yang salah input, lengkap dengan alasan dan riwayat"
     >
       <div className="panel p-5">
         <Label htmlFor="cari">Cari transaksi</Label>
@@ -210,8 +256,28 @@ function KoreksiPage() {
       {pilih && (
         <div className="panel mt-5 space-y-4 p-5">
           <h2 className="text-base font-semibold">
-            Koreksi {pilih.voucher_no} · {rupiah(pilih.amount)}
+            Koreksi Transaksi {pilih.voucher_no}
           </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="tgl">Tanggal Transaksi</Label>
+              <Input
+                id="tgl"
+                type="date"
+                value={trxDate}
+                onChange={(e) => setTrxDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nom">Nominal (Rp)</Label>
+              <Input
+                id="nom"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="ket">Keterangan</Label>
             <Textarea
@@ -242,10 +308,11 @@ function KoreksiPage() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="alasan">Alasan koreksi (wajib)</Label>
+            <Label htmlFor="alasan">Alasan Koreksi</Label>
             <Textarea
               id="alasan"
               rows={2}
+              placeholder="Misal: salah input nominal / salah mata anggaran"
               value={alasan}
               onChange={(e) => setAlasan(e.target.value)}
             />
