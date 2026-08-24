@@ -33,6 +33,9 @@ export const supabase = {
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem("insforge_auth_token", res.data.accessToken);
+            if (res.data.user) {
+              localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+            }
           } catch {}
         }
         insforge.setAccessToken(res.data.accessToken);
@@ -68,6 +71,9 @@ export const supabase = {
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem("insforge_auth_token", (res.data as any).accessToken);
+            if (res.data?.user) {
+              localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+            }
           } catch {}
         }
         insforge.setAccessToken((res.data as any).accessToken);
@@ -92,6 +98,7 @@ export const supabase = {
       if (typeof window !== "undefined") {
         try {
           localStorage.removeItem("insforge_auth_token");
+          localStorage.removeItem("insforge_auth_user");
         } catch {}
       }
       insforge.setAccessToken(undefined as any);
@@ -99,44 +106,95 @@ export const supabase = {
     },
 
     async getUser() {
+      let storedUser: any = null;
+      let storedToken: string | null = null;
       if (typeof window !== "undefined") {
-        const storedToken = localStorage.getItem("insforge_auth_token");
+        storedToken = localStorage.getItem("insforge_auth_token");
+        const rawUser = localStorage.getItem("insforge_auth_user");
+        if (rawUser) {
+          try {
+            storedUser = JSON.parse(rawUser);
+          } catch {}
+        }
         if (storedToken) {
           insforge.setAccessToken(storedToken);
         }
       }
-      const res = await insforge.auth.getCurrentUser();
-      return {
-        data: { user: res.data?.user ?? null },
-        error: res.error,
-      };
+
+      if (!storedToken && !storedUser) {
+        return { data: { user: null }, error: null };
+      }
+
+      try {
+        const res = await insforge.auth.getCurrentUser();
+        if (res.data?.user) {
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+            } catch {}
+          }
+          return { data: { user: res.data.user }, error: null };
+        }
+      } catch (err) {
+        console.warn("Network notice on getUser:", err);
+      }
+
+      // Gunakan storedUser yang tersimpan di localStorage agar user tidak ter-kick out
+      if (storedUser) {
+        return { data: { user: storedUser }, error: null };
+      }
+
+      return { data: { user: null }, error: null };
     },
 
     async getSession() {
+      let storedUser: any = null;
+      let storedToken: string | null = null;
       if (typeof window !== "undefined") {
-        const storedToken = localStorage.getItem("insforge_auth_token");
+        storedToken = localStorage.getItem("insforge_auth_token");
+        const rawUser = localStorage.getItem("insforge_auth_user");
+        if (rawUser) {
+          try {
+            storedUser = JSON.parse(rawUser);
+          } catch {}
+        }
         if (storedToken) {
           insforge.setAccessToken(storedToken);
         }
       }
-      const res = await insforge.auth.getCurrentUser();
-      const user = res.data?.user ?? null;
-      const accessToken =
-        (typeof window !== "undefined" ? localStorage.getItem("insforge_auth_token") : null) ||
-        (typeof (insforge as any).tokenManager?.getAccessToken === "function"
-          ? (insforge as any).tokenManager.getAccessToken()
-          : null);
-      return {
-        data: {
-          session: user
-            ? {
-                user,
-                access_token: accessToken || "",
-              }
-            : null,
-        },
-        error: res.error,
-      };
+
+      try {
+        const res = await insforge.auth.getCurrentUser();
+        const user = res.data?.user ?? storedUser;
+        if (user && res.data?.user && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+          } catch {}
+        }
+        return {
+          data: {
+            session: user
+              ? {
+                  user,
+                  access_token: storedToken || "",
+                }
+              : null,
+          },
+          error: res.error,
+        };
+      } catch {
+        return {
+          data: {
+            session: storedUser
+              ? {
+                  user: storedUser,
+                  access_token: storedToken || "",
+                }
+              : null,
+          },
+          error: null,
+        };
+      }
     },
 
     async setSession(tokens: { access_token?: string; refresh_token?: string }) {
