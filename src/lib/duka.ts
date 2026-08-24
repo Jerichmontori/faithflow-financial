@@ -54,6 +54,7 @@ export const DEFAULT_KASUS_DUKA: KasusDuka[] = [
   { id: "duka-10", urutan: 10, nama: "Alma. Donna Manoy", tanggal: "2026-06-20", kolomKeluarga: 9, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 10 (Kolom 9)" },
   { id: "duka-11", urutan: 11, nama: "Alma. Pince Ate", tanggal: "2026-07-01", kolomKeluarga: 23, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 11 (Kolom 23)" },
   { id: "duka-12", urutan: 12, nama: "Alm. Judson Sindar", tanggal: "2026-07-10", kolomKeluarga: 8, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 12 (Kolom 8)" },
+  { id: "duka-13", urutan: 13, nama: "Duka Jemaat Tahap 13", tanggal: "2026-08-01", kolomKeluarga: null, iuranPerKolom: 50000, keterangan: "Duka Jemaat Tahap 13" },
 ];
 
 /** Standar default tarif 29 kolom */
@@ -65,14 +66,46 @@ export const buatDefaultTarifKolom = (nominal = DEFAULT_TARIF_DUKA): Record<numb
   return res;
 };
 
+export const TARIF_29_KOLOM_STANDAR: Record<number, number> = {
+  1: 60000,
+  2: 66000,
+  3: 66000,
+  4: 54000,
+  5: 51000,
+  6: 75000,
+  7: 75000,
+  8: 42000,
+  9: 60000,
+  10: 90000,
+  11: 66000,
+  12: 69000,
+  13: 72000,
+  14: 75000,
+  15: 48000,
+  16: 57000,
+  17: 60000,
+  18: 75000,
+  19: 90000,
+  20: 69000,
+  21: 63000,
+  22: 75000,
+  23: 75000,
+  24: 75000,
+  25: 75000,
+  26: 66000,
+  27: 78000,
+  28: 84000,
+  29: 75000,
+};
+
 export const DEFAULT_TARIF_RULES: TarifKolomRule[] = [
   {
-    id: "rule-awal",
-    namaAturan: "Tarif Standar Awal Tahun",
+    id: "rule-standar-29-kolom",
+    namaAturan: "Ketetapan Tarif 29 Kolom",
     mulaiTahap: 1,
     sampaiTahap: null,
-    tarifPerKolom: buatDefaultTarifKolom(50000),
-    keterangan: "Berlaku mulai Duka Tahap 1",
+    tarifPerKolom: TARIF_29_KOLOM_STANDAR,
+    keterangan: "Tarif iuran per kolom resmi GMIM Bukit Moria Tikala Baru",
   },
 ];
 
