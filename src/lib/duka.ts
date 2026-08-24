@@ -206,7 +206,24 @@ export const bacaTarifRules = (): TarifKolomRule[] => {
     const raw = localStorage.getItem(DUKA_RULES_KEY);
     if (!raw) return DEFAULT_TARIF_RULES;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_TARIF_RULES;
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_TARIF_RULES;
+
+    const baseIndex = parsed.findIndex((r: any) => r.id === "rule-standar-29-kolom" || r.mulaiTahap === 1);
+    if (baseIndex === -1) {
+      return [...DEFAULT_TARIF_RULES, ...parsed];
+    } else {
+      const baseRule = parsed[baseIndex];
+      const mergedTarif = { ...TARIF_29_KOLOM_STANDAR, ...(baseRule.tarifPerKolom || {}) };
+      parsed[baseIndex] = {
+        ...baseRule,
+        id: "rule-standar-29-kolom",
+        namaAturan: baseRule.namaAturan || "Ketetapan Standar Tarif 29 Kolom",
+        mulaiTahap: 1,
+        tarifPerKolom: mergedTarif,
+        keterangan: "Mulai Tahap 1: Berlaku untuk semua 29 Kolom",
+      };
+      return parsed;
+    }
   } catch {
     return DEFAULT_TARIF_RULES;
   }

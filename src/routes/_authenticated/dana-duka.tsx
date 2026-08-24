@@ -47,6 +47,7 @@ import {
   type DukaMap,
   type KolomDukaSummary,
   DEFAULT_TARIF_DUKA,
+  TARIF_29_KOLOM_STANDAR,
 } from "@/lib/duka";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -360,7 +361,15 @@ function DanaDukaPage() {
 
     // Filter tarif map sesuai mode: semua vs hanya kolom terpilih
     const finalTarifMap: Record<number, number> = {};
-    if (ruleMode === "semua") {
+    const isBaseRule =
+      editingRule?.id === "rule-standar-29-kolom" ||
+      (editingRule && editingRule.mulaiTahap === 1 && Object.keys(editingRule.tarifPerKolom).length >= 29);
+
+    if (isBaseRule) {
+      for (const k of DUKA_KOLOM) {
+        finalTarifMap[k] = ruleTarifMap[k] || editingRule?.tarifPerKolom[k] || TARIF_29_KOLOM_STANDAR[k] || DEFAULT_TARIF_DUKA;
+      }
+    } else if (ruleMode === "semua") {
       for (const k of DUKA_KOLOM) {
         finalTarifMap[k] = ruleTarifMap[k] || DEFAULT_TARIF_DUKA;
       }
@@ -413,6 +422,10 @@ function DanaDukaPage() {
   };
 
   const handleDeleteRule = (id: string, nama: string) => {
+    if (id === "rule-standar-29-kolom") {
+      toast.error("Aturan standar 29 kolom adalah ketetapan utama dan tidak dapat dihapus");
+      return;
+    }
     if (tarifRules.length <= 1) {
       toast.error("Minimal harus ada 1 aturan tarif aktif");
       return;
