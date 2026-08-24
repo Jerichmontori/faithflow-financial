@@ -196,7 +196,7 @@ function LaporanPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
 
   // Filter khusus Monitoring Setoran
-  const [monitoringBulan, setMonitoringBulan] = useState(() => String(new Date().getMonth()));
+  const [monitoringBulan, setMonitoringBulan] = useState("semua");
   const [monitoringKat, setMonitoringKat] = useState("semua");
   const [monitoringStatusFilter, setMonitoringStatusFilter] = useState<"semua" | "belum" | "sudah">("semua");
 
@@ -217,8 +217,7 @@ function LaporanPage() {
   const budgetOptions = useMemo(
     () =>
       (budgets.data ?? [])
-        .filter((b) => b.kind === "penerimaan")
-        .filter((b) => GRUP_LAPORAN.includes(b.grup || ""))
+        .filter((b) => b.kind === "penerimaan" && b.grup !== "Mutasi Kas Internal")
         .filter((b) => parsed.some((t) => t.budget_line_id === b.id)),
     [budgets.data, parsed],
   );
@@ -259,12 +258,11 @@ function LaporanPage() {
     () =>
       parsed.filter((t) => {
         const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
-        if (!GRUP_LAPORAN.includes(b?.grup || "")) return false;
         
         // Filter Pos Anggaran / Quick Kategori
         if (budgetId !== "semua" && t.budget_line_id !== budgetId) return false;
         if (quickKategori !== "semua") {
-          if (!cocokKategori(b?.code, b?.name, quickKategori)) return false;
+          if (!cocokKategori(b?.code, b?.name || t.description, quickKategori)) return false;
         }
 
         // Filter Kolom
@@ -415,18 +413,22 @@ function LaporanPage() {
 
   // DATA MONITORING SETORAN KOLOM 1 - 29 PADA BULAN TERPILIH
   const monitoringData = useMemo(() => {
-    const targetBulanIdx = Number(monitoringBulan);
+    const targetBulanIdx = monitoringBulan === "semua" ? null : Number(monitoringBulan);
     const targetKatCode = monitoringKat;
 
     return DAFTAR_29_KOLOM.map((k) => {
       const matches = parsed.filter((t) => {
         if (t.kolom !== k) return false;
-        const trxMonth = t.bulan !== null ? t.bulan : new Date(t.trx_date).getMonth();
-        if (trxMonth !== targetBulanIdx) return false;
+
+        if (targetBulanIdx !== null) {
+          const trxMonth = t.bulan !== null ? t.bulan : new Date(t.trx_date).getMonth();
+          const trxDateMonth = new Date(t.trx_date).getMonth();
+          if (trxMonth !== targetBulanIdx && trxDateMonth !== targetBulanIdx) return false;
+        }
 
         if (targetKatCode !== "semua") {
           const b = (budgets.data ?? []).find((x) => x.id === t.budget_line_id);
-          if (!cocokKategori(b?.code, b?.name, targetKatCode)) return false;
+          if (!cocokKategori(b?.code, b?.name || t.description, targetKatCode)) return false;
         }
         return true;
       });
@@ -457,7 +459,7 @@ function LaporanPage() {
   const totalNominalMonitoring = monitoringData.reduce((acc, d) => acc + d.totalSetoran, 0);
 
   function exportMonitoringExcel() {
-    const bulanNama = BULAN_PANJANG[Number(monitoringBulan)];
+    const bulanNama = monitoringBulan === "semua" ? "Sepanjang_Tahun" : BULAN_PANJANG[Number(monitoringBulan)];
     const katLabel = KATEGORI_MONITORING.find((k) => k.id === monitoringKat)?.label || "Semua Pos";
 
     const rowsAoa: Cell[][] = [
@@ -912,6 +914,7 @@ function LaporanPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="max-h-72">
+                        <SelectItem value="semua">Semua Bulan (Sepanjang Tahun)</SelectItem>
                         {BULAN_PANJANG.map((b, i) => (
                           <SelectItem key={b} value={String(i)}>
                             {b}
