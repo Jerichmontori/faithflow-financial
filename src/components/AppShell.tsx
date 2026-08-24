@@ -21,7 +21,7 @@ import {
   Menu,
   Settings,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useAppSettings } from "@/lib/settings";
@@ -48,6 +48,16 @@ const NAV = [
   { to: "/pengguna", label: "Manajemen Pengguna", icon: UserCog },
 ] as const;
 
+const READONLY_ALLOWED_PATHS = new Set([
+  "/dashboard",
+  "/rekapitulasi",
+  "/laporan-harian",
+  "/laporan",
+  "/dana-duka",
+  "/laporan-bank",
+  "/warta",
+]);
+
 export function AppShell({
   title,
   subtitle,
@@ -59,11 +69,19 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const { user, primaryRole } = useSession();
+  const { user, primaryRole, isReadOnly, isSuperAdmin, isAdminKeuangan } = useSession();
   const { settings } = useAppSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+
+  const navItems = useMemo(() => {
+    if (isSuperAdmin || isAdminKeuangan) return NAV;
+    if (isReadOnly) {
+      return NAV.filter((item) => READONLY_ALLOWED_PATHS.has(item.to));
+    }
+    return NAV;
+  }, [isSuperAdmin, isAdminKeuangan, isReadOnly]);
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -99,7 +117,7 @@ export function AppShell({
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
-          {NAV.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}

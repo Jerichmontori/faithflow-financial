@@ -10,8 +10,10 @@ export type AuthUser = {
 
 export type AppRole =
   | "super_admin"
-  | "ketua_bpmj"
   | "admin_keuangan"
+  | "ketua_jemaat"
+  | "bpmj"
+  | "ketua_bpmj"
   | "sekretaris"
   | "pendeta"
   | "auditor"
@@ -46,12 +48,29 @@ export function useSession() {
   });
 
   const list = roles.data ?? [];
+  const isSuperAdmin = list.includes("super_admin");
+  const isAdminKeuangan = list.includes("admin_keuangan");
+  const isSekretaris = list.includes("sekretaris");
+  const isKetuaJemaat = list.includes("ketua_jemaat") || list.includes("ketua_bpmj");
+  const isBpmj = list.includes("bpmj");
+  
+  const canManageFinance = isSuperAdmin || isAdminKeuangan;
+  const canEdit = isSuperAdmin || isAdminKeuangan || isSekretaris;
+  const canApprove = isSuperAdmin || isKetuaJemaat;
+  const isReadOnly = !canManageFinance && !isSekretaris;
+
   return {
     user,
     loading,
     roles: list,
     primaryRole: list[0] ?? null,
-    canManageFinance: list.some((r) => r === "super_admin" || r === "admin_keuangan"),
-    canApprove: list.some((r) => r === "super_admin" || r === "ketua_bpmj"),
+    isSuperAdmin,
+    isAdminKeuangan,
+    isKetuaJemaat,
+    isBpmj,
+    canManageFinance,
+    canEdit,
+    canApprove,
+    isReadOnly,
   };
 }

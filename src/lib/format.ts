@@ -68,10 +68,12 @@ export const terbilang = (angka: number | string | null | undefined): string => 
 
 export const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super Administrator",
-  ketua_bpmj: "Ketua BPMJ",
   admin_keuangan: "Admin Keuangan",
+  ketua_jemaat: "Ketua Jemaat",
+  bpmj: "BPMJ",
+  ketua_bpmj: "Ketua BPMJ",
   sekretaris: "Sekretaris",
   pendeta: "Pendeta",
   auditor: "Auditor",
-  viewer: "Viewer",
+  viewer: "Viewer (Lihat Saja)",
 };

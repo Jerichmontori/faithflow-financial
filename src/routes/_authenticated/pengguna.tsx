@@ -46,8 +46,10 @@ export const Route = createFileRoute("/_authenticated/pengguna")({
 
 const ROLES: AppRole[] = [
   "super_admin",
-  "ketua_bpmj",
   "admin_keuangan",
+  "ketua_jemaat",
+  "bpmj",
+  "ketua_bpmj",
   "sekretaris",
   "pendeta",
   "auditor",

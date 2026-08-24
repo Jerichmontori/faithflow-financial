@@ -113,9 +113,12 @@ type Baris =
   | { tipe: "grup"; nama: string; key: string; tanggal: string | null }
   | { tipe: "trx"; trx: Transaction; key: string; saldo: number };
 
+import { useSession } from "@/hooks/use-session";
+
 function WartaPage() {
   const trx = useQuery(transactionsQuery);
   const { settings, updateSettings } = useAppSettings();
+  const { isReadOnly } = useSession();
   const [dari, setDari] = useState(seninIni);
   const [sampai, setSampai] = useState(() => plusHari(seninIni(), 4));
   const [ketua, setKetua] = useState(settings.namaKetuaBpmj || "Pdt. Handry Mecky Dengah, M.Th");
@@ -385,23 +388,27 @@ function WartaPage() {
               id="bank"
               inputMode="numeric"
               value={saldoAwalBank}
+              disabled={isReadOnly}
               onChange={(e) => simpanSaldoBank(e.target.value.replace(/[^\d]/g, ""))}
+              className="disabled:opacity-75"
             />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="tempat">Tempat</Label>
-            <Input id="tempat" value={tempat} onChange={(e) => setTempat(e.target.value)} />
+            <Input id="tempat" value={tempat} disabled={isReadOnly} onChange={(e) => setTempat(e.target.value)} className="disabled:opacity-75" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ketua">Ketua BPMJ</Label>
-            <Input id="ketua" value={ketua} onChange={(e) => setKetua(e.target.value)} />
+            <Input id="ketua" value={ketua} disabled={isReadOnly} onChange={(e) => setKetua(e.target.value)} className="disabled:opacity-75" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="bendahara">Bendahara BPMJ</Label>
             <Input
               id="bendahara"
               value={bendahara}
+              disabled={isReadOnly}
               onChange={(e) => setBendahara(e.target.value)}
+              className="disabled:opacity-75"
             />
           </div>
         </div>

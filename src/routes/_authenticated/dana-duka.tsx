@@ -61,19 +61,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { useSession } from "@/hooks/use-session";
+
 export const Route = createFileRoute("/_authenticated/dana-duka")({
   head: () => ({
     meta: [
-      { title: "Dana Diakonia Duka Jemaat — BUMOTIK FINANCIAL" },
+      { title: "Status & Rekap Dana Duka Kolom 1-29 — BUMOTIK FINANCIAL" },
       {
         name: "description",
         content:
-          "Daftar nama kasus duka, saldo tunggakan tahun lalu per kolom, aturan tarif dinamis bertahap, dan monitoring tunggakan dana duka Kolom 1 sampai 29.",
+          "Sistem perhitungan otomatis tunggakan dan pelunasan dana diakonia duka jemaat 29 kolom dengan aturan tarif dinamis.",
       },
-      { property: "og:title", content: "Dana Diakonia Duka Jemaat — BUMOTIK FINANCIAL" },
+      { property: "og:title", content: "Status & Rekap Dana Duka Kolom 1-29 — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Pencatatan tunggakan tahun lalu dan otomatisasi pelunasan setoran dana duka setiap kolom jemaat.",
+        content: "Matriks status tunggakan duka 29 kolom, riwayat pelunasan, dan aturan tarif dinamis.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -84,6 +86,7 @@ export const Route = createFileRoute("/_authenticated/dana-duka")({
 
 function DanaDukaPage() {
   const trx = useQuery(transactionsQuery);
+  const { isReadOnly, canManageFinance } = useSession();
 
   const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>([]);
   const [tarifRules, setTarifRules] = useState<TarifKolomRule[]>([]);
@@ -666,9 +669,11 @@ function DanaDukaPage() {
                   Urutan tahap duka, nama almarhum/keluarga, tanggal, dan besaran iuran dasar.
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold">
-                <Plus className="size-3.5" /> Tambah Kasus Duka
-              </Button>
+              {!isReadOnly && canManageFinance && (
+                <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold">
+                  <Plus className="size-3.5" /> Tambah Kasus Duka
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -688,7 +693,7 @@ function DanaDukaPage() {
                     {daftarDuka.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                          Belum ada daftar nama duka yang ditambahkan. Klik <strong>"Tambah Kasus Duka"</strong> untuk memulai.
+                          Belum ada daftar nama duka yang ditambahkan.
                         </td>
                       </tr>
                     ) : (
@@ -726,24 +731,30 @@ function DanaDukaPage() {
                               {item.keterangan || "-"}
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditDialog(item)}
-                                  className="size-7 p-0 text-muted-foreground hover:text-primary"
-                                >
-                                  <Edit2 className="size-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteKasusDuka(item.id, item.nama)}
-                                  className="size-7 p-0 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
-                              </div>
+                              {!isReadOnly && canManageFinance ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openEditDialog(item)}
+                                    className="size-7 p-0 text-muted-foreground hover:text-primary"
+                                    title="Edit Kasus Duka"
+                                  >
+                                    <Edit2 className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteKasusDuka(item.id, item.nama)}
+                                    className="size-7 p-0 text-muted-foreground hover:text-destructive"
+                                    title="Hapus Kasus Duka"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground">-</span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -809,7 +820,8 @@ function DanaDukaPage() {
                           value={info.nominalRp || 0}
                           onChange={(e) => handleTunggakanLaluChange(k, "nominalRp", e.target.value)}
                           placeholder="0"
-                          className="h-8 text-xs font-mono font-bold"
+                          disabled={isReadOnly}
+                          className="h-8 text-xs font-mono font-bold disabled:opacity-75"
                         />
                       </div>
 
@@ -824,7 +836,8 @@ function DanaDukaPage() {
                             value={info.jumlahKasus || (info.nominalRp > 0 ? 1 : 0)}
                             onChange={(e) => handleTunggakanLaluChange(k, "jumlahKasus", e.target.value)}
                             placeholder="1"
-                            className="h-7 text-xs"
+                            disabled={isReadOnly}
+                            className="h-7 text-xs disabled:opacity-75"
                           />
                         </div>
 
@@ -837,7 +850,8 @@ function DanaDukaPage() {
                             value={info.keterangan || ""}
                             onChange={(e) => handleTunggakanLaluChange(k, "keterangan", e.target.value)}
                             placeholder="Thn 2025"
-                            className="h-7 text-xs"
+                            disabled={isReadOnly}
+                            className="h-7 text-xs disabled:opacity-75"
                           />
                         </div>
                       </div>
@@ -861,9 +875,11 @@ function DanaDukaPage() {
                   Atur tarif iuran berbeda per kolom, dan tentukan penyesuaian tarif bertambah/berkurang mulai dari duka tahap ke-berapa.
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={openAddRuleModal} className="gap-1.5 text-xs font-semibold">
-                <Plus className="size-3.5" /> Tambah Aturan Perubahan Tarif
-              </Button>
+              {!isReadOnly && canManageFinance && (
+                <Button size="sm" onClick={openAddRuleModal} className="gap-1.5 text-xs font-semibold">
+                  <Plus className="size-3.5" /> Tambah Aturan Perubahan Tarif
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
@@ -902,26 +918,28 @@ function DanaDukaPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">{rule.keterangan || "Aturan tarif berlaku"}</p>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditRuleModal(rule)}
-                            className="h-8 text-xs gap-1 font-medium"
-                          >
-                            <Edit2 className="size-3" /> Edit Tarif
-                          </Button>
-                          {tarifRules.length > 1 && (
+                        {!isReadOnly && canManageFinance && (
+                          <div className="flex items-center gap-1.5">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteRule(rule.id, rule.namaAturan)}
-                              className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                              onClick={() => openEditRuleModal(rule)}
+                              className="h-8 text-xs gap-1 font-medium"
                             >
-                              <Trash2 className="size-3" />
+                              <Edit2 className="size-3" /> Edit Tarif
                             </Button>
-                          )}
-                        </div>
+                            {tarifRules.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteRule(rule.id, rule.namaAturan)}
+                                className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="size-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Preview Tarif Kolom yang Terpengaruh */}

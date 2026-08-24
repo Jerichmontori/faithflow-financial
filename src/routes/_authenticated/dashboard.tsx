@@ -13,14 +13,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDownCircle, ArrowUpCircle, Landmark, CalendarRange, Info, Calendar } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Landmark, CalendarRange, Info, Calendar, Wallet } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { budgetLinesQuery, transactionsQuery, isInternalCash, isCashPayment } from "@/lib/queries";
+import { budgetLinesQuery, transactionsQuery, isInternalCash, isCashPayment, isBankPayment, isReklas } from "@/lib/queries";
 import { rupiah, rupiahShort, namaBulan, tanggal } from "@/lib/format";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { DateInput, normalizeDateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
+import { useAppSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -28,12 +29,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "Dashboard Keuangan — BUMOTIK FINANCIAL" },
       {
         name: "description",
-        content: "Pantau saldo kas minggu berjalan, kas masuk/keluar harian, dan realisasi anggaran gereja.",
+        content: "Pantau saldo kas minggu berjalan, kas masuk/keluar harian, saldo bank, dan realisasi anggaran gereja.",
       },
       { property: "og:title", content: "Dashboard Keuangan — BUMOTIK FINANCIAL" },
       {
         property: "og:description",
-        content: "Ringkasan kas minggu berjalan dan realisasi anggaran gereja secara realtime.",
+        content: "Ringkasan kas minggu berjalan, saldo bank, dan realisasi anggaran gereja secara realtime.",
       },
     ],
   }),
@@ -87,6 +88,7 @@ const getDefaultWartaCutoff = () => {
 function DashboardPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
+  const { settings } = useAppSettings();
 
   const [tglTerakhirWarta, setTglTerakhirWarta] = useState(getDefaultWartaCutoff);
 
@@ -124,11 +126,28 @@ function DashboardPage() {
   const masukHariIni = sum(allRows.filter((t) => t.kind === "penerimaan" && isCashPayment(t) && t.trx_date === today));
   const keluarHariIni = sum(allRows.filter((t) => t.kind === "pengeluaran" && t.status === "approved" && isCashPayment(t) && t.trx_date === today));
 
-  const bulanIni = (t: (typeof allRows)[number]) => {
-    const d = new Date(t.trx_date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  };
-  const totalBulan = sum(masukBudget.filter(bulanIni)) - sum(keluarBudget.filter(bulanIni));
+  // SALDO BANK:
+  // Saldo Awal Bank + Penerimaan Rekening/Setoran Kas ke Bank - Pengeluaran Rekening/Tarikan Kas dari Bank
+  const bankMutasiTotal = useMemo(() => {
+    return allRows
+      .filter((t) => !isReklas(t) && t.status !== "rejected")
+      .reduce(
+        (acc, t) => {
+          const n = Number(t.amount);
+          if (t.budget_lines?.code === "2.2.22.22" || (t.kind === "penerimaan" && isBankPayment(t))) {
+            acc.masuk += n;
+          } else if (t.budget_lines?.code === "1.1.11.11" || (t.kind === "pengeluaran" && isBankPayment(t))) {
+            acc.keluar += n;
+          }
+          return acc;
+        },
+        { masuk: 0, keluar: 0 },
+      );
+  }, [allRows]);
+
+  const saldoAwalBankNum = Number(settings.saldoAwalBank ?? 0);
+  const saldoBank = saldoAwalBankNum + bankMutasiTotal.masuk - bankMutasiTotal.keluar;
+
   const pending = (trx.data ?? []).filter((t) => t.status === "pending");
 
   const chart = Array.from({ length: 12 }, (_, i) => ({
@@ -172,7 +191,7 @@ function DashboardPage() {
   return (
     <AppShell
       title="Dashboard Keuangan"
-      subtitle={`Posisi keuangan kas fisik minggu berjalan per ${tanggal(today)}`}
+      subtitle={`Posisi kas fisik & bank minggu berjalan per ${tanggal(today)}`}
       actions={
         pending.length > 0 ? (
           <Badge variant="outline" className="border-warning text-warning-foreground">
@@ -212,7 +231,7 @@ function DashboardPage() {
         <StatCard
           label="Saldo Kas Minggu Berjalan"
           value={rupiah(saldoKasFisikBerjalan)}
-          icon={Landmark}
+          icon={Wallet}
         />
         <StatCard
           label="Kas Masuk Hari Ini"
@@ -227,9 +246,9 @@ function DashboardPage() {
           tone="out"
         />
         <StatCard
-          label="Total Kas Bulan Ini"
-          value={rupiah(totalBulan)}
-          icon={CalendarRange}
+          label="Saldo Bank"
+          value={rupiah(saldoBank)}
+          icon={Landmark}
         />
       </div>
 
