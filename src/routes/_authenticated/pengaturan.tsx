@@ -266,6 +266,77 @@ function PengaturanPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* CARD REKENING & SALDO AWAL BANK */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building className="size-4 text-primary" /> Rekening & Saldo Awal Bank Gereja
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Tentukan saldo awal rekening bank dan nomor rekening jemaat. Nilai ini menjadi dasar perhitungan saldo di Laporan Bank, Dashboard, dan Warta Keuangan.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-xs">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="saldoAwalBank" className="font-semibold text-primary">
+                        Saldo Awal Bank (Rp) <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="saldoAwalBank"
+                        type="number"
+                        value={form.saldoAwalBank ?? 0}
+                        onChange={(e) => handleChange("saldoAwalBank", Number(e.target.value))}
+                        placeholder="0"
+                        className="h-9 text-xs font-mono font-bold"
+                      />
+                      <p className="text-[10.5px] text-muted-foreground font-semibold">
+                        Format: {rupiah(form.saldoAwalBank ?? 0)}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="tglSaldoAwalBank" className="font-semibold">
+                        Per Tanggal Saldo Awal
+                      </Label>
+                      <Input
+                        id="tglSaldoAwalBank"
+                        type="date"
+                        value={form.tglSaldoAwalBank || "2026-01-01"}
+                        onChange={(e) => handleChange("tglSaldoAwalBank", e.target.value)}
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="namaBank" className="font-semibold">
+                        Nama Bank
+                      </Label>
+                      <Input
+                        id="namaBank"
+                        value={form.namaBank || ""}
+                        onChange={(e) => handleChange("namaBank", e.target.value)}
+                        placeholder="Contoh: Bank SulutGo / BCA"
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="nomorRekeningBank" className="font-semibold">
+                        Nomor Rekening Bank
+                      </Label>
+                      <Input
+                        id="nomorRekeningBank"
+                        value={form.nomorRekeningBank || ""}
+                        onChange={(e) => handleChange("nomorRekeningBank", e.target.value)}
+                        placeholder="Contoh: 001.02.03.004567-8"
+                        className="h-9 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* TAB 2: IDENTITAS APLIKASI & LOGO */}

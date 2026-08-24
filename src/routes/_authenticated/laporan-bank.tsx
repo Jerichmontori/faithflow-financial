@@ -17,6 +17,8 @@ import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { useAppSettings } from "@/lib/settings";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/laporan-bank")({
   head: () => ({
@@ -54,21 +56,23 @@ const isBankOut = (t: Transaction) =>
 
 function LaporanBankPage() {
   const trx = useQuery(transactionsQuery);
+  const { settings, updateSettings } = useAppSettings();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [q, setQ] = useState("");
-  const [saldoAwal, setSaldoAwal] = useState<string>("");
+  const [saldoAwal, setSaldoAwal] = useState<string>(() => String(settings.saldoAwalBank ?? 0));
 
   useEffect(() => {
-    const saved = localStorage.getItem("bumotik.saldoAwalBank");
-    if (saved !== null) setSaldoAwal(saved);
-  }, []);
+    setSaldoAwal(String(settings.saldoAwalBank ?? 0));
+  }, [settings.saldoAwalBank]);
 
   const saldoAwalNum = Number(saldoAwal.replace(/[^\d-]/g, "")) || 0;
 
   function onSaldoAwalChange(v: string) {
     setSaldoAwal(v);
-    localStorage.setItem("bumotik.saldoAwalBank", v);
+    const num = Number(v.replace(/[^\d-]/g, "")) || 0;
+    updateSettings({ saldoAwalBank: num });
+    localStorage.setItem("bumotik.saldoAwalBank", String(num));
   }
 
   const rows = useMemo(() => {

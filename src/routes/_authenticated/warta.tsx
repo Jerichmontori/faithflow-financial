@@ -13,7 +13,8 @@ import {
 } from "@/lib/queries";
 import { rupiah } from "@/lib/format";
 import { exportAoa, type Cell } from "@/lib/xlsx";
-import { DUKA_KOLOM, bacaDuka, statusDuka, type DukaMap } from "@/lib/duka";
+import { DUKA_KOLOM, bacaDuka, bacaDaftarDuka, hitungSemuaTunggakanDuka, type DukaMap, type KasusDuka } from "@/lib/duka";
+import { useAppSettings } from "@/lib/settings";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -88,22 +89,40 @@ type Baris =
 
 function WartaPage() {
   const trx = useQuery(transactionsQuery);
+  const { settings, updateSettings } = useAppSettings();
   const [dari, setDari] = useState(seninIni);
   const [sampai, setSampai] = useState(() => plusHari(seninIni(), 4));
-  const [ketua, setKetua] = useState("Pdt. Handrie M Dengah M.Th");
-  const [bendahara, setBendahara] = useState("Dkn.Ny.A.Tangkudung-Dondokambey");
-  const [tempat, setTempat] = useState("Tikala Baru");
-  const [saldoAwalBank, setSaldoAwalBank] = useState("0");
+  const [ketua, setKetua] = useState(settings.namaKetuaBpmj || "Pdt. Handry Mecky Dengah, M.Th");
+  const [bendahara, setBendahara] = useState(settings.namaBendahara || "Dkn. Jerich Montori");
+  const [tempat, setTempat] = useState(settings.kotaSurat || "Manado");
+  const [saldoAwalBank, setSaldoAwalBank] = useState(() => String(settings.saldoAwalBank ?? 0));
   const [duka, setDuka] = useState<DukaMap>({});
+  const [daftarDuka, setDaftarDuka] = useState<KasusDuka[]>([]);
 
   useEffect(() => {
-    setSaldoAwalBank(localStorage.getItem("bumotik.saldoAwalBank") ?? "0");
+    setSaldoAwalBank(String(settings.saldoAwalBank ?? 0));
+    setKetua(settings.namaKetuaBpmj || "Pdt. Handry Mecky Dengah, M.Th");
+    setBendahara(settings.namaBendahara || "Dkn. Jerich Montori");
+    setTempat(settings.kotaSurat || "Manado");
+  }, [settings]);
+
+  useEffect(() => {
     setDuka(bacaDuka());
+    setDaftarDuka(bacaDaftarDuka());
+
+    const handleDukaUpdate = () => {
+      setDuka(bacaDuka());
+      setDaftarDuka(bacaDaftarDuka());
+    };
+    window.addEventListener("bumotik_duka_updated", handleDukaUpdate);
+    return () => window.removeEventListener("bumotik_duka_updated", handleDukaUpdate);
   }, []);
 
   const simpanSaldoBank = (v: string) => {
     setSaldoAwalBank(v);
-    localStorage.setItem("bumotik.saldoAwalBank", v);
+    const num = Number(v.replace(/[^\d-]/g, "")) || 0;
+    updateSettings({ saldoAwalBank: num });
+    localStorage.setItem("bumotik.saldoAwalBank", String(num));
   };
 
   const all = trx.data ?? [];
@@ -197,18 +216,26 @@ function WartaPage() {
     { no: "4.", label: "Saldo Kas Minggu ini", rutin: saldoAkhir, bank: bankAkhir },
   ];
 
+  const ringkasanDuka = useMemo(() => {
+    return hitungSemuaTunggakanDuka(all, daftarDuka, duka);
+  }, [all, daftarDuka, duka]);
+
   function exportExcel() {
-    const data: Cell[][] = [
-      [" WARTA  KEUANGAN"],
-      [`Laporan Penerimaan & Pengeluaran Kas Jemaat Tanggal ${tglPanjang(dari)} S/d ${tglPanjang(sampai)}`],
-      ["Tgl", "Uraian", "Masuk (Rp)", "Keluar (Rp)", "Saldo (Rp)"],
-      ["", "Saldo Awal", "", "", saldoAwal],
+    const data: (string | number)[][] = [
+      [`${settings.namaGereja || "GEREJA MASEHI INJILI DI MINAHASA (GMIM)"}`],
+      [`${settings.namaJemaat || "JEMAAT BUKIT MORIA TIKALA BARU"}`],
+      [`${settings.wilayah || "WILAYAH MANADO WAWONASA KOMBOS"}`],
+      ["WARTA KEUANGAN JEMAAT"],
+      [`Periode: ${tglPanjang(dari)} s/d ${tglPanjang(sampai)}`],
+      [],
+      ["No", "KETERANGAN / POS ANGGARAN", "PENERIMAAN", "PENGELUARAN", "SALDO KAS"],
+      ["#", `SALDO AWAL KAS FISIK (s/d ${tglPanjang(plusHari(dari, -1))})`, "", "", saldoAwal],
       ...baris.map((b) =>
         b.tipe === "grup"
-          ? [b.tanggal ? tglPendek(b.tanggal) : "", b.nama, "", "", ""]
+          ? ["", b.nama, "", "", b.tanggal ? tglPanjang(b.tanggal) : ""]
           : [
-              "",
-              `   ${b.trx.description || b.trx.payee || b.trx.voucher_no}`,
+              b.trx.voucher_no.replace(/^KM-\d{4}-|^KK-\d{4}-/, ""),
+              `${b.trx.description}${b.trx.budget_lines ? ` (${b.trx.budget_lines.code})` : ""}`,
               b.trx.kind === "penerimaan" ? Number(b.trx.amount) : "",
               b.trx.kind === "pengeluaran" ? Number(b.trx.amount) : "",
               b.saldo,
@@ -240,11 +267,11 @@ function WartaPage() {
         const k3 = i + 21;
         return [
           k1 <= 29 ? `Kolom ${k1}` : "",
-          k1 <= 29 ? statusDuka(duka, k1) : "",
+          k1 <= 29 ? (ringkasanDuka[k1]?.statusLabel || "Lunas") : "",
           k2 <= 29 ? `Kolom ${k2}` : "",
-          k2 <= 29 ? statusDuka(duka, k2) : "",
+          k2 <= 29 ? (ringkasanDuka[k2]?.statusLabel || "Lunas") : "",
           k3 <= 29 ? `Kolom ${k3}` : "",
-          k3 <= 29 ? statusDuka(duka, k3) : "",
+          k3 <= 29 ? (ringkasanDuka[k3]?.statusLabel || "Lunas") : "",
         ];
       }),
     ];
@@ -471,11 +498,11 @@ function WartaPage() {
                   return (
                     <tr key={i}>
                       <td className="font-semibold text-center">{k1 <= 29 ? `Kolom ${k1}` : ""}</td>
-                      <td>{k1 <= 29 ? statusDuka(duka, k1) : ""}</td>
+                      <td>{k1 <= 29 ? (ringkasanDuka[k1]?.statusLabel || "Lunas") : ""}</td>
                       <td className="font-semibold text-center">{k2 <= 29 ? `Kolom ${k2}` : ""}</td>
-                      <td>{k2 <= 29 ? statusDuka(duka, k2) : ""}</td>
+                      <td>{k2 <= 29 ? (ringkasanDuka[k2]?.statusLabel || "Lunas") : ""}</td>
                       <td className="font-semibold text-center">{k3 <= 29 ? `Kolom ${k3}` : ""}</td>
-                      <td>{k3 <= 29 ? statusDuka(duka, k3) : ""}</td>
+                      <td>{k3 <= 29 ? (ringkasanDuka[k3]?.statusLabel || "Lunas") : ""}</td>
                     </tr>
                   );
                 })}

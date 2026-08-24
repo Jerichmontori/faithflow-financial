@@ -9,6 +9,12 @@ export interface AppSettings {
   subtitleAplikasi: string;
   logoUrl: string;
 
+  // Rekening & Saldo Awal Bank
+  saldoAwalBank: number; // e.g. 15000000
+  tglSaldoAwalBank: string; // e.g. "2026-01-01"
+  namaBank: string; // e.g. "Bank SulutGo / BCA"
+  nomorRekeningBank: string; // e.g. "001.02.03.000123-4"
+
   // Penandatangan Kwitansi & Laporan
   namaKetuaBpmj: string;
   jabatanKetuaBpmj: string;
@@ -52,6 +58,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   subtitleAplikasi: "Sistem Manajemen & Keuangan Gereja",
   logoUrl: "/favicon.png",
 
+  saldoAwalBank: 0,
+  tglSaldoAwalBank: "2026-01-01",
+  namaBank: "Bank SulutGo",
+  nomorRekeningBank: "001-02-03-004567-8",
+
   namaKetuaBpmj: "Pdt. Handry Mecky Dengah, M.Th",
   jabatanKetuaBpmj: "Ketua BPMJ",
   namaBendahara: "Dkn. Jerich Montori",
@@ -89,7 +100,15 @@ export function getStoredSettings(): AppSettings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
+    const legacyBank = localStorage.getItem("bumotik.saldoAwalBank");
+    const legacyBankNum = legacyBank ? Number(legacyBank.replace(/[^\d-]/g, "")) || 0 : 0;
+
+    if (!raw) {
+      return {
+        ...DEFAULT_SETTINGS,
+        saldoAwalBank: legacyBankNum || DEFAULT_SETTINGS.saldoAwalBank,
+      };
+    }
     const parsed = JSON.parse(raw);
 
     let namaGereja = parsed.namaGereja || DEFAULT_SETTINGS.namaGereja;
@@ -99,11 +118,19 @@ export function getStoredSettings(): AppSettings {
       namaJemaat = "Jemaat Bukit Moria Tikala Baru";
     }
 
+    const saldoAwalBank = typeof parsed.saldoAwalBank === "number"
+      ? parsed.saldoAwalBank
+      : (legacyBankNum || DEFAULT_SETTINGS.saldoAwalBank);
+
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
       namaGereja,
       namaJemaat,
+      saldoAwalBank,
+      tglSaldoAwalBank: parsed.tglSaldoAwalBank || DEFAULT_SETTINGS.tglSaldoAwalBank,
+      namaBank: parsed.namaBank || DEFAULT_SETTINGS.namaBank,
+      nomorRekeningBank: parsed.nomorRekeningBank || DEFAULT_SETTINGS.nomorRekeningBank,
       bannerBerandaUrl: parsed.bannerBerandaUrl ?? DEFAULT_SETTINGS.bannerBerandaUrl,
       bannerOpacity: typeof parsed.bannerOpacity === "number" ? parsed.bannerOpacity : DEFAULT_SETTINGS.bannerOpacity,
       bannerPosition: parsed.bannerPosition || DEFAULT_SETTINGS.bannerPosition,
@@ -125,6 +152,7 @@ export function saveStoredSettings(settings: AppSettings): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem("bumotik.saldoAwalBank", String(settings.saldoAwalBank ?? 0));
     window.dispatchEvent(new CustomEvent("bumotik_settings_updated", { detail: settings }));
   } catch (err) {
     console.error("Gagal menyimpan ke localStorage:", err);
