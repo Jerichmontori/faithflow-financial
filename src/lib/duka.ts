@@ -290,6 +290,10 @@ export function dapatkanTarifDukaKolom(
     }
   }
 
+  if (TARIF_29_KOLOM_STANDAR[kolom] && TARIF_29_KOLOM_STANDAR[kolom] > 0) {
+    return TARIF_29_KOLOM_STANDAR[kolom];
+  }
+
   return kasus.iuranPerKolom || DEFAULT_TARIF_DUKA;
 }
 
