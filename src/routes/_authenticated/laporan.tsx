@@ -103,7 +103,7 @@ const GRUP_LAPORAN = [
 
 const QUICK_KATEGORI = [
   { id: "semua", label: "Semua Kategori", icon: "🌐" },
-  { id: "1.3.53.01", label: "Ibadah Kolom", icon: "⛪" },
+  { id: "1.3.53.01", label: "Ibadah Perkunjungan Rutin", icon: "⛪" },
   { id: "1.3.53.02", label: "PKB", icon: "👨" },
   { id: "1.3.53.03", label: "WKI", icon: "👩" },
   { id: "1.3.53.04", label: "Pemuda", icon: "🏃" },
@@ -122,7 +122,7 @@ const QUICK_KATEGORI = [
 
 const KATEGORI_MONITORING = [
   { id: "semua", label: "Semua Pos Setoran Kolom" },
-  { id: "1.3.53.01", label: "Ibadah Perkunjungan Rutin Kolom" },
+  { id: "1.3.53.01", label: "Ibadah Perkunjungan Keluarga Rutin" },
   { id: "1.3.53.02", label: "Pria/Kaum Bapa (PKB) Kolom" },
   { id: "1.3.53.03", label: "Wanita/Kaum Ibu (WKI) Kolom" },
   { id: "1.3.53.04", label: "Pemuda Kolom" },
@@ -216,11 +216,19 @@ const cocokKategori = (
     );
   }
   if (targetId === "1.3.53.01") {
-    // Ibadah Kolom Rutin
+    // Ibadah Perkunjungan Keluarga Rutin (1.3.53.01)
     return (
       c === "1.3.53.01" ||
-      n.includes("rutin") ||
-      (n.includes("perkunjungan") && !n.includes("pkb") && !n.includes("wki"))
+      n === "ibadah perkunjungan keluarga rutin" ||
+      (n.includes("perkunjungan") && !n.includes("pkb") && !n.includes("wki")) ||
+      (d.includes("persembahan ibadah kolom") &&
+        !d.includes("pkb") &&
+        !d.includes("wki") &&
+        !d.includes("pemuda") &&
+        !d.includes("remaja") &&
+        !d.includes("asm") &&
+        !d.includes("syukur") &&
+        !d.includes("duka"))
     );
   }
   if (targetId === "1.3.55.01") {
