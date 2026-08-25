@@ -106,7 +106,11 @@ function AnggaranPage() {
   return (
     <AppShell
       title="Mata Anggaran"
-      subtitle={`Tahun anggaran ${new Date().getFullYear()} · ${list.length} kode anggaran · Pagu Penerimaan: ${rupiah(totalPenerimaan)} · Pagu Pengeluaran: ${rupiah(totalPengeluaran)}`}
+      subtitle={
+        budgets.isLoading
+          ? "Memuat data mata anggaran…"
+          : `Tahun anggaran ${new Date().getFullYear()} · ${list.length} kode anggaran · Pagu Penerimaan: ${rupiah(totalPenerimaan)} · Pagu Pengeluaran: ${rupiah(totalPengeluaran)}`
+      }
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportExcelMataAnggaran}>
@@ -149,7 +153,12 @@ function AnggaranPage() {
         </div>
       </div>
 
-      {viewMode === "table" ? (
+      {budgets.isLoading ? (
+        <div className="panel p-12 text-center flex flex-col items-center justify-center gap-3">
+          <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm font-medium text-muted-foreground">Memuat data mata anggaran…</p>
+        </div>
+      ) : viewMode === "table" ? (
         <div className="space-y-6">
           {kinds.map((g) => {
             const items = filteredList

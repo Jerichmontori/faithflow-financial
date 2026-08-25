@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonInsforge } from "@/integrations/supabase/client";
 
 export type BudgetLine = {
   id: string;
@@ -62,12 +62,23 @@ export const isCashPayment = (t: Transaction) => !isBankPayment(t);
 export const budgetLinesQuery = queryOptions({
   queryKey: ["budget_lines"],
   queryFn: async (): Promise<BudgetLine[]> => {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
+        .from("budget_lines")
+        .select("id, code, name, kind, fiscal_year, planned_amount, grup")
+        .order("code");
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data as unknown as BudgetLine[];
+      }
+    } catch {}
+
+    // Fallback otomatis menggunakan anonInsforge
+    const { data: rawData, error: rawErr } = await anonInsforge.database
       .from("budget_lines")
       .select("id, code, name, kind, fiscal_year, planned_amount, grup")
       .order("code");
-    if (error) throw error;
-    return (data ?? []) as unknown as BudgetLine[];
+    if (rawErr) throw rawErr;
+    return (rawData ?? []) as unknown as BudgetLine[];
   },
   staleTime: 60 * 1000,
 });
@@ -78,17 +89,38 @@ export const transactionsQuery = queryOptions({
     const PAGE = 1000;
     const all: Transaction[] = [];
     for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select(
-          "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, koreksi_dari, koreksi_catatan, budget_lines(code, name)",
-        )
-        .order("trx_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      const page = (data ?? []) as unknown as Transaction[];
+      let pageData: any = null;
+      try {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select(
+            "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, koreksi_dari, koreksi_catatan, budget_lines(code, name)",
+          )
+          .order("trx_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (!error && data && data.length > 0) {
+          pageData = data;
+        }
+      } catch {}
+
+      if (!pageData) {
+        // Fallback otomatis ke anonInsforge
+        const { data, error } = await anonInsforge.database
+          .from("transactions")
+          .select(
+            "id, trx_date, voucher_no, kind, category, budget_line_id, amount, description, payee, payment_method, attachment_url, status, created_at, koreksi_dari, koreksi_catatan, budget_lines(code, name)",
+          )
+          .order("trx_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        pageData = data;
+      }
+
+      const page = (pageData ?? []) as unknown as Transaction[];
       all.push(...page);
       if (!page || page.length < PAGE) break;
     }

@@ -27,3 +27,8 @@ export const insforge = createClient({
   ...(initialToken ? { accessToken: initialToken } : {}),
 });
 
+export const anonInsforge = createClient({
+  baseUrl: INSFORGE_URL,
+  anonKey: INSFORGE_ANON_KEY,
+});
+

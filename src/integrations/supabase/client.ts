@@ -1,6 +1,6 @@
-import { insforge } from "@/integrations/insforge/client";
+import { insforge, anonInsforge } from "@/integrations/insforge/client";
 
-export { insforge };
+export { insforge, anonInsforge };
 
 export const supabase = {
   from(table: string) {
@@ -150,6 +150,16 @@ export const supabase = {
             } catch {}
           }
           return { data: { user: res.data.user }, error: null };
+        }
+        if (res.error && (res.error as any).statusCode === 401) {
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.removeItem("insforge_auth_token");
+              localStorage.removeItem("insforge_auth_user");
+            } catch {}
+          }
+          insforge.setAccessToken(undefined as any);
+          return { data: { user: null }, error: null };
         }
       } catch (err) {
         console.warn("Network notice on getUser:", err);
