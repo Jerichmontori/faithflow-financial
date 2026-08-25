@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAppSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Masuk — BUMOTIK FINANCIAL" },

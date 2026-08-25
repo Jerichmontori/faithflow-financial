@@ -36,36 +36,54 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  console.error("Root Error Boundary caught error:", error);
   const router = useRouter();
+
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    // Jika terjadi ChunkLoadError akibat deployment aset baru, otomatis reload
+    if (
+      error?.message?.includes("Failed to fetch dynamically imported module") ||
+      error?.message?.includes("Loading chunk") ||
+      error?.name === "ChunkLoadError"
+    ) {
+      window.location.reload();
+    }
   }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+      <div className="max-w-md text-center space-y-3">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
+          Halaman Sedang Diperbarui
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Sistem sedang memuat versi terbaru aplikasi. Silakan tekan tombol di bawah untuk memuat ulang.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {error?.message && (
+          <div className="p-2.5 rounded bg-muted/60 text-left text-xs font-mono text-muted-foreground overflow-x-auto max-h-24">
+            {error.message}
+          </div>
+        )}
+        <div className="mt-6 flex flex-wrap justify-center gap-2 pt-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              if (typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                router.invalidate();
+                reset();
+              }
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-sm"
           >
-            Try again
+            Muat Ulang Halaman
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            Kembali ke Beranda
           </a>
         </div>
       </div>

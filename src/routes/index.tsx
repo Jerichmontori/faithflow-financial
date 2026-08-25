@@ -6,6 +6,7 @@ import { useAppSettings } from "@/lib/settings";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "BUMOTIK FINANCIAL — Sistem Manajemen Keuangan Gereja" },
