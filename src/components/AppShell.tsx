@@ -48,14 +48,13 @@ const NAV = [
   { to: "/pengguna", label: "Manajemen Pengguna", icon: UserCog },
 ] as const;
 
-const READONLY_ALLOWED_PATHS = new Set([
+const SEKRETARIS_KETUA_ALLOWED_PATHS = new Set([
   "/dashboard",
   "/rekapitulasi",
   "/laporan-harian",
   "/laporan",
   "/dana-duka",
   "/laporan-bank",
-  "/warta",
 ]);
 
 export function AppShell({
@@ -77,11 +76,8 @@ export function AppShell({
 
   const navItems = useMemo(() => {
     if (isSuperAdmin || isAdminKeuangan) return NAV;
-    if (isReadOnly) {
-      return NAV.filter((item) => READONLY_ALLOWED_PATHS.has(item.to));
-    }
-    return NAV;
-  }, [isSuperAdmin, isAdminKeuangan, isReadOnly]);
+    return NAV.filter((item) => SEKRETARIS_KETUA_ALLOWED_PATHS.has(item.to));
+  }, [isSuperAdmin, isAdminKeuangan]);
 
   async function signOut() {
     await queryClient.cancelQueries();

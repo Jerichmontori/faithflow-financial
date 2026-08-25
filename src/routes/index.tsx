@@ -49,18 +49,12 @@ const FITUR = [
 ];
 
 function Index() {
-  const navigate = useNavigate();
   const { settings } = useAppSettings();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        navigate({ to: "/dashboard", replace: true });
-      }
-    });
-  }, [navigate]);
+  }, []);
 
   const bgOpacity = ((settings.bannerOpacity ?? 45) / 100);
   const bgColor = settings.warnaBackgroundBeranda || "#0b192c";
