@@ -25,6 +25,7 @@ import { DanaDukaView } from "./_authenticated/dana-duka";
 import { WartaKeuanganView } from "./_authenticated/warta";
 
 export const Route = createFileRoute("/pelsus")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Portal Pelayan Khusus (Pelsus) — BUMOTIK FINANCIAL" },
