@@ -1565,13 +1565,13 @@ export function LaporanKolomContent({ isPelsusView = false }: { isPelsusView?: b
                           )}
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
-                          {d.transaksiTerakhir ? tanggal(d.transaksiTerakhir.trx_date) : "—"}
+                          <span>{d.transaksiTerakhir ? tanggal(d.transaksiTerakhir.trx_date) : "—"}</span>
                         </TableCell>
                         <TableCell className="font-mono text-xs text-primary font-semibold">
-                          {d.transaksiTerakhir?.voucher_no ?? "—"}
+                          <span>{d.transaksiTerakhir?.voucher_no ?? "—"}</span>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground break-words min-w-[200px]">
-                          {d.transaksiTerakhir?.description ?? "Belum ada transaksi setoran pada bulan ini."}
+                          <span>{d.transaksiTerakhir?.description ?? "Belum ada transaksi setoran pada bulan ini."}</span>
                         </TableCell>
                         <TableCell className="text-right">
                           {d.sudahSetor ? (

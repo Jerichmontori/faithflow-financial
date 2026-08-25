@@ -13,6 +13,31 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 
+// Proteksi global terhadap bug DOM removeChild pada browser HP / Google Translate
+if (typeof window !== "undefined") {
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(child: T): T {
+    if (child && child.parentNode !== this) {
+      if (console) {
+        console.warn("Mencegah crash DOM removeChild: node bukan anak dari elemen ini.", child, this);
+      }
+      return child;
+    }
+    return originalRemoveChild.apply(this, arguments as any) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      if (console) {
+        console.warn("Mencegah crash DOM insertBefore: referenceNode bukan anak dari elemen ini.", referenceNode, this);
+      }
+      return newNode;
+    }
+    return originalInsertBefore.apply(this, arguments as any) as T;
+  };
+}
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
