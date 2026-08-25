@@ -554,12 +554,20 @@ function LaporanPage() {
       }
     }
 
+    let topSingleTrx: (typeof rows)[number] | null = null;
+    for (const r of rows) {
+      if (!topSingleTrx || Number(r.amount) > Number(topSingleTrx.amount)) {
+        topSingleTrx = r;
+      }
+    }
+
     return {
       totalTrx,
       distinctUnits,
       avgPerUnit,
       topUnit,
       topUnitNominal,
+      topSingleTrx,
     };
   }, [rows, grandTotal, matrix]);
 
@@ -875,19 +883,24 @@ function LaporanPage() {
         </Card>
 
         <Card className="border-l-4 border-l-amber-500 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
+          <CardContent className="p-4 flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
                 Setoran Terbesar
               </span>
-              <span className="text-xl font-black text-amber-700 font-mono truncate max-w-[180px] block">
+              <span className="text-base sm:text-lg font-black text-amber-700 font-mono block leading-snug break-words">
                 {clientStats.topUnit}
               </span>
-              <span className="text-[11px] text-muted-foreground block mt-0.5">
+              <span className="text-xs font-bold text-foreground block mt-0.5 font-mono">
                 {clientStats.topUnitNominal > 0 ? rupiah(clientStats.topUnitNominal) : "Belum ada"}
               </span>
+              {clientStats.topSingleTrx && (
+                <span className="text-[11px] text-muted-foreground block mt-1 leading-normal break-words">
+                  Transaksi tertinggi: <strong className="text-foreground">{clientStats.topSingleTrx.description}</strong> ({rupiah(clientStats.topSingleTrx.amount)})
+                </span>
+              )}
             </div>
-            <div className="size-9 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+            <div className="size-9 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
               <Sparkles className="size-4.5" />
             </div>
           </CardContent>
@@ -1578,7 +1591,7 @@ function LaporanPage() {
                         <TableCell className="font-mono text-xs text-primary font-semibold">
                           {d.transaksiTerakhir?.voucher_no ?? "—"}
                         </TableCell>
-                        <TableCell className="max-w-72 truncate text-xs text-muted-foreground">
+                        <TableCell className="text-xs text-muted-foreground break-words min-w-[200px]">
                           {d.transaksiTerakhir?.description ?? "Belum ada transaksi setoran pada bulan ini."}
                         </TableCell>
                         <TableCell className="text-right">
@@ -1751,7 +1764,7 @@ function LaporanPage() {
                             t.budget_lines ? `${t.budget_lines.code} — ${t.budget_lines.name}` : "-"
                           )}
                         </TableCell>
-                        <TableCell className="max-w-xs truncate text-muted-foreground">{t.description}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground break-words min-w-[220px]">{t.description}</TableCell>
                         <TableCell className="text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
                           {rupiah(t.amount)}
                         </TableCell>
