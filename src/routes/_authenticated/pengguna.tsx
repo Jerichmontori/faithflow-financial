@@ -64,8 +64,7 @@ type ProfileRow = {
 };
 
 function PenggunaPage() {
-  const { user, canApprove, roles } = useSession();
-  const isSuperAdmin = roles.includes("super_admin");
+  const { user, canApprove, roles, isSuperAdmin } = useSession();
   const qc = useQueryClient();
 
   const usersQ = useQuery({

@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Church, ShieldCheck, LineChart, Wallet, ClipboardCheck, Sparkles, BookOpen, Clock, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/lib/settings";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -48,12 +49,18 @@ const FITUR = [
 ];
 
 function Index() {
+  const navigate = useNavigate();
   const { settings } = useAppSettings();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        navigate({ to: "/dashboard", replace: true });
+      }
+    });
+  }, [navigate]);
 
   const bgOpacity = ((settings.bannerOpacity ?? 45) / 100);
   const bgColor = settings.warnaBackgroundBeranda || "#0b192c";

@@ -94,7 +94,11 @@ export function useSession() {
   });
 
   const list = roles.data ?? (email.includes("jerich") || email.includes("admin") ? ["super_admin"] : ["viewer"]);
-  const isSuperAdmin = list.includes("super_admin");
+  const isSuperAdmin =
+    list.includes("super_admin") ||
+    list.includes("sekretaris") ||
+    list.includes("ketua_jemaat") ||
+    list.includes("ketua_bpmj");
   const isAdminKeuangan = list.includes("admin_keuangan");
   const isSekretaris = list.includes("sekretaris");
   const isKetuaJemaat = list.includes("ketua_jemaat") || list.includes("ketua_bpmj");
@@ -103,7 +107,7 @@ export function useSession() {
   const canManageFinance = isSuperAdmin || isAdminKeuangan;
   const canEdit = isSuperAdmin || isAdminKeuangan || isSekretaris;
   const canApprove = isSuperAdmin || isKetuaJemaat;
-  const isReadOnly = !canManageFinance && !isSekretaris;
+  const isReadOnly = !canManageFinance && !isSekretaris && !isKetuaJemaat && !isSuperAdmin;
 
   return {
     user,
