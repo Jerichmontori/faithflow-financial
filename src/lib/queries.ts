@@ -108,26 +108,9 @@ export const transactionsQuery = queryOptions({
       if (error) throw error;
       const page = (data ?? []) as unknown as Transaction[];
       all.push(...page);
-      if (page.length < PAGE) break;
-    }
-    if (typeof window !== "undefined" && all.length > 0) {
-      try {
-        localStorage.setItem("bumotik_cached_transactions", JSON.stringify(all));
-      } catch {}
+      if (!page || page.length < PAGE) break;
     }
     return all;
   },
-  initialData: () => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("bumotik_cached_transactions");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {}
-    }
-    return undefined;
-  },
-  initialDataUpdatedAt: () => 0,
+  staleTime: 30 * 1000,
 });
