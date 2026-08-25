@@ -84,10 +84,10 @@ export const Route = createFileRoute("/_authenticated/dana-duka")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: DanaDukaPage,
+  component: DanaDukaView,
 });
 
-function DanaDukaPage() {
+export function DanaDukaView({ isPelsusView = false }: { isPelsusView?: boolean }) {
   const trx = useQuery(transactionsQuery);
   const { isReadOnly, canManageFinance } = useSession();
 
@@ -491,23 +491,17 @@ function DanaDukaPage() {
     });
   }, [ringkasanKolom, searchTerm]);
 
-  return (
-    <AppShell
-      title="Dana Diakonia Duka Jemaat"
-      subtitle="Manajemen nama duka, tunggakan tahun lalu, tarif dinamis, & pelunasan otomatis"
-      actions={
-        !isReadOnly && canManageFinance ? (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
-              <Printer className="size-3.5" /> Cetak Rekap
-            </Button>
-            <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold shadow-sm">
-              <Plus className="size-3.5" /> Tambah Kasus Duka
-            </Button>
-          </div>
-        ) : null
-      }
-    >
+  const renderDanaDukaContent = () => (
+    <div className="space-y-6">
+      {isPelsusView && (
+        <div className="flex items-center justify-between gap-2 pb-2 border-b">
+          <Badge variant="outline" className="text-xs font-mono">Dana Diakonia Duka Jemaat</Badge>
+          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
+            <Printer className="size-3.5" /> Cetak Rekap
+          </Button>
+        </div>
+      )}
+
       {/* 4 Stat Cards Ringkasan */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card className="border-l-4 border-l-primary shadow-xs">
@@ -585,15 +579,21 @@ function DanaDukaPage() {
           <TabsTrigger value="matriks" className="text-xs">
             <Users className="size-3.5 mr-1.5" /> Status 29 Kolom
           </TabsTrigger>
-          <TabsTrigger value="daftar-duka" className="text-xs">
-            <HeartHandshake className="size-3.5 mr-1.5" /> Daftar Nama Duka ({daftarDuka.length})
-          </TabsTrigger>
-          <TabsTrigger value="tahun-lalu" className="text-xs">
-            <History className="size-3.5 mr-1.5" /> Tunggakan Tahun Lalu
-          </TabsTrigger>
-          <TabsTrigger value="tarif-dinamis" className="text-xs">
-            <SlidersHorizontal className="size-3.5 mr-1.5" /> Tarif Dinamis ({tarifRules.length})
-          </TabsTrigger>
+          {!isPelsusView && (
+            <TabsTrigger value="daftar-duka" className="text-xs">
+              <HeartHandshake className="size-3.5 mr-1.5" /> Daftar Nama Duka ({daftarDuka.length})
+            </TabsTrigger>
+          )}
+          {!isPelsusView && (
+            <TabsTrigger value="tahun-lalu" className="text-xs">
+              <History className="size-3.5 mr-1.5" /> Tunggakan Tahun Lalu
+            </TabsTrigger>
+          )}
+          {!isPelsusView && (
+            <TabsTrigger value="tarif-dinamis" className="text-xs">
+              <SlidersHorizontal className="size-3.5 mr-1.5" /> Tarif Dinamis ({tarifRules.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* TAB 1: MATRIKS STATUS TUNGGAKAN 29 KOLOM */}
@@ -1552,6 +1552,33 @@ function DanaDukaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+
+  if (isPelsusView) {
+    return renderDanaDukaContent();
+  }
+
+  return (
+    <AppShell
+      title="Dana Diakonia Duka Jemaat"
+      subtitle="Manajemen nama duka, tunggakan tahun lalu, tarif dinamis, & pelunasan otomatis"
+      actions={
+        !isReadOnly && canManageFinance ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
+              <Printer className="size-3.5" /> Cetak Rekap
+            </Button>
+            <Button size="sm" onClick={openAddDialog} className="gap-1.5 text-xs font-semibold shadow-sm">
+              <Plus className="size-3.5" /> Tambah Kasus Duka
+            </Button>
+          </div>
+        ) : null
+      }
+    >
+      {renderDanaDukaContent()}
     </AppShell>
   );
 }
+
+export const DanaDukaPage = DanaDukaView;

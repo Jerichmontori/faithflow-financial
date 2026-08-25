@@ -88,7 +88,7 @@ export const Route = createFileRoute("/_authenticated/laporan")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: LaporanPage,
+  component: LaporanKolomView,
 });
 
 const MONTH_KEYS = [...BULAN_PANJANG.map((_, i) => i), null] as Array<number | null>;
@@ -304,7 +304,7 @@ const cocokKategori = (
 /** Nama kolom hasil ekstraksi keterangan hanya berlaku untuk grup ini */
 const GRUP_NAMA_KOLOM = "Persembahan Ibd Kompelka BIPRA";
 
-function LaporanPage() {
+export function LaporanKolomView({ isPelsusView = false }: { isPelsusView?: boolean }) {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
   const { isReadOnly } = useSession();
@@ -778,53 +778,52 @@ function LaporanPage() {
 
   const selectedBudget = budgetOptions.find((b) => b.id === budgetId);
 
-  return (
-    <AppShell
-      title="Laporan Penerimaan per Kolom & BIPRA"
-      subtitle={`${rows.length} transaksi penerimaan · total ${rupiah(grandTotal)}`}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={resetFilter} className="h-8 gap-1 text-xs">
-            <RotateCcw className="size-3.5" /> Reset filter
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleShareWhatsApp}
-            className="h-8 gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:text-emerald-300 border-emerald-300 font-semibold"
-          >
-            <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            Bagikan ke WA
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopyWhatsApp}
-            className="h-8 gap-1.5 text-xs bg-background hover:bg-muted font-medium"
-          >
-            <Copy className="size-3.5" />
-            Salin Teks
-          </Button>
-          {!isReadOnly && (
-            <>
-              <Button variant="outline" size="sm" onClick={exportCsv} className="h-8 gap-1 text-xs">
-                <Download className="size-3.5" /> Ekspor CSV
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadPdf}
-                disabled={isGeneratingPdf}
-                className="h-8 gap-1 text-xs bg-primary/5 hover:bg-primary/10 text-primary border-primary/20"
-              >
-                <FileDown className="size-3.5" />
-                {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
-              </Button>
-            </>
-          )}
+  const renderLaporanContent = () => (
+    <div className="space-y-5">
+      {isPelsusView && (
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs font-mono">Laporan Kolom & BIPRA</Badge>
+            <span className="text-xs text-muted-foreground">{rows.length} transaksi</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={resetFilter} className="h-8 gap-1 text-xs">
+              <RotateCcw className="size-3.5" /> Reset Filter
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShareWhatsApp}
+              className="h-8 gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:text-emerald-300 border-emerald-300 font-semibold"
+            >
+              <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+              Bagikan WA
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyWhatsApp}
+              className="h-8 gap-1.5 text-xs bg-background hover:bg-muted font-medium"
+            >
+              <Copy className="size-3.5" /> Salin Teks
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportCsv} className="h-8 gap-1 text-xs">
+              <Download className="size-3.5" /> Ekspor CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadPdf}
+              disabled={isGeneratingPdf}
+              className="h-8 gap-1 text-xs bg-primary/5 hover:bg-primary/10 text-primary border-primary/20"
+            >
+              <FileDown className="size-3.5" />
+              {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
+            </Button>
+          </div>
         </div>
-      }
-    >
+      )}
+
       {/* 4 HIGHLIGHT CARDS RINGKASAN */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
         <Card className="border-l-4 border-l-primary shadow-xs">
@@ -1799,6 +1798,41 @@ function LaporanPage() {
           </TabsContent>
         </Tabs>
       </div>
+      </div>
+    );
+
+  if (isPelsusView) {
+    return renderLaporanContent();
+  }
+
+  return (
+    <AppShell
+      title="Laporan Penerimaan Kolom"
+      subtitle={`Rekapitulasi penerimaan kas kolom 1–29 & BIPRA · ${rows.length} transaksi · ${rupiah(grandTotal)}`}
+      actions={
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={resetFilter} className="h-8 gap-1 text-xs">
+            <RotateCcw className="size-3.5" /> Reset Filter
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportCsv} className="h-8 gap-1 text-xs">
+            <Download className="size-3.5" /> Ekspor CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadPdf}
+            disabled={isGeneratingPdf}
+            className="h-8 gap-1 text-xs bg-primary/5 hover:bg-primary/10 text-primary border-primary/20"
+          >
+            <FileDown className="size-3.5" />
+            {isGeneratingPdf ? "Membuat PDF…" : "Download PDF"}
+          </Button>
+        </div>
+      }
+    >
+      {renderLaporanContent()}
     </AppShell>
   );
 }
+
+export const LaporanPage = LaporanKolomView;

@@ -30,6 +30,7 @@ import { useAppSettings } from "@/lib/settings";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/warta")({
   head: () => ({
@@ -49,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/warta")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: WartaPage,
+  component: WartaKeuanganView,
 });
 
 const iso = (d: Date) =>
@@ -116,7 +117,7 @@ type Baris =
 
 import { useSession } from "@/hooks/use-session";
 
-function WartaPage() {
+export function WartaKeuanganView({ isPelsusView = false }: { isPelsusView?: boolean }) {
   const trx = useQuery(transactionsQuery);
   const { settings, updateSettings } = useAppSettings();
   const { isReadOnly } = useSession();
@@ -365,23 +366,22 @@ function WartaPage() {
     );
   }
 
-  return (
-    <AppShell
-      title="Warta Keuangan Mingguan"
-      subtitle={`${tglPanjang(dari)} s/d ${tglPanjang(sampai)}`}
-      actions={
-        !isReadOnly ? (
-          <div className="no-print flex gap-2">
-            <Button variant="outline" onClick={exportExcel}>
-              <FileDown className="mr-2 h-4 w-4" /> Export Excel (Warta)
+  const renderWartaContent = () => (
+    <div className="space-y-4">
+      {isPelsusView && (
+        <div className="no-print flex items-center justify-between gap-2 pb-2 border-b">
+          <Badge variant="outline" className="text-xs font-mono">Warta Keuangan Mingguan</Badge>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportExcel} className="h-8 gap-1.5 text-xs">
+              <FileDown className="size-3.5" /> Export Excel
             </Button>
-            <Button onClick={() => window.print()}>
-              <Printer className="mr-2 h-4 w-4" /> Cetak Warta
+            <Button size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-xs">
+              <Printer className="size-3.5" /> Cetak Warta
             </Button>
           </div>
-        ) : null
-      }
-    >
+        </div>
+      )}
+
       <div className="panel no-print mb-4 p-4 space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           <div className="space-y-1.5">
@@ -397,35 +397,39 @@ function WartaPage() {
               onChange={(e) => setSampai(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bank">Saldo Awal Bank</Label>
-            <Input
-              id="bank"
-              inputMode="numeric"
-              value={saldoAwalBank}
-              disabled={isReadOnly}
-              onChange={(e) => simpanSaldoBank(e.target.value.replace(/[^\d]/g, ""))}
-              className="disabled:opacity-75"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="tempat">Tempat</Label>
-            <Input id="tempat" value={tempat} disabled={isReadOnly} onChange={(e) => setTempat(e.target.value)} className="disabled:opacity-75" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ketua">Ketua BPMJ</Label>
-            <Input id="ketua" value={ketua} disabled={isReadOnly} onChange={(e) => setKetua(e.target.value)} className="disabled:opacity-75" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bendahara">Bendahara BPMJ</Label>
-            <Input
-              id="bendahara"
-              value={bendahara}
-              disabled={isReadOnly}
-              onChange={(e) => setBendahara(e.target.value)}
-              className="disabled:opacity-75"
-            />
-          </div>
+          {!isPelsusView && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="bank">Saldo Awal Bank</Label>
+                <Input
+                  id="bank"
+                  inputMode="numeric"
+                  value={saldoAwalBank}
+                  disabled={isReadOnly}
+                  onChange={(e) => simpanSaldoBank(e.target.value.replace(/[^\d]/g, ""))}
+                  className="disabled:opacity-75"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tempat">Tempat</Label>
+                <Input id="tempat" value={tempat} disabled={isReadOnly} onChange={(e) => setTempat(e.target.value)} className="disabled:opacity-75" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ketua">Ketua BPMJ</Label>
+                <Input id="ketua" value={ketua} disabled={isReadOnly} onChange={(e) => setKetua(e.target.value)} className="disabled:opacity-75" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bendahara">Bendahara BPMJ</Label>
+                <Input
+                  id="bendahara"
+                  value={bendahara}
+                  disabled={isReadOnly}
+                  onChange={(e) => setBendahara(e.target.value)}
+                  className="disabled:opacity-75"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Pengaturan Format Cetak & Kolom Koreksi */}
@@ -562,7 +566,7 @@ function WartaPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </div>
   );
 
   function renderWartaSheet() {
@@ -674,7 +678,7 @@ function WartaPage() {
                 <th className="w-10 text-center py-1 px-1.5">No</th>
                 <th className="text-left py-1 px-2">Uraian</th>
                 <th className="w-32 sm:w-36 text-right py-1 px-2">DANA RUTIN</th>
-                <th className="w-32 sm:w-36 text-right py-1 px-2">SIMPANAN BANK</th>
+                {!isPelsusView && <th className="w-32 sm:w-36 text-right py-1 px-2">SIMPANAN BANK</th>}
                 <th className="w-32 sm:w-36 text-right py-1 px-2">JUMLAH</th>
               </tr>
             </thead>
@@ -684,8 +688,8 @@ function WartaPage() {
                   <td className="text-center py-1 px-1.5">{r.no}</td>
                   <td className="py-1 px-2 font-medium text-black">{r.label}</td>
                   <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.rutin)}</td>
-                  <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.bank)}</td>
-                  <td className="text-right py-1 px-2 font-mono font-bold text-black">{angkaSaldo(r.rutin + r.bank)}</td>
+                  {!isPelsusView && <td className="text-right py-1 px-2 font-mono text-black">{angkaSaldo(r.bank)}</td>}
+                  <td className="text-right py-1 px-2 font-mono font-bold text-black">{angkaSaldo(isPelsusView ? r.rutin : r.rutin + r.bank)}</td>
                 </tr>
               ))}
             </tbody>
@@ -700,24 +704,26 @@ function WartaPage() {
           <p className="font-medium mt-0.5">Tuhan Yesus Memberkati.</p>
         </div>
 
-        <div className="mt-3.5 text-[11pt]">
-          <p className="text-right">
-            {tempat}, {tglPanjang(sampai)}
-          </p>
-          <p className="mt-1 text-center font-bold uppercase tracking-wider">
-            BADAN PEKERJA MAJELIS JEMAAT
-          </p>
-          <div className="mt-2.5 flex justify-between text-center">
-            <div className="w-1/2">
-              <p className="font-semibold">Ketua</p>
-              <p className="mt-10 font-bold underline">{ketua}</p>
-            </div>
-            <div className="w-1/2">
-              <p className="font-semibold">Bendahara</p>
-              <p className="mt-10 font-bold underline">{bendahara}</p>
+        {!isPelsusView && (
+          <div className="mt-3.5 text-[11pt]">
+            <p className="text-right">
+              {tempat}, {tglPanjang(sampai)}
+            </p>
+            <p className="mt-1 text-center font-bold uppercase tracking-wider">
+              BADAN PEKERJA MAJELIS JEMAAT
+            </p>
+            <div className="mt-2.5 flex justify-between text-center">
+              <div className="w-1/2">
+                <p className="font-semibold">Ketua</p>
+                <p className="mt-10 font-bold underline">{ketua}</p>
+              </div>
+              <div className="w-1/2">
+                <p className="font-semibold">Bendahara</p>
+                <p className="mt-10 font-bold underline">{bendahara}</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <p className="mt-2.5 text-[9.5pt] italic text-muted-foreground text-center">
           * Jika ada persembahan-persembahan yang sudah diberikan, tetapi belum tercantum/masuk dalam Warta Jemaat ini
@@ -758,5 +764,32 @@ function WartaPage() {
         </div>
       </div>
     );
+  };
+
+  if (isPelsusView) {
+    return renderWartaContent();
   }
+
+  return (
+    <AppShell
+      title="Warta Keuangan Mingguan"
+      subtitle={`${tglPanjang(dari)} s/d ${tglPanjang(sampai)}`}
+      actions={
+        !isReadOnly ? (
+          <div className="no-print flex gap-2">
+            <Button variant="outline" onClick={exportExcel}>
+              <FileDown className="mr-2 h-4 w-4" /> Export Excel (Warta)
+            </Button>
+            <Button onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" /> Cetak Warta
+            </Button>
+          </div>
+        ) : null
+      }
+    >
+      {renderWartaContent()}
+    </AppShell>
+  );
 }
+
+export const WartaPage = WartaKeuanganView;
