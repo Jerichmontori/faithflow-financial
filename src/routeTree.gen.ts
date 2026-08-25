@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PelsusRouteImport } from './routes/pelsus'
 import { Route as AuthenticatedAnggaranRouteImport } from './routes/_authenticated/anggaran'
 import { Route as AuthenticatedBukuPembantuRouteImport } from './routes/_authenticated/buku-pembantu'
 import { Route as AuthenticatedDanaDukaRouteImport } from './routes/_authenticated/dana-duka'
@@ -41,6 +42,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PelsusRoute = PelsusRouteImport.update({
+  id: '/pelsus',
+  path: '/pelsus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAnggaranRoute = AuthenticatedAnggaranRouteImport.update({
@@ -133,6 +139,7 @@ const AuthenticatedWartaRoute = AuthenticatedWartaRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/pelsus': typeof PelsusRoute
   '/anggaran': typeof AuthenticatedAnggaranRoute
   '/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
   '/dana-duka': typeof AuthenticatedDanaDukaRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/pelsus': typeof PelsusRoute
   '/anggaran': typeof AuthenticatedAnggaranRoute
   '/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
   '/dana-duka': typeof AuthenticatedDanaDukaRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/pelsus': typeof PelsusRoute
   '/_authenticated/anggaran': typeof AuthenticatedAnggaranRoute
   '/_authenticated/buku-pembantu': typeof AuthenticatedBukuPembantuRoute
   '/_authenticated/dana-duka': typeof AuthenticatedDanaDukaRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/pelsus'
     | '/anggaran'
     | '/buku-pembantu'
     | '/dana-duka'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/pelsus'
     | '/anggaran'
     | '/buku-pembantu'
     | '/dana-duka'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/pelsus'
     | '/_authenticated/anggaran'
     | '/_authenticated/buku-pembantu'
     | '/_authenticated/dana-duka'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PelsusRoute: typeof PelsusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pelsus': {
+      id: '/pelsus'
+      path: '/pelsus'
+      fullPath: '/pelsus'
+      preLoaderRoute: typeof PelsusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/anggaran': {
@@ -445,6 +465,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PelsusRoute: PelsusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

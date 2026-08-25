@@ -47,8 +47,11 @@ export interface AppSettings {
   mottoAyatLogin: string;
   bannerLoginUrl: string;
   bannerLoginOpacity: number; // 0 to 100
-  bannerLoginPosition: string; // "center" | "top" | "bottom" | "left" | "right" | etc
+  bannerLoginPosition: string;
   warnaBackgroundLogin: string;
+
+  // Pengaturan Portal Pelayan Khusus (Pelsus)
+  pinPelsus: string; // PIN 6 Digit, e.g. "777888"
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -95,6 +98,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bannerLoginOpacity: 40,
   bannerLoginPosition: "center",
   warnaBackgroundLogin: "#0b192c",
+
+  pinPelsus: "777888",
 };
 
 const STORAGE_KEY = "bumotik.app_settings_v1";

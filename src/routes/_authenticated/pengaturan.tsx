@@ -337,6 +337,38 @@ function PengaturanPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* CARD PIN PORTAL PELAYAN KHUSUS (PELSUS) */}
+              <Card className="border-l-4 border-l-amber-500 shadow-xs">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Lock className="size-4 text-amber-600" /> Pengaturan PIN Portal Pelayan Khusus (Pelsus)
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    PIN Akses Cepat 6-Digit yang digunakan oleh ±70 Pelayan Khusus (Diaken, Penatua, Guru Agama) untuk membuka <strong>Laporan Kolom</strong>, <strong>Dana Duka</strong>, dan <strong>Warta Keuangan</strong> di alamat <code>https://keuanganbumotik.my.id/pelsus</code> tanpa perlu login email.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-xs">
+                  <div className="space-y-1.5 max-w-sm">
+                    <Label htmlFor="pinPelsus" className="font-semibold flex items-center justify-between">
+                      <span>PIN Akses Cepat Pelsus (6 Digit)</span>
+                      <span className="text-[11px] text-muted-foreground font-mono">Standar: 777888</span>
+                    </Label>
+                    <Input
+                      id="pinPelsus"
+                      type="text"
+                      maxLength={8}
+                      value={form.pinPelsus || "777888"}
+                      onChange={(e) => handleChange("pinPelsus", e.target.value.replace(/\D/g, ""))}
+                      placeholder="Contoh: 777888"
+                      className="h-10 text-sm font-mono tracking-widest font-black text-amber-700 max-w-xs"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      💡 Cukup infokan PIN ini kepada seluruh Pelayan Khusus jemaat saat rapat/ibadah majelis. Anda dapat mengubah PIN ini kapan saja dari halaman Super Admin.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* TAB 2: IDENTITAS APLIKASI & LOGO */}

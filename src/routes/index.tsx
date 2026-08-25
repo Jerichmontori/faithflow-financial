@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Church, ShieldCheck, LineChart, Wallet, ClipboardCheck, Sparkles, BookOpen, Clock, MapPin, ArrowRight } from "lucide-react";
+import { Church, ShieldCheck, LineChart, Wallet, ClipboardCheck, Sparkles, BookOpen, Clock, MapPin, ArrowRight, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/lib/settings";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +83,11 @@ function Index() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button asChild size="sm" variant="outline" className="font-semibold shadow-xs gap-1.5 border-amber-500/50 text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100">
+            <Link to="/pelsus">
+              <KeyRound className="size-3.5" /> Portal Pelsus (PIN)
+            </Link>
+          </Button>
           <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5">
             <Link to="/auth">
               Masuk ke Sistem <ArrowRight className="size-3.5" />
@@ -120,13 +125,14 @@ function Index() {
           />
 
           {/* Konten Hero */}
-          <div className="relative z-10 mx-auto max-w-5xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white mb-6 shadow-sm">
+          <div className="relative z-10 mx-auto max-w-4xl">
+            {/* Top Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur-md mb-6 shadow-sm">
               <Sparkles className="size-3.5 text-amber-300" />
-              {settings.subjudulBeranda || "SISTEM MANAJEMEN KEUANGAN & ADMINISTRASI JEMAAT"}
+              <span>{settings.subjudulBeranda || "SISTEM MANAJEMEN KEUANGAN & ADMINISTRASI JEMAAT"}</span>
             </div>
 
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-white leading-[1.18] max-w-4xl mx-auto drop-shadow-sm">
+            <h1 className="font-display text-3xl font-black tracking-tight sm:text-5xl lg:text-6xl text-balance leading-tight drop-shadow-sm">
               {settings.judulBeranda || "Keuangan gereja yang tertib, transparan, dan mudah dipertanggungjawabkan."}
             </h1>
 
@@ -148,6 +154,11 @@ function Index() {
                 <Link to="/auth">
                   {settings.teksTombolBeranda || "Mulai Kelola Keuangan"}
                   <ArrowRight className="size-4.5" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="font-bold px-6 py-6 text-sm sm:text-base shadow-lg gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-2 border-amber-400/40 backdrop-blur-md">
+                <Link to="/pelsus">
+                  <KeyRound className="size-4.5" /> Portal Pelayan Khusus (PIN)
                 </Link>
               </Button>
             </div>
