@@ -67,27 +67,9 @@ export const budgetLinesQuery = queryOptions({
       .select("id, code, name, kind, fiscal_year, planned_amount, grup")
       .order("code");
     if (error) throw error;
-    const res = (data ?? []) as unknown as BudgetLine[];
-    if (typeof window !== "undefined" && res.length > 0) {
-      try {
-        localStorage.setItem("bumotik_cached_budget_lines", JSON.stringify(res));
-      } catch {}
-    }
-    return res;
+    return (data ?? []) as unknown as BudgetLine[];
   },
-  initialData: () => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("bumotik_cached_budget_lines");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch {}
-    }
-    return undefined;
-  },
-  initialDataUpdatedAt: () => 0,
+  staleTime: 60 * 1000,
 });
 
 export const transactionsQuery = queryOptions({

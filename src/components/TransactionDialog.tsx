@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus, ShieldCheck, Printer } from "lucide-react";
+import { Check, ChevronsUpDown, Sparkles, X, HeartHandshake, Mail, Users, Plus, ShieldCheck, Printer, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BULAN_PANJANG, standardizeDescription } from "@/lib/kolom";
 import { CetakBuktiTransaksiDialog, type CetakData } from "@/components/CetakBuktiTransaksiDialog";
@@ -160,6 +160,8 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     setOpen(nextOpen);
   };
 
+  const [searchBudget, setSearchBudget] = useState("");
+
   const options = useMemo(() => (budgets.data ?? []).filter((b) => b.kind === kind), [budgets.data, kind]);
   const selected = options.find((b) => b.id === form.budget_line_id);
 
@@ -167,6 +169,17 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
     () => [...options].sort((a, b) => a.code.localeCompare(b.code)),
     [options],
   );
+
+  const filteredSortedOptions = useMemo(() => {
+    const q = searchBudget.trim().toLowerCase();
+    if (!q) return sortedOptions;
+    return sortedOptions.filter(
+      (b) =>
+        b.code.toLowerCase().includes(q) ||
+        b.name.toLowerCase().includes(q) ||
+        (b.grup || "").toLowerCase().includes(q),
+    );
+  }, [sortedOptions, searchBudget]);
 
   // Deteksi Tipe Template yang Sesuai dengan Mata Anggaran Terpilih
   const templateType = useMemo(() => {
@@ -528,49 +541,69 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                     <ChevronsUpDown className="ml-2 size-3.5 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[360px] sm:w-[460px] p-0" align="end">
-                  <Command
-                    filter={(value, search) =>
-                      value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-                    }
-                  >
-                    <CommandInput placeholder="Ketik kode, nama PKB/WKI/Lansia, atau pos…" />
-                    <CommandList className="max-h-80 overflow-y-auto">
-                      <CommandEmpty>Mata anggaran tidak ditemukan.</CommandEmpty>
-                      <CommandGroup>
-                        {sortedOptions.map((b) => (
-                          <CommandItem
-                            key={b.id}
-                            value={`${b.code} ${b.name} ${b.grup || ""}`}
-                            onSelect={() => {
-                              setForm({ ...form, budget_line_id: b.id });
-                              setBudgetOpen(false);
-                              setAsistenAktif(true);
-                            }}
-                            className="flex items-start py-2 cursor-pointer"
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 size-3.5 mt-0.5 shrink-0",
-                                form.budget_line_id === b.id ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-primary">{b.code}</span>
-                                <span className="text-xs font-medium text-foreground">{b.name}</span>
-                              </div>
-                              {b.grup && (
-                                <span className="text-[11px] text-muted-foreground">
-                                  {b.grup}
-                                </span>
-                              )}
+                <PopoverContent className="w-[360px] sm:w-[480px] p-0" align="end">
+                  <div className="flex items-center border-b px-3 py-2">
+                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                    <input
+                      placeholder="Ketik kode, nama PKB/WKI/Lansia, atau pos…"
+                      value={searchBudget}
+                      onChange={(e) => setSearchBudget(e.target.value)}
+                      className="flex h-7 w-full rounded-md bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                      autoFocus
+                    />
+                    {searchBudget && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchBudget("")}
+                        className="text-[11px] text-muted-foreground hover:text-foreground px-1"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto p-1 divide-y divide-border/20">
+                    {filteredSortedOptions.map((b) => {
+                      const isSelected = form.budget_line_id === b.id;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => {
+                            setForm({ ...form, budget_line_id: b.id });
+                            setBudgetOpen(false);
+                            setAsistenAktif(true);
+                            setSearchBudget("");
+                          }}
+                          className={cn(
+                            "flex w-full items-start gap-2 rounded-sm px-2.5 py-2 text-left text-xs transition-colors hover:bg-accent hover:text-accent-foreground",
+                            isSelected ? "bg-primary/10 text-primary" : "",
+                          )}
+                        >
+                          <Check
+                            className={cn(
+                              "size-3.5 mt-0.5 shrink-0",
+                              isSelected ? "opacity-100 text-primary" : "opacity-0",
+                            )}
+                          />
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-primary">{b.code}</span>
+                              <span className="text-xs font-medium text-foreground">{b.name}</span>
                             </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
+                            {b.grup && (
+                              <span className="text-[11px] text-muted-foreground">{b.grup}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {filteredSortedOptions.length === 0 && (
+                      <p className="py-6 text-center text-xs text-muted-foreground">
+                        Mata anggaran tidak ditemukan.
+                      </p>
+                    )}
+                  </div>
                 </PopoverContent>
               </Popover>
             </div>
