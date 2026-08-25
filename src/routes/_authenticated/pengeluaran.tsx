@@ -97,7 +97,7 @@ function isValidDate(d: string): boolean {
 function PengeluaranPage() {
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
-  const { user, canApprove } = useSession();
+  const { user, canApprove, isKasir, isSuperAdmin, isAdminKeuangan } = useSession();
   const queryClient = useQueryClient();
 
   const [q, setQ] = useState("");
@@ -244,9 +244,11 @@ function PengeluaranPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <TransactionDialog kind="pengeluaran" />
-          <ImportMassalDialog kind="pengeluaran" />
-          <BackupDataDialog kind="pengeluaran" />
-          <ResetTransaksiDialog kind="pengeluaran" jumlah={allFilteredRows.length} />
+          {!isKasir && <ImportMassalDialog kind="pengeluaran" />}
+          {!isKasir && <BackupDataDialog kind="pengeluaran" />}
+          {!isKasir && (isSuperAdmin || isAdminKeuangan) && (
+            <ResetTransaksiDialog kind="pengeluaran" jumlah={allFilteredRows.length} />
+          )}
         </div>
       }
     >

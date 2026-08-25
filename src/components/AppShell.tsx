@@ -57,6 +57,15 @@ const SEKRETARIS_KETUA_ALLOWED_PATHS = new Set([
   "/laporan-bank",
 ]);
 
+const KASIR_ALLOWED_PATHS = new Set([
+  "/dashboard",
+  "/penerimaan",
+  "/pengeluaran",
+  "/buku-pembantu",
+  "/laporan-harian",
+  "/dana-duka",
+]);
+
 export function AppShell({
   title,
   subtitle,
@@ -68,7 +77,7 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const { user, primaryRole, isReadOnly, isSuperAdmin, isAdminKeuangan } = useSession();
+  const { user, primaryRole, isReadOnly, isSuperAdmin, isAdminKeuangan, isKasir } = useSession();
   const { settings } = useAppSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -76,8 +85,11 @@ export function AppShell({
 
   const navItems = useMemo(() => {
     if (isSuperAdmin || isAdminKeuangan) return NAV;
+    if (isKasir) {
+      return NAV.filter((item) => KASIR_ALLOWED_PATHS.has(item.to));
+    }
     return NAV.filter((item) => SEKRETARIS_KETUA_ALLOWED_PATHS.has(item.to));
-  }, [isSuperAdmin, isAdminKeuangan]);
+  }, [isSuperAdmin, isAdminKeuangan, isKasir]);
 
   async function signOut() {
     await queryClient.cancelQueries();

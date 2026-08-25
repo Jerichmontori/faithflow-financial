@@ -15,6 +15,7 @@ export type AppRole =
   | "bpmj"
   | "ketua_bpmj"
   | "sekretaris"
+  | "kasir"
   | "pendeta"
   | "auditor"
   | "viewer";
@@ -76,6 +77,9 @@ export function useSession() {
       if (email.includes("sella") || email.includes("sekretaris")) {
         return ["sekretaris" as AppRole];
       }
+      if (email.includes("topan") || email.includes("kasir")) {
+        return ["kasir" as AppRole];
+      }
       return ["viewer" as AppRole];
     },
     initialData: () => {
@@ -88,6 +92,7 @@ export function useSession() {
       if (email.includes("jerich") || email.includes("admin")) return ["super_admin" as AppRole];
       if (email.includes("handrie")) return ["ketua_bpmj" as AppRole];
       if (email.includes("sella") || email.includes("sekretaris")) return ["sekretaris" as AppRole];
+      if (email.includes("topan") || email.includes("kasir")) return ["kasir" as AppRole];
       if (user) return ["viewer" as AppRole];
       return undefined;
     },
@@ -99,9 +104,10 @@ export function useSession() {
   const isSekretaris = list.includes("sekretaris");
   const isKetuaJemaat = list.includes("ketua_jemaat") || list.includes("ketua_bpmj");
   const isBpmj = list.includes("bpmj");
+  const isKasir = list.includes("kasir") || email.includes("topan");
   
-  const canManageFinance = isSuperAdmin || isAdminKeuangan;
-  const canEdit = isSuperAdmin || isAdminKeuangan;
+  const canManageFinance = isSuperAdmin || isAdminKeuangan || isKasir;
+  const canEdit = isSuperAdmin || isAdminKeuangan || isKasir;
   const canApprove = isSuperAdmin || isKetuaJemaat;
   const isReadOnly = !canManageFinance;
 
@@ -109,11 +115,12 @@ export function useSession() {
     user,
     loading: loading && !user,
     roles: list,
-    primaryRole: list[0] ?? (email.includes("jerich") || email.includes("admin") ? "super_admin" : "viewer"),
+    primaryRole: list[0] ?? (email.includes("jerich") || email.includes("admin") ? "super_admin" : isKasir ? "kasir" : "viewer"),
     isSuperAdmin,
     isAdminKeuangan,
     isKetuaJemaat,
     isBpmj,
+    isKasir,
     canManageFinance,
     canEdit,
     canApprove,

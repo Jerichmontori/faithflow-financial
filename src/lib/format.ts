@@ -74,6 +74,7 @@ export const ROLE_LABEL: Record<string, string> = {
   viewer: "BPMJ",
   bpmj: "BPMJ",
   sekretaris: "Sekretaris",
+  kasir: "Kasir",
   pendeta: "Pendeta",
   auditor: "Auditor",
 };

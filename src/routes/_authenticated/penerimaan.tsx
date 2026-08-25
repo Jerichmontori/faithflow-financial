@@ -10,6 +10,7 @@ import { ImportMassalDialog } from "@/components/ImportMassalDialog";
 import { BackupDataDialog } from "@/components/BackupDataDialog";
 import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
 import { transactionsQuery, budgetLinesQuery } from "@/lib/queries";
+import { useSession } from "@/hooks/use-session";
 import { parseKolom } from "@/lib/kolom";
 import { rupiah, tanggal } from "@/lib/format";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,7 @@ function isValidDate(d: string): boolean {
 }
 
 function PenerimaanPage() {
+  const { isKasir, isSuperAdmin, isAdminKeuangan } = useSession();
   const trx = useQuery(transactionsQuery);
   const budgets = useQuery(budgetLinesQuery);
   const today = new Date().toISOString().slice(0, 10);
@@ -230,9 +232,11 @@ function PenerimaanPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <TransactionDialog kind="penerimaan" />
-          <ImportMassalDialog kind="penerimaan" />
-          <BackupDataDialog kind="penerimaan" />
-          <ResetTransaksiDialog kind="penerimaan" jumlah={allFilteredRows.length} />
+          {!isKasir && <ImportMassalDialog kind="penerimaan" />}
+          {!isKasir && <BackupDataDialog kind="penerimaan" />}
+          {!isKasir && (isSuperAdmin || isAdminKeuangan) && (
+            <ResetTransaksiDialog kind="penerimaan" jumlah={allFilteredRows.length} />
+          )}
         </div>
       }
     >
