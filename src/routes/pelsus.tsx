@@ -20,9 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
 // Import 3 tampilan laporan lengkap identik
-import { LaporanKolomView } from "./_authenticated/laporan";
-import { DanaDukaView } from "./_authenticated/dana-duka";
-import { WartaKeuanganView } from "./_authenticated/warta";
+import { LaporanKolomContent } from "@/components/reports/LaporanKolomContent";
+import { DanaDukaContent } from "@/components/reports/DanaDukaContent";
+import { WartaContent } from "@/components/reports/WartaContent";
 
 export const Route = createFileRoute("/pelsus")({
   ssr: false,
@@ -240,17 +240,17 @@ function PelsusPortalPage() {
 
           {/* TAB 1: LAPORAN KOLOM LENGKAP IDENTIK */}
           <TabsContent value="kolom" className="focus-visible:outline-hidden space-y-4">
-            <LaporanKolomView isPelsusView={true} />
+            <LaporanKolomContent isPelsusView={true} />
           </TabsContent>
 
           {/* TAB 2: DANA DUKA LENGKAP IDENTIK (TARIF DINAMIS & TUNGGAKAN LALU & DAFTAR NAMA DI-HIDE) */}
           <TabsContent value="duka" className="focus-visible:outline-hidden space-y-4">
-            <DanaDukaView isPelsusView={true} />
+            <DanaDukaContent isPelsusView={true} />
           </TabsContent>
 
           {/* TAB 3: WARTA KEUANGAN LENGKAP IDENTIK (SALDO AWAL BANK & TTD BPMJ DI-HIDE) */}
           <TabsContent value="warta" className="focus-visible:outline-hidden space-y-4">
-            <WartaKeuanganView isPelsusView={true} />
+            <WartaContent isPelsusView={true} />
           </TabsContent>
         </Tabs>
       </main>
