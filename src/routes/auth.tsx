@@ -46,18 +46,28 @@ function AuthPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
+    const cleanEmail = email.trim().toLowerCase();
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+        if (error) {
+          const msg = error.message || "";
+          if (msg.includes("Invalid credentials") || (error as any).error === "AUTH_UNAUTHORIZED") {
+            throw new Error("Email atau kata sandi salah. Silakan periksa kembali.");
+          }
+          if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("network")) {
+            throw new Error("Gagal terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.");
+          }
+          throw error;
+        }
         navigate({ to: "/dashboard", replace: true });
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: fullName },
+            data: { full_name: fullName.trim() },
           },
         });
         if (error) throw error;
@@ -65,7 +75,12 @@ function AuthPage() {
         else toast.success("Pendaftaran berhasil. Akun menunggu persetujuan Super Admin.");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan";
+      if (msg.toLowerCase().includes("failed to fetch")) {
+        toast.error("Gagal terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setBusy(false);
     }

@@ -41,33 +41,42 @@ export const supabase = {
 
   auth: {
     async signInWithPassword(credentials: { email: string; password: string }) {
-      const res = await insforge.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password,
-      });
-      if (res.data?.accessToken) {
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("insforge_auth_token", res.data.accessToken);
-            if (res.data.user) {
-              localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
-            }
-          } catch {}
+      try {
+        const cleanEmail = (credentials.email || "").trim().toLowerCase();
+        const res = await insforge.auth.signInWithPassword({
+          email: cleanEmail,
+          password: credentials.password,
+        });
+        if (res.data?.accessToken) {
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("insforge_auth_token", res.data.accessToken);
+              if (res.data.user) {
+                localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+              }
+            } catch {}
+          }
+          insforge.setAccessToken(res.data.accessToken);
         }
-        insforge.setAccessToken(res.data.accessToken);
-      }
-      return {
-        data: res.data
-          ? {
-              user: res.data.user,
-              session: {
+        return {
+          data: res.data
+            ? {
                 user: res.data.user,
-                access_token: res.data.accessToken,
-              },
-            }
-          : { user: null, session: null },
-        error: res.error,
-      };
+                session: {
+                  user: res.data.user,
+                  access_token: res.data.accessToken,
+                },
+              }
+            : { user: null, session: null },
+          error: res.error,
+        };
+      } catch (err: any) {
+        console.error("signInWithPassword network error:", err);
+        return {
+          data: { user: null, session: null },
+          error: err,
+        };
+      }
     },
 
     async signUp(credentials: {
