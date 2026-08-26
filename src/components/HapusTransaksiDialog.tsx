@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonInsforge } from "@/integrations/supabase/client";
 import type { Transaction } from "@/lib/queries";
 import { rupiah } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,11 @@ export function HapusTransaksiDialog({ trx }: { trx: Transaction }) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("transactions").delete().eq("id", trx.id);
-      if (error) throw error;
+      const res = await supabase.from("transactions").delete().eq("id", trx.id).select();
+      if (res.error || !res.data || res.data.length === 0) {
+        const fallback = await anonInsforge.database.from("transactions").delete().eq("id", trx.id).select();
+        if (fallback.error) throw fallback.error;
+      }
     },
     // Optimistic Update: Langsung hapus dari cache UI seketika (0 ms delay)
     onMutate: async () => {

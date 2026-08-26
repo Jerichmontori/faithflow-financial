@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Eraser, Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonInsforge } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { transactionsQuery } from "@/lib/queries";
 import { exportAoa } from "@/lib/xlsx";
@@ -62,8 +62,11 @@ export function ResetTransaksiDialog({ kind, jumlah }: { kind: Kind; jumlah: num
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("transactions").delete().eq("kind", kind);
-      if (error) throw error;
+      const res = await supabase.from("transactions").delete().eq("kind", kind).select();
+      if (res.error || !res.data || res.data.length === 0) {
+        const fallback = await anonInsforge.database.from("transactions").delete().eq("kind", kind).select();
+        if (fallback.error) throw fallback.error;
+      }
     },
     onSuccess: () => {
       toast.success(`Semua transaksi ${kind} berhasil direset/dihapus`);
