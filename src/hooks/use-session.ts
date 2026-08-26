@@ -115,7 +115,11 @@ export function useSession() {
     user,
     loading: loading && !user,
     roles: list,
-    primaryRole: list[0] ?? (email.includes("jerich") || email.includes("admin") ? "super_admin" : isKasir ? "kasir" : "viewer"),
+    primaryRole: isKasir
+      ? "kasir"
+      : isSuperAdmin
+        ? "super_admin"
+        : (list[0] ?? (email.includes("jerich") || email.includes("admin") ? "super_admin" : "viewer")),
     isSuperAdmin,
     isAdminKeuangan,
     isKetuaJemaat,
