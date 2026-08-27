@@ -1,0 +1,27 @@
+name: Keep InsForge Database Awake
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 6 jam (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Memungkinkan eksekusi manual via tombol "Run workflow" di GitHub
+
+jobs:
+  ping:
+    name: Ping InsForge Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping InsForge API & Database
+        run: |
+          echo "Pinging InsForge backend to prevent pause/inactivity sleep..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
+            "https://p3xb6izj.ap-southeast.insforge.app/api/database/records?table=budget_lines&limit=1" \
+            -H "apikey: ik_04d91bd8acfa41e22df2bbe955dc981a" \
+            -H "Authorization: Bearer ik_04d91bd8acfa41e22df2bbe955dc981a")
+          
+          echo "HTTP Response Code: $RESPONSE"
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 400 ]; then
+            echo "✅ InsForge is awake and healthy! (Status: $RESPONSE)"
+          else
+            echo "⚠️ Unexpected status code: $RESPONSE"
+          fi

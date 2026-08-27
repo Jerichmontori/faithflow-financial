@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { anonInsforge } from "@/integrations/supabase/client";
 
 // Proteksi global terhadap bug DOM removeChild pada browser HP / Google Translate
 if (typeof window !== "undefined") {
@@ -208,9 +209,19 @@ function RootComponent() {
 
     window.addEventListener("storage", handleStorage);
 
+    // 3. Keep-alive heartbeat: ping database secara berkala agar InsForge tidak pernah pause/sleep
+    const pingInsForge = async () => {
+      try {
+        await anonInsforge.database.from("budget_lines").select("id").limit(1);
+      } catch {}
+    };
+    pingInsForge();
+    const heartbeatInterval = setInterval(pingInsForge, 1000 * 60 * 10); // setiap 10 menit saat aplikasi dibuka
+
     return () => {
       if (bc) bc.close();
       window.removeEventListener("storage", handleStorage);
+      clearInterval(heartbeatInterval);
     };
   }, [queryClient]);
 
