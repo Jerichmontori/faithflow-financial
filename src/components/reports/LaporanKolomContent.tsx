@@ -1072,20 +1072,19 @@ export function LaporanKolomContent({ isPelsusView = false }: { isPelsusView?: b
 
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold">Bulan (Keterangan)</Label>
-          <Select value={bulanFilter} onValueChange={setBulanFilter}>
-            <SelectTrigger className="h-9 text-xs bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              <SelectItem value="semua">Semua bulan</SelectItem>
-              <SelectItem value="tanpa">Tanpa bulan</SelectItem>
-              {BULAN_PANJANG.map((b, i) => (
-                <SelectItem key={b} value={String(i)}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            value={bulanFilter}
+            onChange={(e) => setBulanFilter(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring font-medium text-foreground cursor-pointer"
+          >
+            <option value="semua">Semua bulan</option>
+            <option value="tanpa">Tanpa bulan</option>
+            {BULAN_PANJANG.map((b, i) => (
+              <option key={b} value={String(i)}>
+                {b}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-2 xl:col-span-2">
@@ -1430,59 +1429,51 @@ export function LaporanKolomContent({ isPelsusView = false }: { isPelsusView?: b
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Bulan Yang Dimonitor</Label>
-                    <Select value={monitoringBulan} onValueChange={setMonitoringBulan}>
-                      <SelectTrigger className="h-9 text-xs bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        <SelectItem value="semua">Semua Bulan (Sepanjang Tahun)</SelectItem>
-                        {BULAN_PANJANG.map((b, i) => (
-                          <SelectItem key={b} value={String(i)}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={monitoringBulan}
+                      onChange={(e) => setMonitoringBulan(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring font-medium text-foreground cursor-pointer"
+                    >
+                      <option value="semua">Semua Bulan (Sepanjang Tahun)</option>
+                      {BULAN_PANJANG.map((b, i) => (
+                        <option key={b} value={String(i)}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Pos Setoran / Kompelka</Label>
-                    <Select
+                    <select
                       value={monitoringKat}
-                      onValueChange={(val) => {
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setMonitoringKat(val);
                         setQuickKategori(val);
                         setBudgetId("semua");
                       }}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring font-medium text-foreground cursor-pointer"
                     >
-                      <SelectTrigger className="h-9 text-xs bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        {KATEGORI_MONITORING.map((k) => (
-                          <SelectItem key={k.id} value={k.id}>
-                            {k.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {KATEGORI_MONITORING.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Status Setoran</Label>
-                    <Select
+                    <select
                       value={monitoringStatusFilter}
-                      onValueChange={(v: any) => setMonitoringStatusFilter(v)}
+                      onChange={(e) => setMonitoringStatusFilter(e.target.value as any)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring font-medium text-foreground cursor-pointer"
                     >
-                      <SelectTrigger className="h-9 text-xs bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="semua">Semua Status (29 Kolom)</SelectItem>
-                        <SelectItem value="belum">🔴 Hanya Yang Belum Setor ({totalBelumSetor})</SelectItem>
-                        <SelectItem value="sudah">🟢 Hanya Yang Sudah Setor ({totalSudahSetor})</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <option value="semua">Semua Status (29 Kolom)</option>
+                      <option value="belum">🔴 Hanya Yang Belum Setor ({totalBelumSetor})</option>
+                      <option value="sudah">🟢 Hanya Yang Sudah Setor ({totalSudahSetor})</option>
+                    </select>
                   </div>
 
                   {!isReadOnly && (

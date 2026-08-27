@@ -65,6 +65,12 @@ const tglPendek = (s: string) => {
   return `${d} ${bShort}`;
 };
 
+const formatPeriodeWarta = (d1: string, d2: string) => {
+  if (!d1 && !d2) return "";
+  if (d1 === d2) return `Tanggal ${tglPanjang(d1)}`;
+  return `Tanggal ${tglPanjang(d1)} s/d ${tglPanjang(d2)}`;
+};
+
 /** Format angka tabel warta tanpa label "Rp" sesuai cetakan resmi */
 const angka = (value: number | string | null | undefined) => {
   if (value === null || value === undefined || value === "") return "";
@@ -269,7 +275,7 @@ export function WartaContent({ isPelsusView = false }: { isPelsusView?: boolean 
       [`${settings.namaJemaat || "JEMAAT BUKIT MORIA TIKALA BARU"}`],
       [`${settings.wilayah || "WILAYAH MANADO WAWONASA KOMBOS"}`],
       ["WARTA KEUANGAN JEMAAT"],
-      [`Periode: ${tglPanjang(dari)} s/d ${tglPanjang(sampai)}`],
+      [`Laporan Penerimaan dan Pengeluaran Kas Jemaat ${formatPeriodeWarta(dari, sampai)}`],
       [],
       showKoreksi
         ? ["No", "KETERANGAN / POS ANGGARAN", "KOREKSI", "PENERIMAAN", "PENGELUARAN", "SALDO KAS"]
@@ -557,7 +563,7 @@ export function WartaContent({ isPelsusView = false }: { isPelsusView?: boolean 
             WARTA KEUANGAN
           </h1>
           <p className="text-[11pt] font-semibold mt-1 text-black/90">
-            Laporan Penerimaan &amp; Pengeluaran Kas Jemaat Tanggal {tglPanjang(dari)} S/d {tglPanjang(sampai)}
+            Laporan Penerimaan dan Pengeluaran Kas Jemaat {formatPeriodeWarta(dari, sampai)}
           </p>
         </div>
 
