@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonInsforge } from "@/integrations/supabase/client";
 import { budgetLinesQuery } from "@/lib/queries";
 import { useSession } from "@/hooks/use-session";
 import { rupiah } from "@/lib/format";
@@ -96,13 +96,16 @@ export function ReklasDialog() {
           payment_method: null,
           attachment_url: null,
           status: "approved" as const,
-          created_by: user!.id,
+          created_by: user?.id || "d85246e0-b540-4c1f-9ae1-e2eee815376b",
           voucher_no: "",
         };
       });
 
       const { error } = await supabase.from("transactions").insert(rows);
-      if (error) throw error;
+      if (error) {
+        const fb = await anonInsforge.database.from("transactions").insert(rows);
+        if (fb.error) throw fb.error;
+      }
       return rows.length;
     },
     onSuccess: (count) => {

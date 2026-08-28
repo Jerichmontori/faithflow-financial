@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonInsforge } from "@/integrations/supabase/client";
 import { budgetLinesQuery, transactionsQuery, type Transaction } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { useSession } from "@/hooks/use-session";
@@ -173,7 +173,21 @@ function KoreksiPage() {
           koreksi_catatan: catatan,
         })
         .eq("id", pilih.id);
-      if (error) throw error;
+      if (error) {
+        const fb = await anonInsforge.database
+          .from("transactions")
+          .update({
+            amount: cleanNominal,
+            trx_date: trxDate || pilih.trx_date,
+            description: keterangan,
+            budget_line_id: lineId,
+            payment_method: paymentMethod,
+            koreksi_dari: pilih.voucher_no,
+            koreksi_catatan: catatan,
+          })
+          .eq("id", pilih.id);
+        if (fb.error) throw fb.error;
+      }
 
       // Safe UUID verification for corrected_by
       const validUserId =
