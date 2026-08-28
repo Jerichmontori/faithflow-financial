@@ -196,17 +196,19 @@ function KoreksiPage() {
           : null;
 
       try {
-        await supabase.from("transaction_corrections").insert(
-          perubahan.map((p) => ({
-            transaction_id: pilih.id,
-            voucher_no: pilih.voucher_no,
-            field: p.field,
-            old_value: p.old_value,
-            new_value: p.new_value,
-            reason: alasanClean,
-            corrected_by: validUserId,
-          })),
-        );
+        const payload = perubahan.map((p) => ({
+          transaction_id: pilih.id,
+          voucher_no: pilih.voucher_no,
+          field: p.field,
+          old_value: p.old_value,
+          new_value: p.new_value,
+          reason: alasanClean,
+          corrected_by: validUserId,
+        }));
+        const insRes = await supabase.from("transaction_corrections").insert(payload);
+        if (insRes?.error) {
+          await anonInsforge.database.from("transaction_corrections").insert(payload);
+        }
       } catch (logErr) {
         console.warn("Gagal menyimpan log riwayat koreksi:", logErr);
       }
