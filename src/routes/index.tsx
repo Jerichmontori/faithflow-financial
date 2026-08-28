@@ -91,19 +91,12 @@ function Index() {
               <KeyRound className="size-3.5" /> Portal Pelsus (PIN)
             </Link>
           </Button>
-          {user ? (
-            <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Link to="/dashboard">
-                <LayoutDashboard className="size-3.5" /> Buka Dashboard
-              </Link>
-            </Button>
-          ) : (
-            <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5">
+          <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5">
               <Link to="/auth">
                 Masuk ke Sistem <ArrowRight className="size-3.5" />
               </Link>
             </Button>
-          )}
+
         </div>
       </header>
 
@@ -162,8 +155,8 @@ function Index() {
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" className="font-bold px-7 py-6 text-sm sm:text-base shadow-xl gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-white/20">
-                <Link to={user ? "/dashboard" : "/auth"}>
-                  {user ? "Buka Dashboard Keuangan" : (settings.teksTombolBeranda || "Mulai Kelola Keuangan")}
+                <Link to="/auth">
+                  {settings.teksTombolBeranda || "Mulai Kelola Keuangan"}
                   <ArrowRight className="size-4.5" />
                 </Link>
               </Button>

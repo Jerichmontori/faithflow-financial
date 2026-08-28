@@ -13,7 +13,7 @@ const INSFORGE_ANON_KEY =
 const getInitialToken = (): string | null => {
   if (typeof window !== "undefined") {
     try {
-      return localStorage.getItem("insforge_auth_token");
+      return sessionStorage.getItem("insforge_auth_token");
     } catch {}
   }
   return null;

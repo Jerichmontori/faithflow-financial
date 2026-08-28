@@ -24,7 +24,7 @@ export function useSession() {
   const [user, setUser] = useState<AuthUser | null>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("insforge_auth_user");
+        const raw = sessionStorage.getItem("insforge_auth_user");
         return raw ? JSON.parse(raw) : null;
       } catch {}
     }
@@ -58,7 +58,7 @@ export function useSession() {
           const list = data.map((r: any) => r.role as AppRole);
           if (typeof window !== "undefined") {
             try {
-              localStorage.setItem(`bumotik_roles_${user!.id}`, JSON.stringify(list));
+              sessionStorage.setItem(`bumotik_roles_${user!.id}`, JSON.stringify(list));
             } catch {}
           }
           return list;
@@ -85,7 +85,7 @@ export function useSession() {
     initialData: () => {
       if (typeof window !== "undefined" && user?.id) {
         try {
-          const cached = localStorage.getItem(`bumotik_roles_${user.id}`);
+          const cached = sessionStorage.getItem(`bumotik_roles_${user.id}`);
           if (cached) return JSON.parse(cached);
         } catch {}
       }

@@ -6,7 +6,7 @@ export const supabase = {
   from(table: string) {
     if (typeof window !== "undefined") {
       try {
-        const storedToken = localStorage.getItem("insforge_auth_token");
+        const storedToken = sessionStorage.getItem("insforge_auth_token");
         if (storedToken) {
           insforge.setAccessToken(storedToken);
         }
@@ -30,7 +30,7 @@ export const supabase = {
   rpc(fnName: string, args?: Record<string, any>) {
     if (typeof window !== "undefined") {
       try {
-        const storedToken = localStorage.getItem("insforge_auth_token");
+        const storedToken = sessionStorage.getItem("insforge_auth_token");
         if (storedToken) {
           insforge.setAccessToken(storedToken);
         }
@@ -50,9 +50,9 @@ export const supabase = {
         if (res.data?.accessToken) {
           if (typeof window !== "undefined") {
             try {
-              localStorage.setItem("insforge_auth_token", res.data.accessToken);
+              sessionStorage.setItem("insforge_auth_token", res.data.accessToken);
               if (res.data.user) {
-                localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+                sessionStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
               }
             } catch {}
           }
@@ -95,9 +95,9 @@ export const supabase = {
       if ((res.data as any)?.accessToken) {
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem("insforge_auth_token", (res.data as any).accessToken);
+            sessionStorage.setItem("insforge_auth_token", (res.data as any).accessToken);
             if (res.data?.user) {
-              localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+              sessionStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
             }
           } catch {}
         }
@@ -122,8 +122,8 @@ export const supabase = {
     async signOut() {
       if (typeof window !== "undefined") {
         try {
-          localStorage.removeItem("insforge_auth_token");
-          localStorage.removeItem("insforge_auth_user");
+          sessionStorage.removeItem("insforge_auth_token"); try { localStorage.removeItem("insforge_auth_token"); } catch {};
+          sessionStorage.removeItem("insforge_auth_user"); try { localStorage.removeItem("insforge_auth_user"); } catch {};
         } catch {}
       }
       insforge.setAccessToken(undefined as any);
@@ -134,8 +134,8 @@ export const supabase = {
       let storedUser: any = null;
       let storedToken: string | null = null;
       if (typeof window !== "undefined") {
-        storedToken = localStorage.getItem("insforge_auth_token");
-        const rawUser = localStorage.getItem("insforge_auth_user");
+        storedToken = sessionStorage.getItem("insforge_auth_token");
+        const rawUser = sessionStorage.getItem("insforge_auth_user");
         if (rawUser) {
           try {
             storedUser = JSON.parse(rawUser);
@@ -155,7 +155,7 @@ export const supabase = {
         if (res.data?.user) {
           if (typeof window !== "undefined") {
             try {
-              localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+              sessionStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
             } catch {}
           }
           return { data: { user: res.data.user }, error: null };
@@ -176,8 +176,8 @@ export const supabase = {
       let storedUser: any = null;
       let storedToken: string | null = null;
       if (typeof window !== "undefined") {
-        storedToken = localStorage.getItem("insforge_auth_token");
-        const rawUser = localStorage.getItem("insforge_auth_user");
+        storedToken = sessionStorage.getItem("insforge_auth_token");
+        const rawUser = sessionStorage.getItem("insforge_auth_user");
         if (rawUser) {
           try {
             storedUser = JSON.parse(rawUser);
@@ -193,7 +193,7 @@ export const supabase = {
         const user = res.data?.user ?? storedUser;
         if (user && res.data?.user && typeof window !== "undefined") {
           try {
-            localStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
+            sessionStorage.setItem("insforge_auth_user", JSON.stringify(res.data.user));
           } catch {}
         }
         return {
@@ -226,7 +226,7 @@ export const supabase = {
       if (tokens.access_token) {
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem("insforge_auth_token", tokens.access_token);
+            sessionStorage.setItem("insforge_auth_token", tokens.access_token);
           } catch {}
         }
         insforge.setAccessToken(tokens.access_token);
