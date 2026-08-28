@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Church, ShieldCheck, LineChart, Wallet, ClipboardCheck, Sparkles, BookOpen, Clock, MapPin, ArrowRight, KeyRound } from "lucide-react";
+import { Church, ShieldCheck, LineChart, Wallet, ClipboardCheck, Sparkles, BookOpen, Clock, MapPin, ArrowRight, KeyRound, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/lib/settings";
+import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -51,6 +52,7 @@ const FITUR = [
 
 function Index() {
   const { settings } = useAppSettings();
+  const { user } = useSession();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -89,11 +91,19 @@ function Index() {
               <KeyRound className="size-3.5" /> Portal Pelsus (PIN)
             </Link>
           </Button>
-          <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5">
-            <Link to="/auth">
-              Masuk ke Sistem <ArrowRight className="size-3.5" />
-            </Link>
-          </Button>
+          {user ? (
+            <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Link to="/dashboard">
+                <LayoutDashboard className="size-3.5" /> Buka Dashboard
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="font-semibold shadow-sm gap-1.5">
+              <Link to="/auth">
+                Masuk ke Sistem <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -152,8 +162,8 @@ function Index() {
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" className="font-bold px-7 py-6 text-sm sm:text-base shadow-xl gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-white/20">
-                <Link to="/auth">
-                  {settings.teksTombolBeranda || "Mulai Kelola Keuangan"}
+                <Link to={user ? "/dashboard" : "/auth"}>
+                  {user ? "Buka Dashboard Keuangan" : (settings.teksTombolBeranda || "Mulai Kelola Keuangan")}
                   <ArrowRight className="size-4.5" />
                 </Link>
               </Button>

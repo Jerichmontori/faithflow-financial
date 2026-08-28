@@ -7,6 +7,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAppSettings } from "@/lib/settings";
 
 export const Route = createFileRoute("/auth")({
@@ -36,6 +37,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -257,6 +259,18 @@ function AuthPage() {
                 className="h-10 text-xs sm:text-sm"
               />
             </div>
+            {mode === "login" && (
+              <div className="flex items-center space-x-2 pt-1 pb-1">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
+                />
+                <Label htmlFor="rememberMe" className="text-xs text-muted-foreground font-normal cursor-pointer select-none">
+                  Tetap masuk di perangkat ini (Login Otomatis)
+                </Label>
+              </div>
+            )}
             <Button type="submit" className="w-full font-bold h-10 shadow-md" disabled={busy}>
               {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
               {mode === "login" ? "Masuk ke Akun" : "Daftar Akun"}

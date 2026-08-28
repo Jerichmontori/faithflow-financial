@@ -160,21 +160,11 @@ export const supabase = {
           }
           return { data: { user: res.data.user }, error: null };
         }
-        if (res.error && (res.error as any).statusCode === 401) {
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.removeItem("insforge_auth_token");
-              localStorage.removeItem("insforge_auth_user");
-            } catch {}
-          }
-          insforge.setAccessToken(undefined as any);
-          return { data: { user: null }, error: null };
-        }
       } catch (err) {
         console.warn("Network notice on getUser:", err);
       }
 
-      // Gunakan storedUser yang tersimpan di localStorage agar user tidak ter-kick out
+      // Gunakan storedUser yang tersimpan di localStorage agar user tetap login otomatis secara permanen
       if (storedUser) {
         return { data: { user: storedUser }, error: null };
       }
