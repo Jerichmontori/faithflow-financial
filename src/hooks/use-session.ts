@@ -104,7 +104,8 @@ export function useSession() {
   const isSekretaris = list.includes("sekretaris");
   const isKetuaJemaat = list.includes("ketua_jemaat") || list.includes("ketua_bpmj");
   const isBpmj = list.includes("bpmj");
-  const isKasir = list.includes("kasir") || email.includes("topan");
+  const userName = String((user as any)?.user_metadata?.full_name || (user as any)?.name || "");
+  const isKasir = list.includes("kasir") || email.includes("topan") || userName.toLowerCase().includes("kasir");
   
   const canManageFinance = isSuperAdmin || isAdminKeuangan || isKasir;
   const canEdit = isSuperAdmin || isAdminKeuangan || isKasir;

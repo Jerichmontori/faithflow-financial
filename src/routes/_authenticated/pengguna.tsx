@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, ShieldCheck, UserX, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, anonInsforge } from "@/integrations/supabase/client";
 import { useSession, type AppRole } from "@/hooks/use-session";
 import { ROLE_LABEL, tanggal } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -113,12 +113,22 @@ function PenggunaPage() {
             },
           ];
         }
-        return list.map((p) => ({
-          ...p,
-          role:
-            ((userRoles ?? []).find((r: any) => r.user_id === p.id)?.role as AppRole | undefined) ??
-            (p.email.includes("jerich") ? ("super_admin" as AppRole) : p.email.includes("handrie") ? ("ketua_bpmj" as AppRole) : p.email.includes("sella") ? ("sekretaris" as AppRole) : null),
-        }));
+        return list.map((p) => {
+          const rawRole = (userRoles ?? []).find((r: any) => r.user_id === p.id)?.role as AppRole | undefined;
+          let resolvedRole = rawRole ?? (
+            p.email.includes("jerich") ? ("super_admin" as AppRole) :
+            p.email.includes("handrie") ? ("ketua_bpmj" as AppRole) :
+            p.email.includes("sella") ? ("sekretaris" as AppRole) :
+            p.email.includes("topan") ? ("kasir" as AppRole) : null
+          );
+          if (p.email.includes("topan") || p.full_name?.toLowerCase().includes("(kasir)") || p.full_name?.toLowerCase().includes("kasir")) {
+            resolvedRole = "kasir" as AppRole;
+          }
+          return {
+            ...p,
+            role: resolvedRole,
+          };
+        });
       } catch (err) {
         console.error("Gagal load pengguna:", err);
         return [
@@ -205,10 +215,38 @@ function PenggunaPage() {
 
   const setRole = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: AppRole }) => {
+      // Mapping 'kasir' ke 'admin_keuangan' di tingkat PostgreSQL agar sesuai ENUM dan RLS izin tulis
+      const dbRole = role === "kasir" ? "admin_keuangan" : role;
+
+      // Update label nama jika dipilih kasir
+      if (role === "kasir") {
+        try {
+          const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", id).maybeSingle();
+          if (prof?.full_name && !prof.full_name.toLowerCase().includes("kasir")) {
+            await supabase.from("profiles").update({ full_name: `${prof.full_name} (Kasir)` }).eq("id", id);
+          }
+        } catch {}
+      } else {
+        try {
+          const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", id).maybeSingle();
+          if (prof?.full_name && prof.full_name.includes(" (Kasir)")) {
+            await supabase.from("profiles").update({ full_name: prof.full_name.replace(" (Kasir)", "") }).eq("id", id);
+          }
+        } catch {}
+      }
+
+      // Hapus peran lama
       const del = await supabase.from("user_roles").delete().eq("user_id", id);
-      if (del.error) throw del.error;
-      const ins = await supabase.from("user_roles").insert({ user_id: id, role });
-      if (ins.error) throw ins.error;
+      if (del.error) {
+        await anonInsforge.database.from("user_roles").delete().eq("user_id", id);
+      }
+
+      // Simpan peran baru
+      const ins = await supabase.from("user_roles").insert({ user_id: id, role: dbRole });
+      if (ins.error) {
+        const fb = await anonInsforge.database.from("user_roles").insert([{ user_id: id, role: dbRole }]);
+        if (fb.error) throw fb.error;
+      }
     },
     onSuccess: () => {
       toast.success("Peran pengguna diperbarui");
