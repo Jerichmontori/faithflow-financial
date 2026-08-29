@@ -213,13 +213,59 @@ function KoreksiPage() {
         console.warn("Gagal menyimpan log riwayat koreksi:", logErr);
       }
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
+      const previousTrx = queryClient.getQueryData<Transaction[]>(["transactions"]);
+
+      const cleanNominal = Number(String(amount).replace(/[^0-9.-]+/g, "")) || (pilih ? pilih.amount : 0);
+      const targetBudgetLine = (lines.data ?? []).find((l) => l.id === lineId);
+
+      // Instant optimistic update in cache
+      if (pilih) {
+        queryClient.setQueryData<Transaction[]>(["transactions"], (old) =>
+          old
+            ? old.map((t) =>
+                t.id === pilih.id
+                  ? {
+                      ...t,
+                      amount: cleanNominal,
+                      trx_date: trxDate || pilih.trx_date,
+                      description: keterangan,
+                      budget_line_id: lineId,
+                      payment_method: paymentMethod,
+                      budget_lines: targetBudgetLine
+                        ? { code: targetBudgetLine.code, name: targetBudgetLine.name }
+                        : (t.budget_lines ?? null),
+                    }
+                  : t,
+              )
+            : [],
+        );
+      }
+
+      setPilih(null);
+      return { previousTrx };
+    },
     onSuccess: () => {
       toast.success("Koreksi berhasil disimpan");
+      if (typeof window !== "undefined") {
+        try {
+          const bc = new BroadcastChannel("bumotik_realtime_sync");
+          bc.postMessage({ type: "SYNC_TRANSACTIONS", timestamp: Date.now() });
+          bc.close();
+        } catch {}
+      }
+    },
+    onError: (e: unknown, _, context) => {
+      if (context?.previousTrx) {
+        queryClient.setQueryData(["transactions"], context.previousTrx);
+      }
+      toast.error(e instanceof Error ? e.message : "Gagal menyimpan koreksi");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["transaction_corrections"] });
-      setPilih(null);
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Gagal menyimpan koreksi"),
   });
 
   if (!canManageFinance) {

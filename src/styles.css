@@ -292,32 +292,36 @@
   /* Kertas F4 / Folio (330 x 215 mm) Posisi Landscape */
   @page {
     size: 330mm 215mm landscape;
-    margin: 5mm 6mm;
+    margin: 4mm 5mm;
   }
 
   .warta-area {
     border: none !important;
     padding: 0 !important;
+    margin: 0 !important;
     background: transparent !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  /* Wadah Cetak 1/2 Halaman Landscape */
+  /* Wadah Cetak 2 Salinan (Grid 2 Kolom Presisi 100% Simetris) */
   .warta-half-layout {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: flex-start !important;
-    gap: 8mm !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    column-gap: 4mm !important;
     width: 100% !important;
+    box-sizing: border-box !important;
+    align-items: start !important;
   }
 
-  /* Ukuran 1/2 Halaman Landscape dengan Scale 62% */
+  /* Ukuran 1/2 Halaman Landscape */
   .warta-sheet-half {
-    page-break-inside: auto;
-    width: 48.8% !important;
-    max-width: 48.8% !important;
-    zoom: 62% !important;
-    transform-origin: top left;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
   }
 
   /* Ukuran Penuh Landscape */
@@ -325,16 +329,15 @@
     page-break-inside: auto;
     width: 100% !important;
     max-width: 100% !important;
-    zoom: 62% !important;
-    transform-origin: top center;
+    margin: 0 auto !important;
   }
 
   .warta-table th,
   .warta-table td {
     border: 1px solid #111 !important;
-    padding: 2px 5px !important;
-    font-size: 11pt !important;
-    line-height: 1.35 !important;
+    padding: 2px 4px !important;
+    font-size: 10.5pt !important;
+    line-height: 1.3 !important;
     color: black !important;
   }
 
@@ -346,6 +349,7 @@
 
   .warta-table tr {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 

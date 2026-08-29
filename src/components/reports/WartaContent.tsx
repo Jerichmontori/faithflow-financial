@@ -532,22 +532,22 @@ export function WartaContent({ isPelsusView = false }: { isPelsusView?: boolean 
 
       <div className="warta-area panel overflow-x-auto p-4 sm:p-6 bg-white text-black">
         {layoutCetak === "ganda" ? (
-          <div className="warta-half-layout flex justify-between gap-6 w-full">
-            <div className="warta-sheet-half flex-1" style={{ zoom: `${scale}%` }}>
+          <div className="warta-half-layout grid grid-cols-2 gap-4 w-full box-border">
+            <div className="warta-sheet-half w-full pr-2 box-border" style={{ zoom: `${scale}%` }}>
               {renderWartaSheet()}
             </div>
-            <div className="warta-sheet-half flex-1 border-l-2 border-dashed border-gray-300 pl-6" style={{ zoom: `${scale}%` }}>
+            <div className="warta-sheet-half w-full pl-2 border-l border-dashed border-gray-400 box-border" style={{ zoom: `${scale}%` }}>
               {renderWartaSheet()}
             </div>
           </div>
         ) : layoutCetak === "setengah" ? (
           <div className="warta-half-layout flex justify-start w-full">
-            <div className="warta-sheet-half w-full sm:w-[49%]" style={{ zoom: `${scale}%` }}>
+            <div className="warta-sheet-half w-full sm:w-[49%] box-border" style={{ zoom: `${scale}%` }}>
               {renderWartaSheet()}
             </div>
           </div>
         ) : (
-          <div className="warta-sheet-full max-w-5xl mx-auto" style={{ zoom: `${scale}%` }}>
+          <div className="warta-sheet-full max-w-5xl mx-auto box-border" style={{ zoom: `${scale}%` }}>
             {renderWartaSheet()}
           </div>
         )}

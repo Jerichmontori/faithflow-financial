@@ -11,7 +11,7 @@ import { CetakBuktiTransaksiDialog } from "@/components/CetakBuktiTransaksiDialo
 import { ImportMassalDialog } from "@/components/ImportMassalDialog";
 import { BackupDataDialog } from "@/components/BackupDataDialog";
 import { ResetTransaksiDialog } from "@/components/ResetTransaksiDialog";
-import { transactionsQuery, budgetLinesQuery, isBankPayment } from "@/lib/queries";
+import { transactionsQuery, budgetLinesQuery, isBankPayment, type Transaction } from "@/lib/queries";
 import { rupiah, tanggal } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -138,11 +138,35 @@ function PengeluaranPage() {
         .eq("id", id);
       if (error) throw error;
     },
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
+      const previousTrx = queryClient.getQueryData<Transaction[]>(["transactions"]);
+
+      queryClient.setQueryData<Transaction[]>(["transactions"], (old) =>
+        old ? old.map((t) => (t.id === id ? { ...t, status } : t)) : [],
+      );
+
+      return { previousTrx };
+    },
     onSuccess: (_d, v) => {
       toast.success(v.status === "approved" ? "Pengeluaran disetujui" : "Pengeluaran ditolak");
+      if (typeof window !== "undefined") {
+        try {
+          const bc = new BroadcastChannel("bumotik_realtime_sync");
+          bc.postMessage({ type: "SYNC_TRANSACTIONS", timestamp: Date.now() });
+          bc.close();
+        } catch {}
+      }
+    },
+    onError: (e, _, context) => {
+      if (context?.previousTrx) {
+        queryClient.setQueryData(["transactions"], context.previousTrx);
+      }
+      toast.error(e instanceof Error ? e.message : "Gagal memperbarui status");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Gagal memperbarui status"),
   });
 
   // Pre-sort transactions once
