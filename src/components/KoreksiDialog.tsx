@@ -21,6 +21,7 @@ import {
 
 export function KoreksiDialog({ trx }: { trx: Transaction }) {
   const [open, setOpen] = useState(false);
+  const [trxDate, setTrxDate] = useState(trx.trx_date || "");
   const [amount, setAmount] = useState(String(trx.amount));
   const [description, setDescription] = useState(trx.description ?? "");
   const [paymentMethod, setPaymentMethod] = useState(trx.payment_method || "cash");
@@ -28,11 +29,12 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
 
   useEffect(() => {
     if (open) {
+      setTrxDate(trx.trx_date || "");
       setAmount(String(trx.amount));
       setDescription(trx.description ?? "");
       setPaymentMethod(trx.payment_method || "cash");
     }
-  }, [open, trx.amount, trx.description, trx.payment_method]);
+  }, [open, trx.trx_date, trx.amount, trx.description, trx.payment_method]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -42,24 +44,71 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
       }
       const { error } = await supabase
         .from("transactions")
-        .update({ amount: cleanNominal, description, payment_method: paymentMethod })
+        .update({
+          trx_date: trxDate || trx.trx_date,
+          amount: cleanNominal,
+          description,
+          payment_method: paymentMethod,
+        })
         .eq("id", trx.id);
       if (error) {
         console.warn("Koreksi update failed, executing admin key fallback...", error);
         const fb = await anonInsforge.database
           .from("transactions")
-          .update({ amount: cleanNominal, description, payment_method: paymentMethod })
+          .update({
+            trx_date: trxDate || trx.trx_date,
+            amount: cleanNominal,
+            description,
+            payment_method: paymentMethod,
+          })
           .eq("id", trx.id);
         if (fb.error) throw fb.error;
       }
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
+      const previousTrx = queryClient.getQueryData<Transaction[]>(["transactions"]);
+
+      const cleanNominal = Number(String(amount).replace(/[^0-9.-]+/g, "")) || trx.amount;
+
+      queryClient.setQueryData<Transaction[]>(["transactions"], (old) =>
+        old
+          ? old.map((t) =>
+              t.id === trx.id
+                ? {
+                    ...t,
+                    trx_date: trxDate || trx.trx_date,
+                    amount: cleanNominal,
+                    description,
+                    payment_method: paymentMethod,
+                  }
+                : t,
+            )
+          : [],
+      );
+
+      setOpen(false);
+      return { previousTrx };
+    },
     onSuccess: () => {
       toast.success(`Transaksi ${trx.voucher_no} berhasil dikoreksi`);
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      setOpen(false);
+      if (typeof window !== "undefined") {
+        try {
+          const bc = new BroadcastChannel("bumotik_realtime_sync");
+          bc.postMessage({ type: "SYNC_TRANSACTIONS", timestamp: Date.now() });
+          bc.close();
+        } catch {}
+      }
     },
-    onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Gagal mengoreksi transaksi"),
+    onError: (e: unknown, _, context) => {
+      if (context?.previousTrx) {
+        queryClient.setQueryData(["transactions"], context.previousTrx);
+      }
+      toast.error(e instanceof Error ? e.message : "Gagal mengoreksi transaksi");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
   });
 
   return (
@@ -74,11 +123,20 @@ export function KoreksiDialog({ trx }: { trx: Transaction }) {
         <DialogHeader>
           <DialogTitle>Koreksi Transaksi</DialogTitle>
           <DialogDescription>
-            {trx.voucher_no} · nilai saat ini {rupiah(trx.amount)}. Perbaiki nominal dan/atau
+            {trx.voucher_no} · nilai saat ini {rupiah(trx.amount)}. Perbaiki tanggal, nominal, dan/atau
             keterangan jika terjadi salah input.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="koreksi-tanggal">Tanggal Transaksi</Label>
+            <Input
+              id="koreksi-tanggal"
+              type="date"
+              value={trxDate}
+              onChange={(e) => setTrxDate(e.target.value)}
+            />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="koreksi-nominal">Nominal</Label>
             <Input

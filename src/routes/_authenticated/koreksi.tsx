@@ -47,6 +47,9 @@ type Riwayat = {
 const FIELD_LABEL: Record<string, string> = {
   description: "Keterangan",
   budget_line_id: "Mata Anggaran",
+  amount: "Nominal",
+  trx_date: "Tanggal",
+  payment_method: "Metode Pembayaran",
 };
 
 function KoreksiPage() {
@@ -80,8 +83,9 @@ function KoreksiPage() {
 
   const hasil = useMemo(() => {
     const key = q.trim().toLowerCase();
-    if (!key) return [];
-    return (trx.data ?? [])
+    const all = trx.data ?? [];
+    if (!key) return all.slice(0, 15);
+    return all
       .filter((t) =>
         `${t.voucher_no} ${t.trx_date} ${t.description} ${t.payee ?? ""} ${t.budget_lines?.code ?? ""} ${t.budget_lines?.name ?? ""}`
           .toLowerCase()
@@ -158,7 +162,9 @@ function KoreksiPage() {
         });
       }
 
-      if (perubahan.length === 0) throw new Error("Tidak ada perubahan data untuk disimpan");
+      if (perubahan.length === 0) {
+        throw new Error("Tidak ada perubahan data. Silakan ubah tanggal, nominal, keterangan, atau mata anggaran.");
+      }
 
       const catatan = `Koreksi ${perubahan.map((p) => FIELD_LABEL[p.field] ?? p.field).join(" & ")}: ${alasanClean}`;
       const { error } = await supabase
@@ -293,20 +299,30 @@ function KoreksiPage() {
           onChange={(e) => setQ(e.target.value)}
         />
         <div className="mt-4 space-y-2">
+          {!q && <p className="text-xs text-muted-foreground font-medium mb-1">Transaksi Terbaru (Klik untuk mengoreksi):</p>}
           {hasil.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => mulai(t)}
-              className="flex w-full flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-muted"
+              className={`flex w-full flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-all ${
+                pilih?.id === t.id
+                  ? "border-primary bg-primary/10 ring-2 ring-primary font-semibold shadow-xs"
+                  : "border-border hover:bg-muted"
+              }`}
             >
               <span className="font-mono text-xs">{t.voucher_no}</span>
               <span className="text-xs text-muted-foreground">{tanggal(t.trx_date)}</span>
-              <Badge variant="outline">
+              <Badge variant={pilih?.id === t.id ? "default" : "outline"}>
                 {t.budget_lines?.code} — {t.budget_lines?.name}
               </Badge>
               <span className="flex-1 truncate">{t.description}</span>
               <span className="font-medium">{rupiah(t.amount)}</span>
+              {pilih?.id === t.id && (
+                <Badge variant="secondary" className="bg-primary text-primary-foreground text-[10px]">
+                  Dipilih
+                </Badge>
+              )}
             </button>
           ))}
           {q && hasil.length === 0 && (

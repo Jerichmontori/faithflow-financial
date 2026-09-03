@@ -681,7 +681,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                           className="h-7 text-xs font-medium"
                           onClick={() => {
                             setNamaPkbTerpilih(nama);
-                            terapkanTemplateTerpilih(nama);
                           }}
                         >
                           {nama}
@@ -748,7 +747,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                           className="h-7 text-xs font-medium"
                           onClick={() => {
                             setNamaWkiTerpilih(nama);
-                            terapkanTemplateTerpilih(nama);
                           }}
                         >
                           {nama}
@@ -815,7 +813,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                           className="h-7 text-xs font-medium"
                           onClick={() => {
                             setNamaLansiaTerpilih(nama);
-                            terapkanTemplateTerpilih(nama);
                           }}
                         >
                           {nama}
@@ -882,7 +879,6 @@ export function TransactionDialog({ kind }: { kind: "penerimaan" | "pengeluaran"
                           className="h-7 text-xs font-medium"
                           onClick={() => {
                             setNamaPemudaTerpilih(nama);
-                            terapkanTemplateTerpilih(nama);
                           }}
                         >
                           {nama}
