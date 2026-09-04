@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { transactionsQuery, isInternalCash, isCashPayment } from "@/lib/queries";
-import { rupiah, tanggal } from "@/lib/format";
+import { rupiah, tanggal, terbilang } from "@/lib/format";
 import { normalizeDateInput } from "@/components/ui/date-input";
-import { exportAoa } from "@/lib/xlsx";
+import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -226,41 +226,156 @@ function RincianUangPage() {
     toast.info(`Rincian uang kas tanggal ${tanggal(date)} telah direset.`);
   }
 
-  function downloadExcel() {
-    const labelMode =
-      modeSaldo === "minggu"
-        ? `Kas Minggu Berjalan (${tglMulaiKasMinggu} s/d ${date})`
-        : modeSaldo === "kumulatif"
-          ? `Kas Kumulatif Buku Kas Umum (s/d ${date})`
-          : `Kas Harian (${date})`;
+  async function downloadExcel() {
+    try {
+      const terbilangStr = terbilang(totalFisik);
+      let wb: XLSX.WorkBook;
 
-    const rows = [
-      ["BERITA ACARA RINCIAN FISIK UANG KAS"],
-      ["BUMOTIK FINANCIAL - GMIM BUKIT MORIA TIKALA BARU"],
-      [],
-      ["Tanggal Perhitungan", tanggal(date)],
-      ["Basis Saldo Sistem", labelMode],
-      ["Keterangan / Kasir", note || "-"],
-      ["Waktu Export", new Date().toLocaleString("id-ID")],
-      [],
-      ["NO", "PECAHAN", "JENIS", "JUMLAH (LEMBAR/KEPING)", "SUBTOTAL (RP)"],
-      ...DENOMS.map((d, i) => [
-        i + 1,
-        d.label,
-        d.type,
-        counts[i] || 0,
-        (counts[i] || 0) * d.v,
-      ]),
-      [],
-      ["TOTAL UANG FISIK", "", "", totalLembar, totalFisik],
-      ["SALDO KAS SISTEM", "", "", "", saldoKasTarget],
-      ["SELISIH", "", "", "", selisih],
-      ["STATUS PENCATATAN", "", "", "", cocok ? "SESUAI (SEIMBANG)" : selisih > 0 ? "LEBIH" : "KURANG"],
-    ];
+      try {
+        const response = await fetch("/Rincian Uang.xlsx");
+        if (!response.ok) throw new Error("Template file not found");
+        const buffer = await response.arrayBuffer();
+        wb = XLSX.read(buffer, { type: "array" });
+      } catch {
+        wb = XLSX.utils.book_new();
+      }
 
-    const filename = `Rincian_Uang_Kas_${date}.xlsx`;
-    exportAoa(rows, filename, "Rincian Kas", [6, 20, 15, 25, 20]);
-    toast.success(`Rincian uang berhasil diekspor ke Excel: ${filename}`);
+      let ws = wb.Sheets["Rincian Uang"];
+      if (!ws) {
+        ws = XLSX.utils.aoa_to_sheet([]);
+        XLSX.utils.book_append_sheet(wb, ws, "Rincian Uang");
+      }
+
+      // Map denominations to rows in template
+      const denomRows = [
+        { denom: 100000, r1: 4, r2: 29 },
+        { denom: 50000, r1: 5, r2: 30 },
+        { denom: 20000, r1: 6, r2: 31 },
+        { denom: 10000, r1: 7, r2: 32 },
+        { denom: 5000, r1: 8, r2: 33 },
+        { denom: 2000, r1: 9, r2: 34 },
+        { denom: 1000, r1: 10, r2: 35 },
+        { denom: 500, r1: 11, r2: 36 },
+        { denom: 100, r1: 12, r2: 37 },
+      ];
+
+      const getQty = (val: number) => {
+        let q = 0;
+        DENOMS.forEach((d, i) => {
+          if (d.v === val) q += counts[i] || 0;
+        });
+        return q;
+      };
+
+      denomRows.forEach((item) => {
+        const qty = getQty(item.denom);
+        const subtotal = qty * item.denom;
+
+        // Copy 1 (Atas)
+        ws[`A${item.r1}`] = { v: item.denom, t: "n" };
+        ws[`C${item.r1}`] = { v: qty, t: "n" };
+        ws[`E${item.r1}`] = { v: subtotal, f: `C${item.r1}*A${item.r1}`, t: "n" };
+
+        // Copy 2 (Bawah)
+        ws[`A${item.r2}`] = { v: item.denom, t: "n" };
+        ws[`C${item.r2}`] = { v: qty, f: `C${item.r1}`, t: "n" };
+        ws[`E${item.r2}`] = { v: subtotal, f: `E${item.r1}`, t: "n" };
+      });
+
+      // Headers & Titles
+      ws["A1"] = { v: "RINCIAN SETORAN UANG", t: "s" };
+      ws["A3"] = { v: "Pecahan", t: "s" };
+      ws["C3"] = { v: "Jumlah", t: "s" };
+      ws["E3"] = { v: "Total", t: "s" };
+
+      ws["A13"] = { v: "GRAND TOTAL", t: "s" };
+      ws["E13"] = { v: totalFisik, f: "SUM(E4:E12)", t: "n" };
+      ws["A14"] = { v: terbilangStr, t: "s" };
+
+      // Signatures Copy 1
+      ws["A17"] = { v: "Mengetahui", t: "s" };
+      ws["C17"] = { v: "Menghitung", t: "s" };
+      ws["E17"] = { v: "Membuat", t: "s" };
+
+      // Headers & Titles Copy 2
+      ws["A26"] = { v: "RINCIAN SETORAN UANG", t: "s" };
+      ws["A28"] = { v: "Pecahan", t: "s" };
+      ws["C28"] = { v: "Jumlah", t: "s" };
+      ws["E28"] = { v: "Total", t: "s" };
+
+      ws["A38"] = { v: "GRAND TOTAL", t: "s" };
+      ws["E38"] = { v: totalFisik, f: "E13", t: "n" };
+      ws["A39"] = { v: terbilangStr, f: "A14", t: "s" };
+
+      // Signatures Copy 2
+      ws["A42"] = { v: "Mengetahui", t: "s" };
+      ws["C42"] = { v: "Menghitung", t: "s" };
+      ws["E42"] = { v: "Membuat", t: "s" };
+
+      // Clean up auxiliary external references if present
+      delete ws["F13"];
+      delete ws["I13"];
+      delete ws["J13"];
+      delete ws["AB40"];
+
+      // Setup merges and column widths
+      ws["!merges"] = [
+        { s: { c: 0, r: 0 }, e: { c: 5, r: 0 } },
+        { s: { c: 0, r: 2 }, e: { c: 1, r: 2 } },
+        { s: { c: 2, r: 2 }, e: { c: 3, r: 2 } },
+        { s: { c: 4, r: 2 }, e: { c: 5, r: 2 } },
+        ...[3, 4, 5, 6, 7, 8, 9, 10, 11].flatMap((r) => [
+          { s: { c: 0, r }, e: { c: 1, r } },
+          { s: { c: 2, r }, e: { c: 3, r } },
+          { s: { c: 4, r }, e: { c: 5, r } },
+        ]),
+        { s: { c: 0, r: 12 }, e: { c: 3, r: 12 } },
+        { s: { c: 4, r: 12 }, e: { c: 5, r: 12 } },
+        { s: { c: 0, r: 13 }, e: { c: 5, r: 13 } },
+        { s: { c: 0, r: 16 }, e: { c: 1, r: 16 } },
+        { s: { c: 2, r: 16 }, e: { c: 3, r: 16 } },
+        { s: { c: 4, r: 16 }, e: { c: 5, r: 16 } },
+        { s: { c: 0, r: 20 }, e: { c: 1, r: 20 } },
+        { s: { c: 2, r: 20 }, e: { c: 3, r: 20 } },
+        { s: { c: 4, r: 20 }, e: { c: 5, r: 20 } },
+
+        // Copy 2
+        { s: { c: 0, r: 25 }, e: { c: 5, r: 25 } },
+        { s: { c: 0, r: 27 }, e: { c: 1, r: 27 } },
+        { s: { c: 2, r: 27 }, e: { c: 3, r: 27 } },
+        { s: { c: 4, r: 27 }, e: { c: 5, r: 27 } },
+        ...[28, 29, 30, 31, 32, 33, 34, 35, 36].flatMap((r) => [
+          { s: { c: 0, r }, e: { c: 1, r } },
+          { s: { c: 2, r }, e: { c: 3, r } },
+          { s: { c: 4, r }, e: { c: 5, r } },
+        ]),
+        { s: { c: 0, r: 37 }, e: { c: 3, r: 37 } },
+        { s: { c: 4, r: 37 }, e: { c: 5, r: 37 } },
+        { s: { c: 0, r: 38 }, e: { c: 5, r: 38 } },
+        { s: { c: 0, r: 41 }, e: { c: 1, r: 41 } },
+        { s: { c: 2, r: 41 }, e: { c: 3, r: 41 } },
+        { s: { c: 4, r: 41 }, e: { c: 5, r: 41 } },
+        { s: { c: 0, r: 45 }, e: { c: 1, r: 45 } },
+        { s: { c: 2, r: 45 }, e: { c: 3, r: 45 } },
+        { s: { c: 4, r: 45 }, e: { c: 5, r: 45 } },
+      ];
+
+      ws["!cols"] = [
+        { wch: 12 },
+        { wch: 4 },
+        { wch: 10 },
+        { wch: 4 },
+        { wch: 14 },
+        { wch: 4 },
+      ];
+
+      const filename = `Rincian_Setoran_Uang_${date}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      toast.success(`Rincian uang berhasil didownload sesuai format resmi: ${filename}`);
+    } catch (err) {
+      console.error("Gagal export rincian uang:", err);
+      toast.error("Gagal mendownload file rincian uang");
+    }
   }
 
   return (
