@@ -226,38 +226,26 @@ function RincianUangPage() {
     toast.info(`Rincian uang kas tanggal ${tanggal(date)} telah direset.`);
   }
 
-  async function downloadExcel() {
+  function downloadExcel() {
     try {
       const terbilangStr = terbilang(totalFisik);
-      let wb: XLSX.WorkBook;
+      const wb = XLSX.utils.book_new();
 
-      try {
-        const response = await fetch("/Rincian Uang.xlsx");
-        if (!response.ok) throw new Error("Template file not found");
-        const buffer = await response.arrayBuffer();
-        wb = XLSX.read(buffer, { type: "array" });
-      } catch {
-        wb = XLSX.utils.book_new();
-      }
+      // Create 48 rows of 6 columns initialized to empty strings
+      const data: (string | number)[][] = Array.from({ length: 48 }, () => ["", "", "", "", "", ""]);
 
-      let ws = wb.Sheets["Rincian Uang"];
-      if (!ws) {
-        ws = XLSX.utils.aoa_to_sheet([]);
-        XLSX.utils.book_append_sheet(wb, ws, "Rincian Uang");
-      }
+      const setCell = (r: number, c: number, val: string | number) => {
+        const row = data[r];
+        if (row) row[c] = val;
+      };
 
-      // Map denominations to rows in template
-      const denomRows = [
-        { denom: 100000, r1: 4, r2: 29 },
-        { denom: 50000, r1: 5, r2: 30 },
-        { denom: 20000, r1: 6, r2: 31 },
-        { denom: 10000, r1: 7, r2: 32 },
-        { denom: 5000, r1: 8, r2: 33 },
-        { denom: 2000, r1: 9, r2: 34 },
-        { denom: 1000, r1: 10, r2: 35 },
-        { denom: 500, r1: 11, r2: 36 },
-        { denom: 100, r1: 12, r2: 37 },
-      ];
+      // Section 1 (Copy 1: Rows 1 to 21)
+      setCell(0, 0, "RINCIAN SETORAN UANG");
+      setCell(2, 0, "Pecahan");
+      setCell(2, 2, "Jumlah");
+      setCell(2, 4, "Total");
+
+      const denoms = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 100];
 
       const getQty = (val: number) => {
         let q = 0;
@@ -267,111 +255,145 @@ function RincianUangPage() {
         return q;
       };
 
-      denomRows.forEach((item) => {
-        const qty = getQty(item.denom);
-        const subtotal = qty * item.denom;
+      denoms.forEach((denom, idx) => {
+        const qty = getQty(denom);
+        const subtotal = qty * denom;
 
-        // Copy 1 (Atas)
-        ws[`A${item.r1}`] = { v: item.denom, t: "n" };
-        ws[`C${item.r1}`] = { v: qty, t: "n" };
-        ws[`E${item.r1}`] = { v: subtotal, f: `C${item.r1}*A${item.r1}`, t: "n" };
+        // Section 1 (0-indexed row: 3 + idx -> Row 4..12)
+        const r1 = 3 + idx;
+        setCell(r1, 0, denom);
+        setCell(r1, 2, qty);
+        setCell(r1, 4, subtotal);
 
-        // Copy 2 (Bawah)
-        ws[`A${item.r2}`] = { v: item.denom, t: "n" };
-        ws[`C${item.r2}`] = { v: qty, f: `C${item.r1}`, t: "n" };
-        ws[`E${item.r2}`] = { v: subtotal, f: `E${item.r1}`, t: "n" };
+        // Section 2 (0-indexed row: 28 + idx -> Row 29..37)
+        const r2 = 28 + idx;
+        setCell(r2, 0, denom);
+        setCell(r2, 2, qty);
+        setCell(r2, 4, subtotal);
       });
 
-      // Headers & Titles
-      ws["A1"] = { v: "RINCIAN SETORAN UANG", t: "s" };
-      ws["A3"] = { v: "Pecahan", t: "s" };
-      ws["C3"] = { v: "Jumlah", t: "s" };
-      ws["E3"] = { v: "Total", t: "s" };
+      setCell(12, 0, "GRAND TOTAL");
+      setCell(12, 4, totalFisik);
+      setCell(13, 0, terbilangStr);
 
-      ws["A13"] = { v: "GRAND TOTAL", t: "s" };
-      ws["E13"] = { v: totalFisik, f: "SUM(E4:E12)", t: "n" };
-      ws["A14"] = { v: terbilangStr, t: "s" };
+      setCell(16, 0, "Mengetahui");
+      setCell(16, 2, "Menghitung");
+      setCell(16, 4, "Membuat");
 
-      // Signatures Copy 1
-      ws["A17"] = { v: "Mengetahui", t: "s" };
-      ws["C17"] = { v: "Menghitung", t: "s" };
-      ws["E17"] = { v: "Membuat", t: "s" };
+      setCell(20, 0, "…............");
+      setCell(20, 2, "…............");
+      setCell(20, 4, "…............");
 
-      // Headers & Titles Copy 2
-      ws["A26"] = { v: "RINCIAN SETORAN UANG", t: "s" };
-      ws["A28"] = { v: "Pecahan", t: "s" };
-      ws["C28"] = { v: "Jumlah", t: "s" };
-      ws["E28"] = { v: "Total", t: "s" };
+      // Section 2 Header & Footer
+      setCell(25, 0, "RINCIAN SETORAN UANG");
+      setCell(27, 0, "Pecahan");
+      setCell(27, 2, "Jumlah");
+      setCell(27, 4, "Total");
 
-      ws["A38"] = { v: "GRAND TOTAL", t: "s" };
-      ws["E38"] = { v: totalFisik, f: "E13", t: "n" };
-      ws["A39"] = { v: terbilangStr, f: "A14", t: "s" };
+      setCell(37, 0, "GRAND TOTAL");
+      setCell(37, 4, totalFisik);
+      setCell(38, 0, terbilangStr);
 
-      // Signatures Copy 2
-      ws["A42"] = { v: "Mengetahui", t: "s" };
-      ws["C42"] = { v: "Menghitung", t: "s" };
-      ws["E42"] = { v: "Membuat", t: "s" };
+      setCell(41, 0, "Mengetahui");
+      setCell(41, 2, "Menghitung");
+      setCell(41, 4, "Membuat");
 
-      // Clean up auxiliary external references if present
-      delete ws["F13"];
-      delete ws["I13"];
-      delete ws["J13"];
-      delete ws["AB40"];
+      setCell(45, 0, "…............");
+      setCell(45, 2, "…............");
+      setCell(45, 4, "…............");
 
-      // Setup merges and column widths
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // Formulas and number formatting
+      denoms.forEach((denom, idx) => {
+        const row1 = 4 + idx;
+        const row2 = 29 + idx;
+        if (ws[`E${row1}`]) {
+          ws[`E${row1}`].f = `C${row1}*A${row1}`;
+          ws[`E${row1}`].z = "#,##0";
+        }
+        if (ws[`A${row1}`]) ws[`A${row1}`].z = "#,##0";
+        if (ws[`C${row1}`]) ws[`C${row1}`].z = "#,##0";
+
+        if (ws[`C${row2}`]) {
+          ws[`C${row2}`].f = `C${row1}`;
+          ws[`C${row2}`].z = "#,##0";
+        }
+        if (ws[`E${row2}`]) {
+          ws[`E${row2}`].f = `E${row1}`;
+          ws[`E${row2}`].z = "#,##0";
+        }
+        if (ws[`A${row2}`]) ws[`A${row2}`].z = "#,##0";
+      });
+
+      if (ws["E13"]) {
+        ws["E13"].f = "SUM(E4:E12)";
+        ws["E13"].z = "#,##0";
+      }
+      if (ws["E38"]) {
+        ws["E38"].f = "E13";
+        ws["E38"].z = "#,##0";
+      }
+      if (ws["A39"]) {
+        ws["A39"].f = "A14";
+      }
+
+      // Exact merges from official Rincian Uang template
       ws["!merges"] = [
-        { s: { c: 0, r: 0 }, e: { c: 5, r: 0 } },
-        { s: { c: 0, r: 2 }, e: { c: 1, r: 2 } },
-        { s: { c: 2, r: 2 }, e: { c: 3, r: 2 } },
-        { s: { c: 4, r: 2 }, e: { c: 5, r: 2 } },
+        { s: { c: 0, r: 0 }, e: { c: 5, r: 0 } }, // A1:F1
+        { s: { c: 0, r: 2 }, e: { c: 1, r: 2 } }, // A3:B3
+        { s: { c: 2, r: 2 }, e: { c: 3, r: 2 } }, // C3:D3
+        { s: { c: 4, r: 2 }, e: { c: 5, r: 2 } }, // E3:F3
         ...[3, 4, 5, 6, 7, 8, 9, 10, 11].flatMap((r) => [
           { s: { c: 0, r }, e: { c: 1, r } },
           { s: { c: 2, r }, e: { c: 3, r } },
           { s: { c: 4, r }, e: { c: 5, r } },
         ]),
-        { s: { c: 0, r: 12 }, e: { c: 3, r: 12 } },
-        { s: { c: 4, r: 12 }, e: { c: 5, r: 12 } },
-        { s: { c: 0, r: 13 }, e: { c: 5, r: 13 } },
-        { s: { c: 0, r: 16 }, e: { c: 1, r: 16 } },
-        { s: { c: 2, r: 16 }, e: { c: 3, r: 16 } },
-        { s: { c: 4, r: 16 }, e: { c: 5, r: 16 } },
-        { s: { c: 0, r: 20 }, e: { c: 1, r: 20 } },
-        { s: { c: 2, r: 20 }, e: { c: 3, r: 20 } },
-        { s: { c: 4, r: 20 }, e: { c: 5, r: 20 } },
+        { s: { c: 0, r: 12 }, e: { c: 3, r: 12 } }, // A13:D13 GRAND TOTAL
+        { s: { c: 4, r: 12 }, e: { c: 5, r: 12 } }, // E13:F13
+        { s: { c: 0, r: 13 }, e: { c: 5, r: 13 } }, // A14:F14 Terbilang
+        { s: { c: 0, r: 16 }, e: { c: 1, r: 16 } }, // A17:B17
+        { s: { c: 2, r: 16 }, e: { c: 3, r: 16 } }, // C17:D17
+        { s: { c: 4, r: 16 }, e: { c: 5, r: 16 } }, // E17:F17
+        { s: { c: 0, r: 20 }, e: { c: 1, r: 20 } }, // A21:B21
+        { s: { c: 2, r: 20 }, e: { c: 3, r: 20 } }, // C21:D21
+        { s: { c: 4, r: 20 }, e: { c: 5, r: 20 } }, // E21:F21
 
-        // Copy 2
-        { s: { c: 0, r: 25 }, e: { c: 5, r: 25 } },
-        { s: { c: 0, r: 27 }, e: { c: 1, r: 27 } },
-        { s: { c: 2, r: 27 }, e: { c: 3, r: 27 } },
-        { s: { c: 4, r: 27 }, e: { c: 5, r: 27 } },
+        // Copy 2 merges
+        { s: { c: 0, r: 25 }, e: { c: 5, r: 25 } }, // A26:F26
+        { s: { c: 0, r: 27 }, e: { c: 1, r: 27 } }, // A28:B28
+        { s: { c: 2, r: 27 }, e: { c: 3, r: 27 } }, // C28:D28
+        { s: { c: 4, r: 27 }, e: { c: 5, r: 27 } }, // E28:F28
         ...[28, 29, 30, 31, 32, 33, 34, 35, 36].flatMap((r) => [
           { s: { c: 0, r }, e: { c: 1, r } },
           { s: { c: 2, r }, e: { c: 3, r } },
           { s: { c: 4, r }, e: { c: 5, r } },
         ]),
-        { s: { c: 0, r: 37 }, e: { c: 3, r: 37 } },
-        { s: { c: 4, r: 37 }, e: { c: 5, r: 37 } },
-        { s: { c: 0, r: 38 }, e: { c: 5, r: 38 } },
-        { s: { c: 0, r: 41 }, e: { c: 1, r: 41 } },
-        { s: { c: 2, r: 41 }, e: { c: 3, r: 41 } },
-        { s: { c: 4, r: 41 }, e: { c: 5, r: 41 } },
-        { s: { c: 0, r: 45 }, e: { c: 1, r: 45 } },
-        { s: { c: 2, r: 45 }, e: { c: 3, r: 45 } },
-        { s: { c: 4, r: 45 }, e: { c: 5, r: 45 } },
+        { s: { c: 0, r: 37 }, e: { c: 3, r: 37 } }, // A38:D38 GRAND TOTAL
+        { s: { c: 4, r: 37 }, e: { c: 5, r: 37 } }, // E38:F38
+        { s: { c: 0, r: 38 }, e: { c: 5, r: 38 } }, // A39:F39 Terbilang
+        { s: { c: 0, r: 41 }, e: { c: 1, r: 41 } }, // A42:B42
+        { s: { c: 2, r: 41 }, e: { c: 3, r: 41 } }, // C42:D42
+        { s: { c: 4, r: 41 }, e: { c: 5, r: 41 } }, // E42:F42
+        { s: { c: 0, r: 45 }, e: { c: 1, r: 45 } }, // A46:B46
+        { s: { c: 2, r: 45 }, e: { c: 3, r: 45 } }, // C46:D46
+        { s: { c: 4, r: 45 }, e: { c: 5, r: 45 } }, // E46:F46
       ];
 
       ws["!cols"] = [
-        { wch: 12 },
+        { wch: 14 },
         { wch: 4 },
         { wch: 10 },
         { wch: 4 },
-        { wch: 14 },
+        { wch: 16 },
         { wch: 4 },
       ];
 
+      XLSX.utils.book_append_sheet(wb, ws, "Rincian Uang");
+
       const filename = `Rincian_Setoran_Uang_${date}.xlsx`;
       XLSX.writeFile(wb, filename);
-      toast.success(`Rincian uang berhasil didownload sesuai format resmi: ${filename}`);
+      toast.success(`Rincian uang berhasil didownload: ${filename}`);
     } catch (err) {
       console.error("Gagal export rincian uang:", err);
       toast.error("Gagal mendownload file rincian uang");
