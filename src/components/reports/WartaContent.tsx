@@ -125,6 +125,9 @@ export function WartaContent({ isPelsusView = false }: { isPelsusView?: boolean 
   // Mode Kolom Koreksi: Otomatis Sembunyi jika tidak ada / Tampilkan / Sembunyikan
   const [koreksiMode, setKoreksiMode] = useState<"auto" | "show" | "hide">("auto");
 
+  // Tombol Sembunyikan / Tampilkan Dana Diakonia Duka Jemaat
+  const [showDanaDuka, setShowDanaDuka] = useState<boolean>(true);
+
   useEffect(() => {
     setSaldoAwalBank(String(settings.saldoAwalBank ?? 0));
     setKetua(settings.namaKetuaBpmj || "Pdt. Handry Mecky Dengah, M.Th");
@@ -499,6 +502,34 @@ export function WartaContent({ isPelsusView = false }: { isPelsusView?: boolean 
                 </button>
               </div>
             </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground">Dana Duka:</span>
+              <div className="inline-flex rounded-lg border p-0.5 bg-muted/30">
+                <button
+                  type="button"
+                  onClick={() => setShowDanaDuka(true)}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    showDanaDuka
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Tampilkan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDanaDuka(false)}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    !showDanaDuka
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Sembunyi
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -716,38 +747,40 @@ export function WartaContent({ isPelsusView = false }: { isPelsusView?: boolean 
           dapat diklarifikasikan di kantor jemaat pada waktu jam kerja *
         </p>
 
-        <div className="mt-4 border-t pt-2.5">
-          <p className="text-[11pt] font-bold uppercase tracking-wide text-black">DANA DIAKONIA DUKA JEMAAT</p>
-          <table className="warta-table mt-1.5 w-full text-[11pt]">
-            <thead>
-              <tr className="bg-muted/30 border-y border-black/60 font-bold">
-                <th className="w-16 py-1 px-1">Kolom</th>
-                <th className="text-left py-1 px-2">Tunggakan</th>
-                <th className="w-16 py-1 px-1">Kolom</th>
-                <th className="text-left py-1 px-2">Tunggakan</th>
-                <th className="w-16 py-1 px-1">Kolom</th>
-                <th className="text-left py-1 px-2">Tunggakan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: 10 }, (_, i) => {
-                const k1 = i + 1;
-                const k2 = i + 11;
-                const k3 = i + 21;
-                return (
-                  <tr key={i} className="border-b border-border/80">
-                    <td className="font-semibold text-center py-1 px-1">{k1 <= 29 ? `Kolom ${k1}` : ""}</td>
-                    <td className="py-1 px-2">{k1 <= 29 ? (ringkasanDuka[k1]?.statusLabel || "Lunas") : ""}</td>
-                    <td className="font-semibold text-center py-1 px-1">{k2 <= 29 ? `Kolom ${k2}` : ""}</td>
-                    <td className="py-1 px-2">{k2 <= 29 ? (ringkasanDuka[k2]?.statusLabel || "Lunas") : ""}</td>
-                    <td className="font-semibold text-center py-1 px-1">{k3 <= 29 ? `Kolom ${k3}` : ""}</td>
-                    <td className="py-1 px-2">{k3 <= 29 ? (ringkasanDuka[k3]?.statusLabel || "Lunas") : ""}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {showDanaDuka && (
+          <div className="mt-4 border-t pt-2.5">
+            <p className="text-[11pt] font-bold uppercase tracking-wide text-black">DANA DIAKONIA DUKA JEMAAT</p>
+            <table className="warta-table mt-1.5 w-full text-[11pt]">
+              <thead>
+                <tr className="bg-muted/30 border-y border-black/60 font-bold">
+                  <th className="w-16 py-1 px-1">Kolom</th>
+                  <th className="text-left py-1 px-2">Tunggakan</th>
+                  <th className="w-16 py-1 px-1">Kolom</th>
+                  <th className="text-left py-1 px-2">Tunggakan</th>
+                  <th className="w-16 py-1 px-1">Kolom</th>
+                  <th className="text-left py-1 px-2">Tunggakan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const k1 = i + 1;
+                  const k2 = i + 11;
+                  const k3 = i + 21;
+                  return (
+                    <tr key={i} className="border-b border-border/80">
+                      <td className="font-semibold text-center py-1 px-1">{k1 <= 29 ? `Kolom ${k1}` : ""}</td>
+                      <td className="py-1 px-2">{k1 <= 29 ? (ringkasanDuka[k1]?.statusLabel || "Lunas") : ""}</td>
+                      <td className="font-semibold text-center py-1 px-1">{k2 <= 29 ? `Kolom ${k2}` : ""}</td>
+                      <td className="py-1 px-2">{k2 <= 29 ? (ringkasanDuka[k2]?.statusLabel || "Lunas") : ""}</td>
+                      <td className="font-semibold text-center py-1 px-1">{k3 <= 29 ? `Kolom ${k3}` : ""}</td>
+                      <td className="py-1 px-2">{k3 <= 29 ? (ringkasanDuka[k3]?.statusLabel || "Lunas") : ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   };
